@@ -28,9 +28,9 @@ describe('IOFactory - Save with Content Controls', function () {
                     if (!unlink($file)) {
                         $error = error_get_last();
                         error_log(sprintf(
-                            'Falha ao excluir arquivo temporário "%s": %s',
+                            'Failed to delete temporary file "%s": %s',
                             $file,
-                            $error['message'] ?? 'erro desconhecido'
+                            $error['message'] ?? 'unknown error'
                         ));
                     }
                 }
@@ -38,9 +38,9 @@ describe('IOFactory - Save with Content Controls', function () {
             if (!rmdir($this->tempDir)) {
                 $error = error_get_last();
                 error_log(sprintf(
-                    'Falha ao remover diretório temporário "%s": %s',
+                    'Failed to remove temporary directory "%s": %s',
                     $this->tempDir,
-                    $error['message'] ?? 'erro desconhecido'
+                    $error['message'] ?? 'unknown error'
                 ));
             }
         }

@@ -67,7 +67,7 @@ class IOFactory
      * @param mixed[] $contentControls Content Controls a adicionar
      * @param string $filename Caminho do arquivo de saída
      * @return bool Sucesso da operação
-     * @throws \PhpOffice\PhpWord\Exception\Exception Se falhar ao criar Writer ou salvar documento base
+     * @throws \PhpOffice\PhpWord\Exception\Exception Exceção propagada da biblioteca PHPWord ao criar o Writer ou salvar o documento base
      * 
      * @example
      * ```php
@@ -106,6 +106,7 @@ class IOFactory
             // 2. Abrir como ZIP
             $zip = new \ZipArchive();
             if ($zip->open($tempFile) !== true) {
+                $zip->close();
                 return false;
             }
             
