@@ -23,6 +23,9 @@ describe('IOFactory - Save with Content Controls', function () {
         // Limpar arquivos temporários (falhas devem falhar o teste)
         if (is_dir($this->tempDir)) {
             $files = glob($this->tempDir . '/*');
+            if ($files === false) {
+                $files = [];
+            }
             foreach ($files as $file) {
                 if (is_file($file)) {
                     expect(unlink($file))->toBeTrue(
@@ -154,5 +157,15 @@ describe('IOFactory - Save with Content Controls', function () {
         
         expect($result)->toBeTrue();
         expect(file_exists($filename))->toBeTrue();
+    });
+    
+    test('createWriter retorna Writer válido', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $section->addText('Test content');
+        
+        $writer = IOFactory::createWriter($phpWord);
+        
+        expect($writer)->toBeInstanceOf(\PhpOffice\PhpWord\Writer\WriterInterface::class);
     });
 });

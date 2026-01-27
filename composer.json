@@ -5,7 +5,8 @@
         "php": ">=8.2",
         "phpoffice/phpword": "^1.4",
         "ext-dom": "*",
-        "ext-mbstring": "*"
+        "ext-mbstring": "*",
+        "ext-zip": "*"
     },
     "autoload": {
         "psr-4": {
@@ -42,7 +43,7 @@
         ],
         "ci": [
             "@analyse",
-            "@test"
+            "@test:coverage"
         ]
     },
     "scripts-descriptions": {

@@ -125,6 +125,13 @@ class IOFactory
                 }
             }
             
+            // Se não há Content Controls, apenas copiar o arquivo e retornar
+            if ($contentControlsXml === '') {
+                $zip->close();
+                $success = rename($tempFile, $filename);
+                return $success;
+            }
+            
             // 5. Injetar antes de </w:body>
             $bodyClosePos = strpos($documentXml, '</w:body>');
             if ($bodyClosePos !== false) {
