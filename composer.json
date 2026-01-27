@@ -17,11 +17,41 @@
         }
     ],
     "require-dev": {
-        "pestphp/pest": "^4.3"
+        "pestphp/pest": "^4.3",
+        "phpstan/phpstan": "2.0",
+        "phpstan/phpstan-strict-rules": "2.0"
     },
     "config": {
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
+    },
+    "scripts": {
+        "test": "pest",
+        "test:unit": "pest tests/Unit",
+        "test:feature": "pest tests/Feature",
+        "test:coverage": "pest --coverage --min=80",
+        "test:coverage-html": "pest --coverage-html coverage/html",
+        "analyse": "phpstan analyse",
+        "analyse:baseline": "phpstan analyse --generate-baseline",
+        "check": [
+            "@analyse",
+            "@test"
+        ],
+        "ci": [
+            "@analyse",
+            "@test:coverage"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Executa todos os testes",
+        "test:unit": "Executa apenas testes unitários",
+        "test:feature": "Executa apenas testes de feature",
+        "test:coverage": "Executa testes com cobertura mínima de 80%",
+        "test:coverage-html": "Gera relatório HTML de cobertura",
+        "analyse": "Executa análise estática com PHPStan",
+        "analyse:baseline": "Gera baseline do PHPStan",
+        "check": "Executa análise e testes",
+        "ci": "Comando completo para CI/CD"
     }
 }

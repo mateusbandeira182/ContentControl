@@ -3,4 +3,17 @@ composer.lock
 .PRDS
 .SPECS
 .PLANS
+.github/prompts
 .github/copilot-instructions.md
+
+# Cobertura de testes
+coverage/
+.phpunit.result.cache
+
+# PHPStan
+var/phpstan/
+phpstan-baseline.neon
+
+# Relatórios
+*.cache
+*.log

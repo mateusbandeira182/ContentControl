@@ -1,0 +1,18 @@
+includes:
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 6
+    paths:
+        - src
+        - tests
+    
+    tmpDir: var/phpstan
+    
+    ignoreErrors:
+        # Ignorar warnings de testes vazios durante desenvolvimento
+        - '#Test file .* is empty#'
+        - '#Empty test suite#'
+    
+    reportUnmatchedIgnoredErrors: false
