@@ -211,13 +211,8 @@ describe('XML Generation - Error Handling', function () {
     test('lança DOMException quando appendXML falha com XML malformado', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
-        $control = new ContentControl($section);
         
-        // Usar reflection para testar o comportamento interno de getXml com XML malformado
-        $reflection = new ReflectionClass($control);
-        $getXmlMethod = $reflection->getMethod('getXml');
-        
-        // Criar um mock do ContentControl que retorna XML malformado de serializeInnerContent
+        // Criar um ContentControl mock que testa o comportamento de erro
         $mockControl = new class($section) extends ContentControl {
             // Sobrescrever getXml para injetar XML malformado no fluxo
             public function getXml(): string {
