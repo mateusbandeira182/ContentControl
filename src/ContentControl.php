@@ -194,7 +194,7 @@ class ContentControl extends AbstractContainer
      */
     public function __construct(
         AbstractContainer $content,
-        array $options = [],
+        array $options = []
     )
     {
         // Validar opções ANTES de atribuir
@@ -396,9 +396,16 @@ class ContentControl extends AbstractContainer
             // Suprimir warning de namespace (já definido no elemento raiz <w:sdt>)
             // O XMLWriter do PHPWord não inclui namespace em elementos, mas herdarão
             // do elemento pai quando integrados ao documento
-            libxml_use_internal_errors(true);
+            $previousUseInternalErrors = libxml_use_internal_errors(true);
             $fragment->appendXML($innerXml);
+            $errors = libxml_get_errors();
+            if (count($errors) > 0) {
+                foreach ($errors as $error) {
+                    error_log('libxml error in ' . __METHOD__ . ': ' . trim($error->message));
+                }
+            }
             libxml_clear_errors();
+            libxml_use_internal_errors($previousUseInternalErrors);
             $sdtContent->appendChild($fragment);
         }
         
@@ -486,11 +493,11 @@ class ContentControl extends AbstractContainer
         }
         
         // Determinar se elemento precisa de wrapper <w:p>
-        $withoutP = $this->needsParagraphWrapper($elementClass);
+        $needsWrapper = $this->needsParagraphWrapper($elementClass);
         
         // Instanciar Writer e serializar
         /** @var \PhpOffice\PhpWord\Writer\Word2007\Element\AbstractElement $writer */
-        $writer = new $writerClass($xmlWriter, $element, !$withoutP);
+        $writer = new $writerClass($xmlWriter, $element, !$needsWrapper);
         $writer->write();
     }
 

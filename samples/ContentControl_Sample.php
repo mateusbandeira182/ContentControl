@@ -16,7 +16,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\Jc;
-use PhpOffice\PhpWord\Style\Font;
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\IOFactory;
 
@@ -218,11 +217,20 @@ if ($dom->loadXML($xml)) {
     $xpath = new DOMXPath($dom);
     $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
     
+    // Obter nós com segurança, evitando acesso a nodeValue em null
+    $idNode    = $xpath->query('//w:id/@w:val')->item(0);
+    $aliasNode = $xpath->query('//w:alias/@w:val')->item(0);
+    $tagNode   = $xpath->query('//w:tag/@w:val')->item(0);
+
+    $idValue    = $idNode !== null ? $idNode->nodeValue : 'N/A';
+    $aliasValue = $aliasNode !== null ? $aliasNode->nodeValue : 'N/A';
+    $tagValue   = $tagNode !== null ? $tagNode->nodeValue : 'N/A';
+    
     echo "│ ✓ XML válido e bem formado              │\n";
     echo "│ ✓ Namespace: WordprocessingML          │\n";
-    echo "│ ✓ ID: " . str_pad($xpath->query('//w:id/@w:val')->item(0)->nodeValue, 32) . "│\n";
-    echo "│ ✓ Alias: " . str_pad($xpath->query('//w:alias/@w:val')->item(0)->nodeValue, 28) . "│\n";
-    echo "│ ✓ Tag: " . str_pad($xpath->query('//w:tag/@w:val')->item(0)->nodeValue, 30) . "│\n";
+    echo "│ ✓ ID: " . str_pad($idValue, 32) . "│\n";
+    echo "│ ✓ Alias: " . str_pad($aliasValue, 28) . "│\n";
+    echo "│ ✓ Tag: " . str_pad($tagValue, 30) . "│\n";
     echo "│ ✓ Tipo: richText                        │\n";
     echo "│ ✓ Lock: sdtLocked                       │\n";
 } else {
