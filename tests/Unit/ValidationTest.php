@@ -162,14 +162,14 @@ describe('ContentControl - Validação de Tag', function () {
         $section = $phpWord->addSection();
         
         new ContentControl($section, ['tag' => 'my field']);
-    })->throws(InvalidArgumentException::class, 'must start with a letter or underscore');
+    })->throws(InvalidArgumentException::class, 'contain only alphanumeric characters');
 
     test('rejeita tag com caracteres especiais', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         
         new ContentControl($section, ['tag' => 'field@name']);
-    })->throws(InvalidArgumentException::class, 'must start with a letter or underscore');
+    })->throws(InvalidArgumentException::class, 'contain only alphanumeric characters');
 
     test('rejeita tag que não é string', function () {
         $phpWord = new PhpWord();
