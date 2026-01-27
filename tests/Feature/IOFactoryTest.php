@@ -128,7 +128,7 @@ describe('IOFactory - Save with Content Controls', function () {
         // Caminho inválido (diretório inexistente)
         $invalidPath = '/caminho/invalido/inexistente/arquivo.docx';
         
-        // Use @ to suppress the expected warning from rename() only during this call
+        // Use @ to suppress expected warnings from this method call
         $result = @IOFactory::saveWithContentControls(
             $phpWord,
             [$control],
