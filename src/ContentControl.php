@@ -397,15 +397,24 @@ class ContentControl extends AbstractContainer
             // O XMLWriter do PHPWord não inclui namespace em elementos, mas herdarão
             // do elemento pai quando integrados ao documento
             $previousUseInternalErrors = libxml_use_internal_errors(true);
-            $fragment->appendXML($innerXml);
+            $success = $fragment->appendXML($innerXml);
             $errors = libxml_get_errors();
-            if (count($errors) > 0) {
-                foreach ($errors as $error) {
-                    error_log('libxml error in ' . __METHOD__ . ': ' . trim($error->message));
-                }
-            }
             libxml_clear_errors();
             libxml_use_internal_errors($previousUseInternalErrors);
+            
+            // Verificar se appendXML falhou
+            // Namespace warnings são esperados e podem ser ignorados
+            if ($success === false) {
+                // Capturar mensagens de erro para diagnóstico
+                $errorMessages = array_map(function($error) {
+                    return trim($error->message);
+                }, $errors);
+                
+                throw new \DOMException(
+                    'Failed to parse inner XML content: ' . implode('; ', $errorMessages)
+                );
+            }
+            
             $sdtContent->appendChild($fragment);
         }
         
