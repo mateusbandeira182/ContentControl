@@ -114,8 +114,7 @@ class IOFactory
             
             // Se não há Content Controls, apenas copiar o arquivo e retornar
             if (!$hasContentControls) {
-                $success = rename($tempFile, $filename);
-                return $success;
+                return rename($tempFile, $filename);
             }
             
             // 3. Abrir como ZIP
