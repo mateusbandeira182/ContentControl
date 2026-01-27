@@ -297,14 +297,17 @@ class ContentControl extends AbstractContainer
         }
 
         // Limite de comprimento razoável para exibição
-        if (strlen($alias) > 255) {
+        $length = mb_strlen($alias, 'UTF-8');
+        if ($length > 255) {
             throw new \InvalidArgumentException(
-                sprintf('Alias must not exceed 255 characters, got %d characters', strlen($alias))
+                sprintf('Alias must not exceed 255 characters, got %d characters', $length)
             );
         }
 
         // Verificar caracteres de controle que podem causar problemas
-        if (preg_match('/[\x00-\x1F\x7F-\x9F]/', $alias)) {
+        // Bloqueia C0 controls (0x00-0x1F) e C1 controls (0x7F-0x9F)
+        // Usa modificador 'u' para suporte correto a UTF-8
+        if (preg_match('/[\x00-\x1F\x7F-\x9F]/u', $alias)) {
             throw new \InvalidArgumentException(
                 'Alias must not contain control characters'
             );
@@ -332,9 +335,10 @@ class ContentControl extends AbstractContainer
         }
 
         // Limite de comprimento
-        if (strlen($tag) > 255) {
+        $length = mb_strlen($tag, 'UTF-8');
+        if ($length > 255) {
             throw new \InvalidArgumentException(
-                sprintf('Tag must not exceed 255 characters, got %d characters', strlen($tag))
+                sprintf('Tag must not exceed 255 characters, got %d characters', $length)
             );
         }
 

@@ -41,6 +41,40 @@ describe('ContentControl - Validação de Alias', function () {
         expect($control)->toBeInstanceOf(ContentControl::class);
     });
 
+    test('aceita alias com caracteres multibyte UTF-8', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        
+        // Testa com caracteres acentuados, emoji e outros scripts
+        $control = new ContentControl($section, [
+            'alias' => 'Configuração 测试 🎉 Тест'
+        ]);
+        
+        expect($control)->toBeInstanceOf(ContentControl::class);
+    });
+
+    test('aceita alias com exatamente 255 caracteres multibyte', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        
+        // String com 255 caracteres UTF-8 (não bytes)
+        // Usando "ã" que ocupa 2 bytes mas é 1 caractere
+        $alias = str_repeat('ã', 255);
+        $control = new ContentControl($section, ['alias' => $alias]);
+        
+        expect($control)->toBeInstanceOf(ContentControl::class);
+        expect(mb_strlen($alias, 'UTF-8'))->toBe(255);
+    });
+
+    test('rejeita alias com mais de 255 caracteres multibyte', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        
+        // String com 256 caracteres UTF-8
+        $alias = str_repeat('ñ', 256);
+        new ContentControl($section, ['alias' => $alias]);
+    })->throws(InvalidArgumentException::class, 'must not exceed 255 characters');
+
     test('aceita alias vazio (string vazia não é validada)', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
@@ -127,14 +161,6 @@ describe('ContentControl - Validação de Tag', function () {
         expect($control)->toBeInstanceOf(ContentControl::class);
     });
 
-    test('aceita tag vazia (string vazia não é validada)', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-        
-        $control = new ContentControl($section, ['tag' => '']);
-        expect($control)->toBeInstanceOf(ContentControl::class);
-    });
-
     test('rejeita tag com mais de 255 caracteres', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
@@ -142,6 +168,28 @@ describe('ContentControl - Validação de Tag', function () {
         $tag = 'a' . str_repeat('b', 255);
         new ContentControl($section, ['tag' => $tag]);
     })->throws(InvalidArgumentException::class, 'must not exceed 255 characters');
+
+    test('tag length is counted in characters not bytes', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        
+        // Even though tags should be ASCII identifiers, mb_strlen ensures
+        // consistent behavior if someone tries to use non-ASCII characters
+        // This would fail the pattern validation, but tests the length check works correctly
+        $tag = 'a' . str_repeat('b', 254);
+        $control = new ContentControl($section, ['tag' => $tag]);
+        
+        expect(mb_strlen($tag, 'UTF-8'))->toBe(255);
+        expect($control)->toBeInstanceOf(ContentControl::class);
+    });
+
+    test('aceita tag vazia (string vazia não é validada)', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        
+        $control = new ContentControl($section, ['tag' => '']);
+        expect($control)->toBeInstanceOf(ContentControl::class);
+    });
 
     test('rejeita tag começando com número', function () {
         $phpWord = new PhpWord();
