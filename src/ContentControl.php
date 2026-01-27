@@ -398,7 +398,6 @@ class ContentControl extends AbstractContainer
             // do elemento pai quando integrados ao documento
             $previousUseInternalErrors = libxml_use_internal_errors(true);
             $success = $fragment->appendXML($innerXml);
-            libxml_use_internal_errors($previousUseInternalErrors);
             
             // Verificar se appendXML falhou
             // Namespace warnings são esperados e podem ser ignorados
@@ -406,6 +405,7 @@ class ContentControl extends AbstractContainer
                 // Capturar mensagens de erro para diagnóstico
                 $errors = libxml_get_errors();
                 libxml_clear_errors();
+                libxml_use_internal_errors($previousUseInternalErrors);
                 
                 $errorMessages = array_map(function($error) {
                     return trim($error->message);
@@ -422,6 +422,7 @@ class ContentControl extends AbstractContainer
             
             // Limpar erros se houver (namespace warnings esperados)
             libxml_clear_errors();
+            libxml_use_internal_errors($previousUseInternalErrors);
             
             $sdtContent->appendChild($fragment);
         }
