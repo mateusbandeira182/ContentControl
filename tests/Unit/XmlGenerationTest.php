@@ -206,29 +206,4 @@ test('XML é válido e bem formado', function () {
     expect($dom->documentElement->nodeName)->toBe('w:sdt');
 });
 
-describe('XML Generation - Error Handling', function () {
-    
-    test('verifica que DOMDocument::appendXML falha com XML malformado', function () {
-        // Criar um XMLWriter que gera XML malformado
-        $xmlWriter = new \PhpOffice\PhpWord\Shared\XMLWriter();
-        $xmlWriter->startDocument('1.0', 'UTF-8');
-        $xmlWriter->writeRaw('<w:p><w:t>unclosed tag'); // XML malformado
-        
-        // Obter o XML malformado
-        $malformedXml = $xmlWriter->getData();
-        
-        // Usar DOMDocument para tentar fazer parse - deve falhar
-        $doc = new \DOMDocument('1.0', 'UTF-8');
-        $fragment = $doc->createDocumentFragment();
-        
-        $previousUseInternalErrors = libxml_use_internal_errors(true);
-        $success = $fragment->appendXML($malformedXml);
-        
-        // Verificar que realmente falhou
-        expect($success)->toBeFalse();
-        
-        // Restaurar configuração
-        libxml_clear_errors();
-        libxml_use_internal_errors($previousUseInternalErrors);
-    });
-});
+

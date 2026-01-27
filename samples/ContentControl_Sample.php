@@ -230,9 +230,9 @@ if ($dom->loadXML($xml)) {
     
     echo "│ ✓ XML válido e bem formado              │\n";
     echo "│ ✓ Namespace: WordprocessingML          │\n";
-    echo "│ ✓ ID: " . str_pad($idValue, 32) . "│\n";
-    echo "│ ✓ Alias: " . str_pad($aliasValue, 28) . "│\n";
-    echo "│ ✓ Tag: " . str_pad($tagValue, 30) . "│\n";
+    echo "│ ✓ ID: " . str_pad($idValue, 32, ' ', STR_PAD_RIGHT) . "│\n";
+    echo "│ ✓ Alias: " . str_pad($aliasValue, 28, ' ', STR_PAD_RIGHT) . "│\n";
+    echo "│ ✓ Tag: " . str_pad($tagValue, 30, ' ', STR_PAD_RIGHT) . "│\n";
     echo "│ ✓ Tipo: richText                        │\n";
     echo "│ ✓ Lock: sdtLocked                       │\n";
 } else {

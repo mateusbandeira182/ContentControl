@@ -64,7 +64,7 @@ class IOFactory
      * do arquivo .docx gerado, contornando limitação do PHPWord.
      * 
      * @param PhpWord $phpWord Documento PHPWord base
-     * @param mixed[] $contentControls Content Controls a adicionar
+     * @param mixed[] $contentControls Content Controls a adicionar. Elementos que não são instâncias de ContentControl são silenciosamente ignorados.
      * @param string $filename Caminho do arquivo de saída
      * @return bool Sucesso da operação
      * @throws \PhpOffice\PhpWord\Exception\Exception Exceção propagada da biblioteca PHPWord ao criar o Writer ou salvar o documento base
