@@ -367,13 +367,6 @@ class ContentControl extends AbstractContainer
                 'Tag must start with a letter or underscore and contain only alphanumeric characters, hyphens, underscores, and periods'
             );
         }
-
-        // Verificar caracteres reservados XML que podem causar problemas de parsing
-        if (preg_match('/[<>&"\']/', $tag) === 1) {
-            throw new \InvalidArgumentException(
-                'ContentControl: Tag contains XML reserved characters'
-            );
-        }
     }
 
     /**
