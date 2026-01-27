@@ -13,5 +13,18 @@ parameters:
         # Ignorar warnings de testes vazios durante desenvolvimento
         - '#Test file .* is empty#'
         - '#Empty test suite#'
+        
+        # Pest-specific: Métodos de expectativa customizados
+        - '#Call to an undefined method Pest\\Expectation.*::toBeValidXml\(\)#'
+        - '#Call to an undefined method Pest\\Expectation.*::toHaveXmlElement\(\)#'
+        - '#Call to an undefined method Pest\\Expectation.*::toHaveXmlAttribute\(\)#'
+        
+        # Pest-specific: Propriedades dinâmicas em closures de testes
+        - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempDir#'
+        
+        # Pest-specific: Uso de $this em closures de expect extensions
+        -
+            message: '#Undefined variable: \$this#'
+            path: tests/Pest.php
     
     reportUnmatchedIgnoredErrors: false

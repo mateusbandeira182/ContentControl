@@ -28,6 +28,7 @@ uses()->in('Unit', 'Feature');
  * Valida se a string é XML bem formado
  */
 expect()->extend('toBeValidXml', function () {
+    /** @var string $xml */
     $xml = $this->value;
     
     libxml_use_internal_errors(true);
@@ -45,6 +46,7 @@ expect()->extend('toBeValidXml', function () {
  * Verifica presença de elemento XML
  */
 expect()->extend('toHaveXmlElement', function (string $elementName) {
+    /** @var string $xml */
     $xml = $this->value;
     
     $doc = new DOMDocument();
@@ -62,6 +64,7 @@ expect()->extend('toHaveXmlElement', function (string $elementName) {
  * Verifica atributo XML com valor opcional
  */
 expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $expectedValue = null) {
+    /** @var string $xml */
     $xml = $this->value;
     
     $doc = new DOMDocument();
@@ -72,7 +75,7 @@ expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $exp
     
     expect($nodes->length)->toBeGreaterThan(0, "Attribute '{$attribute}' not found in XML");
     
-    if ($expectedValue !== null) {
+    if ($expectedValue !== null && $nodes->item(0) instanceof DOMElement) {
         $actualValue = $nodes->item(0)->getAttribute($attribute);
         expect($actualValue)->toBe($expectedValue, "Attribute '{$attribute}' value mismatch");
     }
@@ -107,6 +110,8 @@ function createSectionWithText(string $text = 'Sample text'): Section
 
 /**
  * Cria um ContentControl com configuração customizável
+ * 
+ * @param array<string, string> $options
  */
 function createContentControl(array $options = []): ContentControl
 {
@@ -155,7 +160,12 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
         return null;
     }
     
-    return $nodes->item(0)->getAttribute($attributeName);
+    $node = $nodes->item(0);
+    if (!$node instanceof DOMElement) {
+        return null;
+    }
+    
+    return $node->getAttribute($attributeName);
 }
 
 /**

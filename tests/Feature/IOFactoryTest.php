@@ -6,6 +6,9 @@ use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 
+/**
+ * @property string $tempDir
+ */
 describe('IOFactory - Save with Content Controls', function () {
     
     beforeEach(function () {
