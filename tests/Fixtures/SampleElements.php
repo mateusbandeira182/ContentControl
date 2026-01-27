@@ -25,7 +25,7 @@ class SampleElements
     }
 
     /**
-     * Cria Section com TextRun formatado
+     * Creates Section with formatted TextRun
      */
     public static function createSectionWithTextRun(): Section
     {
