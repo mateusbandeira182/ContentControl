@@ -12,37 +12,29 @@ use PhpOffice\PhpWord\PhpWord;
 describe('IOFactory - Save with Content Controls', function () {
     
     beforeEach(function () {
-        // Criar diretório temporário para testes
-        $this->tempDir = sys_get_temp_dir() . '/phpword_test_' . uniqid();
+        // Criar diretório temporário para testes usando um nome mais robusto
+        $this->tempDir = sys_get_temp_dir() . '/phpword_test_' . bin2hex(random_bytes(16));
         if (!is_dir($this->tempDir)) {
             mkdir($this->tempDir, 0777, true);
         }
     });
     
     afterEach(function () {
-        // Limpar arquivos temporários
+        // Limpar arquivos temporários (falhas devem falhar o teste)
         if (is_dir($this->tempDir)) {
             $files = glob($this->tempDir . '/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
-                    if (!unlink($file)) {
-                        $error = error_get_last();
-                        error_log(sprintf(
-                            'Failed to delete temporary file "%s": %s',
-                            $file,
-                            $error['message'] ?? 'unknown error'
-                        ));
-                    }
+                    $this->assertTrue(
+                        unlink($file),
+                        sprintf('Failed to delete temporary file "%s"', $file)
+                    );
                 }
             }
-            if (!rmdir($this->tempDir)) {
-                $error = error_get_last();
-                error_log(sprintf(
-                    'Failed to remove temporary directory "%s": %s',
-                    $this->tempDir,
-                    $error['message'] ?? 'unknown error'
-                ));
-            }
+            $this->assertTrue(
+                rmdir($this->tempDir),
+                sprintf('Failed to remove temporary directory "%s"', $this->tempDir)
+            );
         }
     });
     
