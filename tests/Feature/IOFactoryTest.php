@@ -126,8 +126,10 @@ describe('IOFactory - Save with Content Controls', function () {
         $section = $phpWord->addSection();
         $control = new ContentControl($section);
         
-        // Caminho inválido (diretório inexistente)
-        $invalidPath = '/caminho/invalido/inexistente/arquivo.docx';
+        // Caminho inválido (diretório inexistente), construído de forma portátil
+        $invalidPath = sys_get_temp_dir()
+            . DIRECTORY_SEPARATOR . 'nonexistent_subdir_' . bin2hex(random_bytes(8))
+            . DIRECTORY_SEPARATOR . 'arquivo.docx';
         
         // Use @ to suppress expected warnings from this method call
         $result = @IOFactory::saveWithContentControls(

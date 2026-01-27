@@ -24,7 +24,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, mbstring, xml
+          extensions: dom, mbstring, xml, zip
           coverage: xdebug
       
       - name: Install dependencies
