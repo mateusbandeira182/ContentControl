@@ -7,7 +7,7 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\PhpWord;
 use MkGrow\ContentControl\ContentControl;
 
-// Autoload para fixtures de teste
+// Autoload for test fixtures
 require_once __DIR__ . '/Fixtures/SampleElements.php';
 
 /*
@@ -25,7 +25,7 @@ uses()->in('Unit', 'Feature');
 */
 
 /**
- * Valida se a string é XML bem formado
+ * Validates if the string is well-formed XML
  */
 expect()->extend('toBeValidXml', function () {
     /** @var string $xml */
@@ -43,7 +43,7 @@ expect()->extend('toBeValidXml', function () {
 });
 
 /**
- * Verifica presença de elemento XML
+ * Verifies presence of XML element
  */
 expect()->extend('toHaveXmlElement', function (string $elementName) {
     /** @var string $xml */
@@ -61,7 +61,10 @@ expect()->extend('toHaveXmlElement', function (string $elementName) {
 });
 
 /**
- * Verifica atributo XML com valor opcional
+ * Verifies XML attribute with optional value
+ * 
+ * Note: XPath query "//*[@{$attribute}]" returns DOMElement nodes that have the attribute.
+ * We check instanceof DOMElement to ensure getAttribute() is available before calling it.
  */
 expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $expectedValue = null) {
     /** @var string $xml */
@@ -71,10 +74,12 @@ expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $exp
     $doc->loadXML($xml);
     
     $xpath = new DOMXPath($doc);
+    // Query returns elements that have the specified attribute
     $nodes = $xpath->query("//*[@{$attribute}]");
     
     expect($nodes->length)->toBeGreaterThan(0, "Attribute '{$attribute}' not found in XML");
     
+    // Check if node is DOMElement before calling getAttribute() (elements have this method)
     if ($expectedValue !== null && $nodes->item(0) instanceof DOMElement) {
         $actualValue = $nodes->item(0)->getAttribute($attribute);
         expect($actualValue)->toBe($expectedValue, "Attribute '{$attribute}' value mismatch");
@@ -90,7 +95,7 @@ expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $exp
 */
 
 /**
- * Cria uma Section PHPWord básica
+ * Creates a basic PHPWord Section
  */
 function createSection(): Section
 {
@@ -99,7 +104,7 @@ function createSection(): Section
 }
 
 /**
- * Cria uma Section com elemento Text
+ * Creates a Section with Text element
  */
 function createSectionWithText(string $text = 'Sample text'): Section
 {
@@ -109,7 +114,7 @@ function createSectionWithText(string $text = 'Sample text'): Section
 }
 
 /**
- * Cria um ContentControl com configuração customizável
+ * Creates a ContentControl with customizable configuration
  * 
  * @param array<string, string> $options
  */
@@ -120,7 +125,7 @@ function createContentControl(array $options = []): ContentControl
 }
 
 /**
- * Cria um ContentControl com todas as propriedades configuradas
+ * Creates a ContentControl with all properties configured
  */
 function createFullContentControl(): ContentControl
 {
@@ -135,7 +140,7 @@ function createFullContentControl(): ContentControl
 }
 
 /**
- * Valida estrutura SDT completa
+ * Validates complete SDT structure
  */
 function assertValidSdtStructure(string $xml): void
 {
@@ -146,7 +151,19 @@ function assertValidSdtStructure(string $xml): void
 }
 
 /**
- * Extrai valor de atributo XML usando XPath com namespace
+ * Extracts XML attribute value using XPath
+ * 
+ * This function queries for elements (not attributes directly) that have a specific attribute.
+ * XPath query "//{$elementName}[@{$attributeName}]" returns DOMElement nodes.
+ * 
+ * Type checking pattern:
+ * - XPath queries for elements → return DOMElement → check instanceof DOMElement
+ * - XPath queries for attributes (e.g., @attr) → return DOMAttr → check !== null
+ * 
+ * @param string $xml The XML string to parse
+ * @param string $elementName Name of the element to search for
+ * @param string $attributeName Name of the attribute to extract
+ * @return string|null The attribute value or null if not found
  */
 function getXmlAttributeValue(string $xml, string $elementName, string $attributeName): ?string
 {
@@ -154,6 +171,7 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
     $doc->loadXML($xml);
     
     $xpath = new DOMXPath($doc);
+    // Query returns elements that have the specified attribute
     $nodes = $xpath->query("//{$elementName}[@{$attributeName}]");
     
     if ($nodes->length === 0) {
@@ -161,6 +179,7 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
     }
     
     $node = $nodes->item(0);
+    // Verify node is a DOMElement before calling getAttribute() (only DOMElement has this method)
     if (!$node instanceof DOMElement) {
         return null;
     }
@@ -169,7 +188,7 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
 }
 
 /**
- * Cria uma Table PHPWord simples
+ * Creates a simple PHPWord Table
  */
 function createSimpleTable(int $rows = 2, int $cols = 2): Table
 {
@@ -187,7 +206,7 @@ function createSimpleTable(int $rows = 2, int $cols = 2): Table
 }
 
 /**
- * Normaliza XML removendo whitespace para comparação
+ * Normalizes XML by removing whitespace for comparison
  */
 function normalizeXml(string $xml): string
 {
