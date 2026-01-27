@@ -120,7 +120,6 @@ class IOFactory
             // 3. Abrir como ZIP
             $zip = new \ZipArchive();
             if ($zip->open($tempFile) !== true) {
-                $zip->close();
                 return false;
             }
             
