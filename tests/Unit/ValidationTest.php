@@ -109,6 +109,7 @@ describe('ContentControl - Validação de Alias', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         
+        /** @phpstan-ignore-next-line Teste intencional de tipo incorreto */
         new ContentControl($section, ['alias' => 12345]);
     })->throws(InvalidArgumentException::class, 'must be a string');
 });
@@ -223,6 +224,7 @@ describe('ContentControl - Validação de Tag', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         
+        /** @phpstan-ignore-next-line Teste intencional de tipo incorreto */
         new ContentControl($section, ['tag' => 12345]);
     })->throws(InvalidArgumentException::class, 'must be a string');
 });

@@ -25,14 +25,12 @@ describe('IOFactory - Save with Content Controls', function () {
             $files = glob($this->tempDir . '/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
-                    $this->assertTrue(
-                        unlink($file),
+                    expect(unlink($file))->toBeTrue(
                         sprintf('Failed to delete temporary file "%s"', $file)
                     );
                 }
             }
-            $this->assertTrue(
-                rmdir($this->tempDir),
+            expect(rmdir($this->tempDir))->toBeTrue(
                 sprintf('Failed to remove temporary directory "%s"', $this->tempDir)
             );
         }

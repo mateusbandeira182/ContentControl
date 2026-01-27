@@ -147,7 +147,7 @@ class IOFactory
             return $success;
         } finally {
             // Limpar arquivo temporário se ainda existir
-            if (isset($tempFile) && file_exists($tempFile)) {
+            if (file_exists($tempFile)) {
                 if (!unlink($tempFile) && file_exists($tempFile)) {
                     error_log(
                         'MkGrow\\ContentControl\\IOFactory: Failed to delete temporary file: ' . $tempFile
