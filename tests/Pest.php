@@ -61,7 +61,7 @@ expect()->extend('toHaveXmlElement', function (string $elementName) {
 });
 
 /**
- * Verifica atributo XML com valor opcional
+ * Verifies XML attribute with optional value
  * 
  * Note: XPath query "//*[@{$attribute}]" returns DOMElement nodes that have the attribute.
  * We check instanceof DOMElement to ensure getAttribute() is available before calling it.
@@ -151,7 +151,7 @@ function assertValidSdtStructure(string $xml): void
 }
 
 /**
- * Extrai valor de atributo XML usando XPath
+ * Extracts XML attribute value using XPath
  * 
  * This function queries for elements (not attributes directly) that have a specific attribute.
  * XPath query "//{$elementName}[@{$attributeName}]" returns DOMElement nodes.
