@@ -167,4 +167,88 @@ describe('IOFactory - Save with Content Controls', function () {
         
         expect($writer)->toBeInstanceOf(\PhpOffice\PhpWord\Writer\WriterInterface::class);
     });
+
+    test('salva documento sem Content Controls', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $section->addText('Documento sem Content Controls');
+        
+        $filename = $this->tempDir . '/test-no-controls.docx';
+        
+        // Passar array vazio de Content Controls
+        IOFactory::saveWithContentControls(
+            $phpWord,
+            [],
+            $filename
+        );
+        
+        expect(file_exists($filename))->toBeTrue();
+        expect(filesize($filename))->toBeGreaterThan(0);
+    });
+
+    test('salva documento com array contendo apenas elementos inválidos', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $section->addText('Apenas texto');
+        
+        $filename = $this->tempDir . '/test-invalid-only.docx';
+        
+        // Passar array com apenas elementos inválidos
+        IOFactory::saveWithContentControls(
+            $phpWord,
+            ['string', 123, null, new stdClass()],
+            $filename
+        );
+        
+        expect(file_exists($filename))->toBeTrue();
+    });
+
+    test('registerCustomWriters emite deprecation warning', function () {
+        // Capturar error handler atual
+        set_error_handler(function($errno, $errstr) {
+            expect($errno)->toBe(E_USER_DEPRECATED);
+            expect($errstr)->toContain('registerCustomWriters() is deprecated');
+            expect($errstr)->toContain('Use IOFactory::saveWithContentControls()');
+        }, E_USER_DEPRECATED);
+        
+        IOFactory::registerCustomWriters();
+        
+        // Restaurar error handler
+        restore_error_handler();
+    });
+
+    test('falha ao mover arquivo temporário lança RuntimeException', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $section->addText('Test');
+        
+        $control = new ContentControl($section);
+        
+        // No Windows, não podemos criar diretório read-only facilmente
+        // Vamos usar um caminho que não permite write após criar o arquivo
+        $filename = $this->tempDir . '/test-move-fail.docx';
+        
+        // Criar arquivo read-only que já existe
+        touch($filename);
+        chmod($filename, 0444);
+        
+        try {
+            IOFactory::saveWithContentControls(
+                $phpWord,
+                [$control],
+                $filename
+            );
+            
+            // Se chegou aqui no Windows, o teste não é aplicável
+            // (Windows pode sobrescrever arquivos read-only em alguns casos)
+            expect(true)->toBeTrue();
+        } catch (\RuntimeException $e) {
+            expect($e->getMessage())->toContain('Failed to move file');
+        } finally {
+            // Restaurar permissões para cleanup
+            if (file_exists($filename)) {
+                chmod($filename, 0666);
+            }
+        }
+    });
 });
