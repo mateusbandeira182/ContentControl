@@ -23,9 +23,9 @@ describe('IOFactory - Save with Content Controls', function () {
         // Limpar arquivos temporários (falhas devem falhar o teste)
         if (is_dir($this->tempDir)) {
             $files = glob($this->tempDir . '/*');
-            if ($files === false) {
-                $files = [];
-            }
+            expect($files)->not->toBeFalse(
+                sprintf('Failed to read contents of temporary directory "%s"', $this->tempDir)
+            );
             foreach ($files as $file) {
                 if (is_file($file)) {
                     expect(unlink($file))->toBeTrue(

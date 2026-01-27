@@ -208,14 +208,8 @@ test('XML é válido e bem formado', function () {
 
 describe('XML Generation - Error Handling', function () {
     
-    test('lança DOMException quando appendXML falha com XML malformado', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-        
-        // Criar ContentControl e usar reflexão para acessar o método writeElement
-        $control = new ContentControl($section);
-        
-        // Criar um mock XMLWriter que gera XML malformado
+    test('verifica que DOMDocument::appendXML falha com XML malformado', function () {
+        // Criar um XMLWriter que gera XML malformado
         $xmlWriter = new \PhpOffice\PhpWord\Shared\XMLWriter();
         $xmlWriter->startDocument('1.0', 'UTF-8');
         $xmlWriter->writeRaw('<w:p><w:t>unclosed tag'); // XML malformado

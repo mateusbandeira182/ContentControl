@@ -95,7 +95,16 @@ class IOFactory
             return false;
         }
         
-        // 1. Salvar documento base
+        // 1. Verificar se há Content Controls antes de fazer operações de ZIP
+        $hasContentControls = false;
+        foreach ($contentControls as $control) {
+            if ($control instanceof ContentControl) {
+                $hasContentControls = true;
+                break;
+            }
+        }
+        
+        // 2. Salvar documento base
         $tempFile = sys_get_temp_dir() . '/phpword_' . uniqid() . '.docx';
         $success = false;
         
@@ -103,21 +112,27 @@ class IOFactory
             $writer = self::createWriter($phpWord);
             $writer->save($tempFile);
             
-            // 2. Abrir como ZIP
+            // Se não há Content Controls, apenas copiar o arquivo e retornar
+            if (!$hasContentControls) {
+                $success = rename($tempFile, $filename);
+                return $success;
+            }
+            
+            // 3. Abrir como ZIP
             $zip = new \ZipArchive();
             if ($zip->open($tempFile) !== true) {
                 $zip->close();
                 return false;
             }
             
-            // 3. Ler document.xml
+            // 4. Ler document.xml
             $documentXml = $zip->getFromName('word/document.xml');
             if ($documentXml === false) {
                 $zip->close();
                 return false;
             }
             
-            // 4. Gerar XML dos Content Controls
+            // 5. Gerar XML dos Content Controls
             $contentControlsXml = '';
             foreach ($contentControls as $control) {
                 if ($control instanceof ContentControl) {
@@ -125,14 +140,7 @@ class IOFactory
                 }
             }
             
-            // Se não há Content Controls, apenas copiar o arquivo e retornar
-            if ($contentControlsXml === '') {
-                $zip->close();
-                $success = rename($tempFile, $filename);
-                return $success;
-            }
-            
-            // 5. Injetar antes de </w:body>
+            // 6. Injetar antes de </w:body>
             $bodyClosePos = strpos($documentXml, '</w:body>');
             if ($bodyClosePos !== false) {
                 $documentXml = substr_replace(
@@ -143,12 +151,12 @@ class IOFactory
                 );
             }
             
-            // 6. Atualizar document.xml
+            // 7. Atualizar document.xml
             $zip->deleteName('word/document.xml');
             $zip->addFromString('word/document.xml', $documentXml);
             $zip->close();
             
-            // 7. Mover para destino
+            // 8. Mover para destino
             $success = rename($tempFile, $filename);
             
             return $success;
