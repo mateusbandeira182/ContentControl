@@ -493,11 +493,14 @@ class ContentControl extends AbstractContainer
         }
         
         // Determinar se elemento precisa de wrapper <w:p>
-        $needsWrapper = $this->needsParagraphWrapper($elementClass);
+        $needsParagraphWrapper = $this->needsParagraphWrapper($elementClass);
+
+        // Writer espera um flag "sem wrapper de parágrafo" (true = não gerar <w:p>)
+        $withoutParagraphWrapper = !$needsParagraphWrapper;
         
         // Instanciar Writer e serializar
         /** @var \PhpOffice\PhpWord\Writer\Word2007\Element\AbstractElement $writer */
-        $writer = new $writerClass($xmlWriter, $element, !$needsWrapper);
+        $writer = new $writerClass($xmlWriter, $element, $withoutParagraphWrapper);
         $writer->write();
     }
 
