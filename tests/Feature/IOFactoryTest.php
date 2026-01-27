@@ -126,21 +126,14 @@ describe('IOFactory - Save with Content Controls', function () {
         $control = new ContentControl($section);
         
         // Caminho inválido (diretório inexistente)
-        // Suprimir warning esperado do rename()
         $invalidPath = '/caminho/invalido/inexistente/arquivo.docx';
         
-        // Capturar e suprimir warnings esperados
-        set_error_handler(function(int $errno, string $errstr): bool {
-            return true; // Suprimir erro
-        }, E_WARNING);
-        
-        $result = IOFactory::saveWithContentControls(
+        // Use @ to suppress the expected warning from rename() only during this call
+        $result = @IOFactory::saveWithContentControls(
             $phpWord,
             [$control],
             $invalidPath
         );
-        
-        restore_error_handler();
         
         expect($result)->toBeFalse();
     });
