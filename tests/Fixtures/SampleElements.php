@@ -41,7 +41,7 @@ class SampleElements
     }
 
     /**
-     * Cria Section com Table
+     * Creates a section with a table
      */
     public static function createSectionWithTable(int $rows = 2, int $cols = 2): Section
     {
