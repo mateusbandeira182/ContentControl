@@ -3,6 +3,8 @@ composer.lock
 .PRDS
 .SPECS
 .PLANS
+.idea
+.vscode
 .github/prompts
 .github/copilot-instructions.md
 # Cobertura de testes
