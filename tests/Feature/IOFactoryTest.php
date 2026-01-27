@@ -25,10 +25,24 @@ describe('IOFactory - Save with Content Controls', function () {
             $files = glob($this->tempDir . '/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
-                    @unlink($file);
+                    if (!unlink($file)) {
+                        $error = error_get_last();
+                        error_log(sprintf(
+                            'Falha ao excluir arquivo temporário "%s": %s',
+                            $file,
+                            $error['message'] ?? 'erro desconhecido'
+                        ));
+                    }
                 }
             }
-            @rmdir($this->tempDir);
+            if (!rmdir($this->tempDir)) {
+                $error = error_get_last();
+                error_log(sprintf(
+                    'Falha ao remover diretório temporário "%s": %s',
+                    $this->tempDir,
+                    $error['message'] ?? 'erro desconhecido'
+                ));
+            }
         }
     });
     
@@ -100,7 +114,11 @@ describe('IOFactory - Save with Content Controls', function () {
         
         // Abrir ZIP e ler document.xml
         $zip = new ZipArchive();
-        $zip->open($filename);
+        $openResult = $zip->open($filename);
+        if ($openResult !== true) {
+            $zip->close();
+            throw new \RuntimeException('Failed to open DOCX file as ZIP for validation. Error code: ' . $openResult);
+        }
         $documentXml = $zip->getFromName('word/document.xml');
         $zip->close();
         

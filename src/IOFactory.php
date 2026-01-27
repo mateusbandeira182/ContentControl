@@ -9,8 +9,10 @@ use PhpOffice\PhpWord\Writer\WriterInterface;
 /**
  * Factory para criar Writers com suporte a Content Controls
  * 
- * Estende IOFactory do PHPWord para registrar Writer customizado
- * de Content Controls antes de criar o documento.
+ * Esta classe não estende a IOFactory do PHPWord nem registra
+ * Writers customizados no core. Em vez disso, utiliza a IOFactory
+ * padrão do PHPWord e um workaround baseado em manipulação de ZIP
+ * para injetar Content Controls no document.xml de arquivos .docx.
  * 
  * @since 2.0.0
  */
@@ -65,6 +67,7 @@ class IOFactory
      * @param mixed[] $contentControls Content Controls a adicionar
      * @param string $filename Caminho do arquivo de saída
      * @return bool Sucesso da operação
+     * @throws \PhpOffice\PhpWord\Exception\Exception Se falhar ao criar Writer ou salvar documento base
      * 
      * @example
      * ```php
@@ -86,55 +89,66 @@ class IOFactory
         array $contentControls,
         string $filename
     ): bool {
+        // Verificar se o diretório de destino existe
+        $targetDir = dirname($filename);
+        if (!is_dir($targetDir) || !is_writable($targetDir)) {
+            return false;
+        }
+        
         // 1. Salvar documento base
         $tempFile = sys_get_temp_dir() . '/phpword_' . uniqid() . '.docx';
-        $writer = self::createWriter($phpWord);
-        $writer->save($tempFile);
+        $success = false;
         
-        // 2. Abrir como ZIP
-        $zip = new \ZipArchive();
-        if ($zip->open($tempFile) !== true) {
-            return false;
-        }
-        
-        // 3. Ler document.xml
-        $documentXml = $zip->getFromName('word/document.xml');
-        if ($documentXml === false) {
+        try {
+            $writer = self::createWriter($phpWord);
+            $writer->save($tempFile);
+            
+            // 2. Abrir como ZIP
+            $zip = new \ZipArchive();
+            if ($zip->open($tempFile) !== true) {
+                return false;
+            }
+            
+            // 3. Ler document.xml
+            $documentXml = $zip->getFromName('word/document.xml');
+            if ($documentXml === false) {
+                $zip->close();
+                return false;
+            }
+            
+            // 4. Gerar XML dos Content Controls
+            $contentControlsXml = '';
+            foreach ($contentControls as $control) {
+                if ($control instanceof ContentControl) {
+                    $contentControlsXml .= $control->getXml();
+                }
+            }
+            
+            // 5. Injetar antes de </w:body>
+            $bodyClosePos = strpos($documentXml, '</w:body>');
+            if ($bodyClosePos !== false) {
+                $documentXml = substr_replace(
+                    $documentXml,
+                    $contentControlsXml,
+                    $bodyClosePos,
+                    0
+                );
+            }
+            
+            // 6. Atualizar document.xml
+            $zip->deleteName('word/document.xml');
+            $zip->addFromString('word/document.xml', $documentXml);
             $zip->close();
-            return false;
-        }
-        
-        // 4. Gerar XML dos Content Controls
-        $contentControlsXml = '';
-        foreach ($contentControls as $control) {
-            if ($control instanceof ContentControl) {
-                $contentControlsXml .= $control->getXml();
+            
+            // 7. Mover para destino
+            $success = rename($tempFile, $filename);
+            
+            return $success;
+        } finally {
+            // Limpar arquivo temporário se ainda existir
+            if (file_exists($tempFile)) {
+                @unlink($tempFile);
             }
         }
-        
-        // 5. Injetar antes de </w:body>
-        $bodyClosePos = strpos($documentXml, '</w:body>');
-        if ($bodyClosePos !== false) {
-            $documentXml = substr_replace(
-                $documentXml,
-                $contentControlsXml,
-                $bodyClosePos,
-                0
-            );
-        }
-        
-        // 6. Atualizar document.xml
-        $zip->deleteName('word/document.xml');
-        $zip->addFromString('word/document.xml', $documentXml);
-        $zip->close();
-        
-        // 7. Mover para destino
-        $success = rename($tempFile, $filename);
-        
-        if (!$success && file_exists($tempFile)) {
-            @unlink($tempFile);
-        }
-        
-        return $success;
     }
 }
