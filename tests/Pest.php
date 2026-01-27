@@ -62,6 +62,9 @@ expect()->extend('toHaveXmlElement', function (string $elementName) {
 
 /**
  * Verifica atributo XML com valor opcional
+ * 
+ * Note: XPath query "//*[@{$attribute}]" returns DOMElement nodes that have the attribute.
+ * We check instanceof DOMElement to ensure getAttribute() is available before calling it.
  */
 expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $expectedValue = null) {
     /** @var string $xml */
@@ -71,10 +74,12 @@ expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $exp
     $doc->loadXML($xml);
     
     $xpath = new DOMXPath($doc);
+    // Query returns elements that have the specified attribute
     $nodes = $xpath->query("//*[@{$attribute}]");
     
     expect($nodes->length)->toBeGreaterThan(0, "Attribute '{$attribute}' not found in XML");
     
+    // Check if node is DOMElement before calling getAttribute() (elements have this method)
     if ($expectedValue !== null && $nodes->item(0) instanceof DOMElement) {
         $actualValue = $nodes->item(0)->getAttribute($attribute);
         expect($actualValue)->toBe($expectedValue, "Attribute '{$attribute}' value mismatch");
@@ -146,7 +151,19 @@ function assertValidSdtStructure(string $xml): void
 }
 
 /**
- * Extrai valor de atributo XML usando XPath com namespace
+ * Extrai valor de atributo XML usando XPath
+ * 
+ * This function queries for elements (not attributes directly) that have a specific attribute.
+ * XPath query "//{$elementName}[@{$attributeName}]" returns DOMElement nodes.
+ * 
+ * Type checking pattern:
+ * - XPath queries for elements → return DOMElement → check instanceof DOMElement
+ * - XPath queries for attributes (e.g., @attr) → return DOMAttr → check !== null
+ * 
+ * @param string $xml The XML string to parse
+ * @param string $elementName Name of the element to search for
+ * @param string $attributeName Name of the attribute to extract
+ * @return string|null The attribute value or null if not found
  */
 function getXmlAttributeValue(string $xml, string $elementName, string $attributeName): ?string
 {
@@ -154,6 +171,7 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
     $doc->loadXML($xml);
     
     $xpath = new DOMXPath($doc);
+    // Query returns elements that have the specified attribute
     $nodes = $xpath->query("//{$elementName}[@{$attributeName}]");
     
     if ($nodes->length === 0) {
@@ -161,6 +179,7 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
     }
     
     $node = $nodes->item(0);
+    // Verify node is a DOMElement before calling getAttribute() (only DOMElement has this method)
     if (!$node instanceof DOMElement) {
         return null;
     }

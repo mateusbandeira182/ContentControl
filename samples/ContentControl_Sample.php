@@ -218,6 +218,8 @@ if ($dom->loadXML($xml)) {
     $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
     
     // Obter nós com segurança, evitando acesso a nodeValue em null
+    // Note: XPath queries for attributes (@attr) return DOMAttr nodes, so we check !== null
+    // (This differs from element queries which return DOMElement and use instanceof check)
     $idNode    = $xpath->query('//w:id/@w:val')->item(0);
     $aliasNode = $xpath->query('//w:alias/@w:val')->item(0);
     $tagNode   = $xpath->query('//w:tag/@w:val')->item(0);
