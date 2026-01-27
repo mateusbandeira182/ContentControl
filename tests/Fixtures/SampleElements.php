@@ -8,7 +8,7 @@ use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\PhpWord;
 
 /**
- * Classe para gerenciar elementos de exemplo reutilizáveis nos testes
+ * Class to manage reusable sample elements in tests.
  */
 class SampleElements
 {
