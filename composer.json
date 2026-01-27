@@ -17,7 +17,7 @@
         }
     ],
     "require-dev": {
-        "pestphp/pest": "^4.3",
+        "pestphp/pest": "^3.0",
         "phpstan/phpstan": "2.0",
         "phpstan/phpstan-strict-rules": "2.0"
     },
