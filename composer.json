@@ -4,7 +4,8 @@
     "require": {
         "php": ">=8.2",
         "phpoffice/phpword": "^1.4",
-        "ext-dom": "*"
+        "ext-dom": "*",
+        "ext-mbstring": "*"
     },
     "autoload": {
         "psr-4": {
