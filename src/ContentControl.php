@@ -7,67 +7,520 @@ use DOMDocument;
 use DOMElement;
 use PhpOffice\PhpWord\Shared\XMLWriter;
 
+/**
+ * Content Control (Structured Document Tag) para documentos Word OOXML
+ * 
+ * Estende PHPWord AbstractContainer para envolver elementos em
+ * Content Controls conforme ISO/IEC 29500-1:2016 §17.5.2
+ * 
+ * @property \PhpOffice\PhpWord\Element\AbstractElement[] $elements Elementos do container (herdado)
+ */
 class ContentControl extends AbstractContainer
 {
-    private string $id;
-    private string $alias;
-    private string $tag;
-    private string $lockType;
-    private ?DOMDocument $contentDocument = null;
+    // ==================== CONSTANTES DE TIPO ====================
+    /**
+     * Content Control tipo Group - Agrupa elementos sem permitir edição
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.15
+     * Elemento XML: <w:group/>
+     * 
+     * @var string
+     */
+    public const TYPE_GROUP = 'group';
 
+    /**
+     * Content Control tipo Plain Text - Texto simples sem formatação
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.34
+     * Elemento XML: <w:text/>
+     * 
+     * @var string
+     */
+    public const TYPE_PLAIN_TEXT = 'plainText';
+
+    /**
+     * Content Control tipo Rich Text - Texto com formatação completa
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.31
+     * Elemento XML: <w:richText/>
+     * 
+     * @var string
+     */
+    public const TYPE_RICH_TEXT = 'richText';
+
+    /**
+     * Content Control tipo Picture - Controle para imagens
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.27
+     * Elemento XML: <w:picture/>
+     * 
+     * @var string
+     */
+    public const TYPE_PICTURE = 'picture';
+
+    // ==================== CONSTANTES DE LOCK ====================
+    /**
+     * Sem bloqueio - Content Control pode ser editado e deletado
+     * 
+     * Especificação: Valor padrão quando <w:lock> ausente
+     * 
+     * @var string
+     */
+    public const LOCK_NONE = '';
+
+    /**
+     * Content Control bloqueado - Não pode ser deletado, mas conteúdo é editável
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
+     * Valor: sdtLocked
+     * 
+     * @var string
+     */
+    public const LOCK_SDT_LOCKED = 'sdtLocked';
+
+    /**
+     * Conteúdo bloqueado - Content Control pode ser deletado, mas conteúdo não é editável
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
+     * Valor: sdtContentLocked
+     * 
+     * @var string
+     */
+    public const LOCK_CONTENT_LOCKED = 'sdtContentLocked';
+
+    /**
+     * Desbloqueado explicitamente
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
+     * Valor: unlocked
+     * 
+     * @var string
+     */
+    public const LOCK_UNLOCKED = 'unlocked';
+
+    // ==================== NAMESPACE OOXML ====================
+    /**
+     * Namespace WordprocessingML conforme ISO/IEC 29500-1:2016 §9.3.2.1
+     * 
+     * @var string
+     */
+    private const WORDML_NAMESPACE = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+    // ==================== PROPRIEDADES ====================
+    
+    /**
+     * Identificador único do Content Control (8 dígitos)
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.14
+     * Elemento XML: <w:id w:val="12345678"/>
+     * 
+     * @var string
+     */
+    private string $id;
+
+    /**
+     * Nome amigável do Content Control (exibido no Word)
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.6
+     * Elemento XML: <w:alias w:val="Nome do Cliente"/>
+     * 
+     * @var string
+     */
+    private string $alias;
+
+    /**
+     * Tag de metadados para identificação programática
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.33
+     * Elemento XML: <w:tag w:val="customer-name"/>
+     * 
+     * @var string
+     */
+    private string $tag;
+
+    /**
+     * Tipo do Content Control
+     * 
+     * Valores permitidos: TYPE_GROUP, TYPE_PLAIN_TEXT, TYPE_RICH_TEXT, TYPE_PICTURE
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2 (diversos elementos)
+     * 
+     * @var string
+     */
+    private string $type;
+
+    /**
+     * Nível de bloqueio do Content Control
+     * 
+     * Valores permitidos: LOCK_NONE, LOCK_SDT_LOCKED, LOCK_CONTENT_LOCKED, LOCK_UNLOCKED
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23
+     * 
+     * @var string
+     */
+    private string $lockType;
+
+    /**
+     * Cria novo Content Control envolvendo um container PHPWord
+     * 
+     * @param AbstractContainer $content Container PHPWord (Section, TextRun, etc)
+     * @param array{
+     *     id?: string,
+     *     alias?: string,
+     *     tag?: string,
+     *     type?: string,
+     *     lockType?: string
+     * } $options Configurações do Content Control
+     * 
+     * Opções:
+     * - id: Identificador único (gerado automaticamente se omitido)
+     * - alias: Nome amigável exibido no Word
+     * - tag: Tag de metadados para identificação programática
+     * - type: Tipo do controle (padrão: TYPE_RICH_TEXT)
+     * - lockType: Nível de bloqueio (padrão: LOCK_NONE)
+     * 
+     * @throws \InvalidArgumentException Se type ou lockType inválidos
+     * 
+     * @example
+     * ```php
+     * $section = $phpWord->addSection();
+     * $section->addText('Conteúdo protegido');
+     * 
+     * $control = new ContentControl($section, [
+     *     'alias' => 'Nome do Cliente',
+     *     'tag' => 'customer-name',
+     *     'type' => ContentControl::TYPE_RICH_TEXT,
+     *     'lockType' => ContentControl::LOCK_SDT_LOCKED
+     * ]);
+     * ```
+     */
     public function __construct(
         AbstractContainer $content,
         array $options = [],
     )
     {
-        $this->id = $options['id'] ?? '';
+        // Validar opções ANTES de atribuir
+        $this->validateOptions($options);
+
+        // Atribuir propriedades com defaults
+        $this->id = $options['id'] ?? $this->generateId();
         $this->alias = $options['alias'] ?? '';
         $this->tag = $options['tag'] ?? '';
-        $this->lockType = $options['lockType'] ?? '';
-        $this->addElement($content);
+        $this->type = $options['type'] ?? self::TYPE_RICH_TEXT;
+        $this->lockType = $options['lockType'] ?? self::LOCK_NONE;
+
+        // Copiar elementos do container fonte para este Content Control
+        foreach ($content->getElements() as $element) {
+            $this->elements[] = $element;
+        }
     }
 
+    /**
+     * Valida array de opções do construtor
+     * 
+     * Lança InvalidArgumentException se:
+     * - type não está na lista de TYPE_* constantes
+     * - lockType não está na lista de LOCK_* constantes
+     * 
+     * @param array<string, mixed> $options
+     * @throws \InvalidArgumentException
+     * @return void
+     */
+    private function validateOptions(array $options): void
+    {
+        $validTypes = [
+            self::TYPE_GROUP,
+            self::TYPE_PLAIN_TEXT,
+            self::TYPE_RICH_TEXT,
+            self::TYPE_PICTURE,
+        ];
+
+        $validLockTypes = [
+            self::LOCK_NONE,
+            self::LOCK_SDT_LOCKED,
+            self::LOCK_CONTENT_LOCKED,
+            self::LOCK_UNLOCKED,
+        ];
+
+        // Validar type se fornecido
+        if (isset($options['type']) && !in_array($options['type'], $validTypes, true)) {
+            $invalidType = is_scalar($options['type']) ? (string) $options['type'] : gettype($options['type']);
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Invalid type "%s". Must be one of: %s',
+                    $invalidType,
+                    implode(', ', $validTypes)
+                )
+            );
+        }
+
+        // Validar lockType se fornecido
+        if (isset($options['lockType']) && !in_array($options['lockType'], $validLockTypes, true)) {
+            $invalidLockType = is_scalar($options['lockType']) ? (string) $options['lockType'] : gettype($options['lockType']);
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Invalid lock type "%s". Must be one of: %s',
+                    $invalidLockType,
+                    implode(', ', $validLockTypes)
+                )
+            );
+        }
+    }
+
+    /**
+     * Gera ID único de 8 dígitos para o Content Control
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.14
+     * Formato: Inteiro decimal de 8 dígitos (10000000 - 99999999)
+     * 
+     * @return string
+     */
+    private function generateId(): string
+    {
+        return (string) random_int(10000000, 99999999);
+    }
+
+    /**
+     * Cria elemento <w:sdtPr> com propriedades do Content Control
+     * 
+     * Estrutura conforme ISO/IEC 29500-1:2016 §17.5.2.32:
+     * - <w:id> - Identificador único (obrigatório)
+     * - <w:alias> - Nome amigável (opcional)
+     * - <w:tag> - Tag de metadados (opcional)
+     * - <w:group|text|richText|picture> - Tipo (obrigatório)
+     * - <w:lock> - Bloqueio (condicional)
+     * 
+     * @param \DOMDocument $doc Documento DOM para criar elementos
+     * @return \DOMElement Elemento <w:sdtPr> completo
+     */
+    private function createSdtProperties(\DOMDocument $doc): \DOMElement
+    {
+        $sdtPr = $doc->createElement('w:sdtPr');
+        
+        // ID (obrigatório) - §17.5.2.14
+        $id = $doc->createElement('w:id');
+        $id->setAttribute('w:val', $this->id);
+        $sdtPr->appendChild($id);
+        
+        // Alias (opcional) - §17.5.2.6
+        if ($this->alias !== '') {
+            $alias = $doc->createElement('w:alias');
+            $alias->setAttribute('w:val', $this->alias);
+            $sdtPr->appendChild($alias);
+        }
+        
+        // Tag (opcional) - §17.5.2.33
+        if ($this->tag !== '') {
+            $tag = $doc->createElement('w:tag');
+            $tag->setAttribute('w:val', $this->tag);
+            $sdtPr->appendChild($tag);
+        }
+        
+        // Tipo de Content Control (obrigatório)
+        $typeElement = $doc->createElement($this->getTypeElementName());
+        $sdtPr->appendChild($typeElement);
+        
+        // Lock (condicional) - §17.5.2.23
+        if ($this->lockType !== self::LOCK_NONE) {
+            $lock = $doc->createElement('w:lock');
+            $lock->setAttribute('w:val', $this->lockType);
+            $sdtPr->appendChild($lock);
+        }
+        
+        return $sdtPr;
+    }
+
+    /**
+     * Retorna nome do elemento XML para o tipo de Content Control
+     * 
+     * Mapeamento conforme ISO/IEC 29500-1:2016:
+     * - TYPE_GROUP → <w:group/> (§17.5.2.15)
+     * - TYPE_PLAIN_TEXT → <w:text/> (§17.5.2.34)
+     * - TYPE_RICH_TEXT → <w:richText/> (§17.5.2.31)
+     * - TYPE_PICTURE → <w:picture/> (§17.5.2.27)
+     * 
+     * @return string Nome do elemento (com prefixo w:)
+     */
+    private function getTypeElementName(): string
+    {
+        return match($this->type) {
+            self::TYPE_GROUP => 'w:group',
+            self::TYPE_PLAIN_TEXT => 'w:text',
+            self::TYPE_RICH_TEXT => 'w:richText',
+            self::TYPE_PICTURE => 'w:picture',
+            default => 'w:richText',
+        };
+    }
+
+    /**
+     * Gera XML OOXML do Content Control conforme ISO/IEC 29500-1:2016 §17.5.2
+     * 
+     * Estrutura gerada:
+     * <w:sdt xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+     *   <w:sdtPr>
+     *     <w:id w:val="12345678"/>
+     *     <w:alias w:val="Nome Amigável"/>
+     *     <w:tag w:val="metadata-tag"/>
+     *     <w:richText/>
+     *     <w:lock w:val="sdtLocked"/>
+     *   </w:sdtPr>
+     *   <w:sdtContent>
+     *     {conteúdo serializado}
+     *   </w:sdtContent>
+     * </w:sdt>
+     * 
+     * @return string XML do Content Control (sem declaração <?xml)
+     * @throws \DOMException Se XML mal formado
+     */
     public function getXml(): string
     {
-        $doc = new DOMDocument('1.0', 'UTF-8');
-        $doc->formatOutput = true;
-
-        $sdt = $doc->createElement('w:sdt');
-        $sdtSecPr = $doc->createElement('w:sdtPr');
-
-        $tag = $doc->createElement('w:tag');
-
-        $tag->setAttribute('w:id', $this->id);
-        $tag->setAttribute('w:alias', $this->alias);
-        $tag->setAttribute('w:tag', $this->tag);
-        $sdtSecPr->appendChild($tag);
-        $docPart = $doc->createElement('w:docPartObj');
-        $sdtSecPr->appendChild($docPart);
-        $lock = $doc->createElement('w:lock');
-        $lock->setAttribute('w:val', $this->lockType);
-        $sdtSecPr->appendChild($lock);
+        // Criar documento DOM
+        $doc = new \DOMDocument('1.0', 'UTF-8');
+        $doc->formatOutput = false;
+        
+        // Criar elemento raiz <w:sdt> com namespace WordprocessingML
+        $sdt = $doc->createElementNS(self::WORDML_NAMESPACE, 'w:sdt');
+        $doc->appendChild($sdt);
+        
+        // Adicionar propriedades (w:sdtPr)
+        $sdtPr = $this->createSdtProperties($doc);
+        $sdt->appendChild($sdtPr);
+        
+        // Adicionar conteúdo (w:sdtContent)
         $sdtContent = $doc->createElement('w:sdtContent');
-        $contentXml = $this->serializeInnerContent();
-        $fragment = $doc->createDocumentFragment();
-        $fragment->appendXML($contentXml);
-        $sdtContent->appendChild($fragment);
-
-        $sdt->appendChild($sdtSecPr);
+        
+        // Serializar elementos internos com XMLWriter
+        $innerXml = $this->serializeInnerContent();
+        
+        if ($innerXml !== '') {
+            // Criar fragment para injetar XML serializado
+            $fragment = $doc->createDocumentFragment();
+            // Suprimir warning de namespace (já definido no elemento raiz <w:sdt>)
+            // O XMLWriter do PHPWord não inclui namespace em elementos, mas herdarão
+            // do elemento pai quando integrados ao documento
+            libxml_use_internal_errors(true);
+            $fragment->appendXML($innerXml);
+            libxml_clear_errors();
+            $sdtContent->appendChild($fragment);
+        }
+        
         $sdt->appendChild($sdtContent);
-
-        return $doc->saveXML($sdt);
+        
+        // Retornar apenas elemento <w:sdt> (sem declaração XML)
+        $xml = $doc->saveXML($sdt);
+        
+        // saveXML pode retornar false em caso de erro, mas isso não deve ocorrer
+        // pois controlamos a estrutura. Por segurança, garantimos retorno string.
+        return $xml !== false ? $xml : '';
     }
 
+    /**
+     * Serializa elementos internos do Content Control usando PHPWord Writers
+     * 
+     * Detecta tipo de elemento e aplica wrapper <w:p> apenas quando necessário:
+     * - Table: SEM wrapper (serializa diretamente como <w:tbl>)
+     * - PageBreak: SEM wrapper (gera próprio <w:p/>)
+     * - Text, TextRun, Image: COM wrapper (requerem <w:p> container)
+     * 
+     * @return string XML dos elementos serializados
+     */
     private function serializeInnerContent(): string
     {
-        // Usar PhpWord XMLWriter para elementos internos
-        $xmlWriter = new XMLWriter();
-        // Lógica para renderizar $this->elements como w:p, w:tbl etc.
-        foreach ($this->elements as $element) {
-            $xmlWriter->startElement('w:p'); // Exemplo simplificado
-            $xmlWriter->writeRaw($element->getXml());
-            $xmlWriter->endElement();
+        if (count($this->elements) === 0) {
+            return '';
         }
+        
+        // Criar XMLWriter em modo memória
+        $xmlWriter = new \PhpOffice\PhpWord\Shared\XMLWriter(
+            \PhpOffice\PhpWord\Shared\XMLWriter::STORAGE_MEMORY,
+            null,
+            false
+        );
+        $xmlWriter->openMemory();
+        
+        // Serializar cada elemento usando PHPWord Writer Pattern
+        foreach ($this->elements as $element) {
+            $this->writeElement($xmlWriter, $element);
+        }
+        
         return $xmlWriter->getData();
+    }
+
+    /**
+     * Escreve elemento PHPWord usando Writer correspondente
+     * 
+     * Detecta classe do elemento e instancia Writer apropriado:
+     * - PhpOffice\PhpWord\Element\Text → PhpOffice\PhpWord\Writer\Word2007\Element\Text
+     * - PhpOffice\PhpWord\Element\Table → PhpOffice\PhpWord\Writer\Word2007\Element\Table
+     * - etc.
+     * 
+     * @param \PhpOffice\PhpWord\Shared\XMLWriter $xmlWriter Writer XML
+     * @param \PhpOffice\PhpWord\Element\AbstractElement $element Elemento a serializar
+     * @return void
+     */
+    private function writeElement(
+        \PhpOffice\PhpWord\Shared\XMLWriter $xmlWriter,
+        \PhpOffice\PhpWord\Element\AbstractElement $element
+    ): void {
+        // Extrair nome da classe do elemento
+        $className = get_class($element);
+        $lastBackslashPos = strrpos($className, '\\');
+        
+        // strrpos pode retornar false se não encontrar, mas toda classe PHPWord tem namespace
+        if ($lastBackslashPos === false) {
+            return; // Classe inválida, ignorar
+        }
+        
+        $elementClass = substr($className, $lastBackslashPos + 1);
+        
+        // Containers (Section, Header, Footer) não devem ser serializados diretamente
+        if (in_array($elementClass, ['Section', 'Header', 'Footer', 'Cell'], true)) {
+            return;
+        }
+        
+        // Montar nome da classe Writer
+        $writerClass = "PhpOffice\\PhpWord\\Writer\\Word2007\\Element\\{$elementClass}";
+        
+        // Verificar se Writer existe
+        if (!class_exists($writerClass)) {
+            // Elemento não suportado - ignorar silenciosamente
+            return;
+        }
+        
+        // Determinar se elemento precisa de wrapper <w:p>
+        $withoutP = $this->needsParagraphWrapper($elementClass);
+        
+        // Instanciar Writer e serializar
+        /** @var \PhpOffice\PhpWord\Writer\Word2007\Element\AbstractElement $writer */
+        $writer = new $writerClass($xmlWriter, $element, !$withoutP);
+        $writer->write();
+    }
+
+    /**
+     * Verifica se elemento PHPWord precisa de wrapper <w:p>
+     * 
+     * Elementos que NÃO precisam de wrapper:
+     * - Table: Serializa como <w:tbl> (já é block-level)
+     * - PageBreak: Gera próprio <w:p/> vazio
+     * - Section: Container não serializável
+     * 
+     * Elementos que PRECISAM de wrapper:
+     * - Text: Requer <w:p><w:r><w:t>texto</w:t></w:r></w:p>
+     * - TextRun: Requer <w:p> externo
+     * - Image: Requer <w:p><w:r><w:drawing>...</w:drawing></w:r></w:p>
+     * - Link: Similar a Text
+     * 
+     * @param string $elementClass Nome da classe PHPWord (ex: "Text", "Table")
+     * @return bool true se precisa de wrapper, false caso contrário
+     */
+    private function needsParagraphWrapper(string $elementClass): bool
+    {
+        $noWrapperElements = [
+            'Table',
+            'PageBreak',
+            'Section',
+            'Header',
+            'Footer',
+        ];
+        
+        return !in_array($elementClass, $noWrapperElements, true);
     }
 }

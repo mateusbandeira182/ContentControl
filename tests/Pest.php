@@ -7,6 +7,9 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\PhpWord;
 use MkGrow\ContentControl\ContentControl;
 
+// Autoload para fixtures de teste
+require_once __DIR__ . '/Fixtures/SampleElements.php';
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
