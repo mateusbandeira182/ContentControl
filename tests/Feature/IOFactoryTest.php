@@ -138,7 +138,13 @@ describe('IOFactory - Save with Content Controls', function () {
             $invalidPath
         );
         
+        // Continua garantindo que o método sinalize falha
         expect($result)->toBeFalse();
+        
+        // Garante explicitamente que nenhuma saída foi criada
+        expect(file_exists($invalidPath))->toBeFalse();
+        $invalidDir = dirname($invalidPath);
+        expect(is_dir($invalidDir))->toBeFalse();
     });
     
     test('ignora elementos que não são ContentControl', function () {
