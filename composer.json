@@ -1,0 +1,27 @@
+{
+    "name": "mkgrow/content-control",
+    "description": "Uma extenção para o PhpWord",
+    "require": {
+        "phpoffice/phpword": "^1.4",
+        "ext-dom": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "MkGrow\\ContentControl\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mateus Bandeira",
+            "email": "mateusbandeiraweb@gmail.com"
+        }
+    ],
+    "require-dev": {
+        "pestphp/pest": "^4.3"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}

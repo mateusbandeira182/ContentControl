@@ -1,0 +1,6 @@
+vendor
+composer.lock
+.PRDS
+.SPECS
+.PLANS
+.github/copilot-instructions.md
