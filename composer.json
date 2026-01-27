@@ -2,7 +2,7 @@
     "name": "mkgrow/content-control",
     "description": "Uma extensão para o PhpWord",
     "require": {
-        "php": ">=7.4",
+        "php": ">=8.2",
         "phpoffice/phpword": "^1.4",
         "ext-dom": "*"
     },
