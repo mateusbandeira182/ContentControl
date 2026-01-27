@@ -228,12 +228,11 @@ if ($dom->loadXML($xml)) {
     $aliasValue = $aliasNode !== null ? $aliasNode->nodeValue : 'N/A';
     $tagValue   = $tagNode !== null ? $tagNode->nodeValue : 'N/A';
     
-    $fieldWidth = 32;
     echo "│ ✓ XML válido e bem formado              │\n";
     echo "│ ✓ Namespace: WordprocessingML          │\n";
-    echo "│ ✓ ID: " . str_pad($idValue, $fieldWidth, ' ', STR_PAD_RIGHT) . "│\n";
-    echo "│ ✓ Alias: " . str_pad($aliasValue, $fieldWidth, ' ', STR_PAD_RIGHT) . "│\n";
-    echo "│ ✓ Tag: " . str_pad($tagValue, $fieldWidth, ' ', STR_PAD_RIGHT) . "│\n";
+    echo "│ ✓ ID: " . str_pad($idValue, 32, ' ', STR_PAD_RIGHT) . "│\n";
+    echo "│ ✓ Alias: " . str_pad($aliasValue, 28, ' ', STR_PAD_RIGHT) . "│\n";
+    echo "│ ✓ Tag: " . str_pad($tagValue, 30, ' ', STR_PAD_RIGHT) . "│\n";
     echo "│ ✓ Tipo: richText                        │\n";
     echo "│ ✓ Lock: sdtLocked                       │\n";
 } else {
