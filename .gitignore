@@ -5,7 +5,6 @@ composer.lock
 .PLANS
 .github/prompts
 .github/copilot-instructions.md
-.github/workflows
 # Cobertura de testes
 coverage/
 .phpunit.result.cache
