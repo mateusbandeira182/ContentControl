@@ -116,7 +116,6 @@ describe('IOFactory - Save with Content Controls', function () {
         $zip = new ZipArchive();
         $openResult = $zip->open($filename);
         if ($openResult !== true) {
-            $zip->close();
             throw new \RuntimeException('Failed to open DOCX file as ZIP for validation. Error code: ' . $openResult);
         }
         $documentXml = $zip->getFromName('word/document.xml');
