@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\IOFactory;
+use MkGrow\ContentControl\Exception\ZipArchiveException;
+use MkGrow\ContentControl\Exception\DocumentNotFoundException;
+use MkGrow\ContentControl\Exception\TemporaryFileException;
 use PhpOffice\PhpWord\PhpWord;
 
 /**
@@ -52,13 +55,12 @@ describe('IOFactory - Save with Content Controls', function () {
         
         $filename = $this->tempDir . '/test-single-control.docx';
         
-        $result = IOFactory::saveWithContentControls(
+        IOFactory::saveWithContentControls(
             $phpWord,
             [$control],
             $filename
         );
         
-        expect($result)->toBeTrue();
         expect(file_exists($filename))->toBeTrue();
         expect(filesize($filename))->toBeGreaterThan(0);
     });
@@ -80,13 +82,12 @@ describe('IOFactory - Save with Content Controls', function () {
         
         $filename = $this->tempDir . '/test-multiple-controls.docx';
         
-        $result = IOFactory::saveWithContentControls(
+        IOFactory::saveWithContentControls(
             $phpWord,
             [$control1, $control2],
             $filename
         );
         
-        expect($result)->toBeTrue();
         expect(file_exists($filename))->toBeTrue();
     });
     
@@ -121,7 +122,7 @@ describe('IOFactory - Save with Content Controls', function () {
             ->and($documentXml)->toContain('<w:lock w:val="sdtLocked"/>');
     });
     
-    test('retorna false para caminho inválido', function () {
+    test('lança exceção para caminho inválido', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $control = new ContentControl($section);
@@ -131,20 +132,11 @@ describe('IOFactory - Save with Content Controls', function () {
             . DIRECTORY_SEPARATOR . 'nonexistent_subdir_' . bin2hex(random_bytes(8))
             . DIRECTORY_SEPARATOR . 'arquivo.docx';
         
-        // Use @ to suppress expected warnings from this method call
-        $result = @IOFactory::saveWithContentControls(
+        expect(fn() => IOFactory::saveWithContentControls(
             $phpWord,
             [$control],
             $invalidPath
-        );
-        
-        // Continua garantindo que o método sinalize falha
-        expect($result)->toBeFalse();
-        
-        // Garante explicitamente que nenhuma saída foi criada
-        expect(file_exists($invalidPath))->toBeFalse();
-        $invalidDir = dirname($invalidPath);
-        expect(is_dir($invalidDir))->toBeFalse();
+        ))->toThrow(\RuntimeException::class, 'ContentControl: Target directory not writable');
     });
     
     test('ignora elementos que não são ContentControl', function () {
@@ -157,13 +149,12 @@ describe('IOFactory - Save with Content Controls', function () {
         $filename = $this->tempDir . '/test-mixed-elements.docx';
         
         // Passar array com ContentControl e elemento inválido
-        $result = IOFactory::saveWithContentControls(
+        IOFactory::saveWithContentControls(
             $phpWord,
             [$control, 'string-invalida', null],
             $filename
         );
         
-        expect($result)->toBeTrue();
         expect(file_exists($filename))->toBeTrue();
     });
     

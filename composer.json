@@ -1,6 +1,20 @@
 {
     "name": "mkgrow/content-control",
-    "description": "Uma extensão para o PhpWord",
+    "description": "PHPWord extension for Content Controls (Structured Document Tags) conforming to ISO/IEC 29500-1:2016 §17.5.2. Enables document-level content protection and metadata tagging in Word .docx files.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "phpword",
+        "content-control",
+        "structured-document-tag",
+        "sdt",
+        "word",
+        "docx",
+        "ooxml",
+        "iso-29500",
+        "document-protection",
+        "phpoffice"
+    ],
     "require": {
         "php": ">=8.2",
         "phpoffice/phpword": "^1.4",

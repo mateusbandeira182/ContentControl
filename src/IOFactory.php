@@ -5,6 +5,10 @@ namespace MkGrow\ContentControl;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory as PHPWordIOFactory;
 use PhpOffice\PhpWord\Writer\WriterInterface;
+use MkGrow\ContentControl\Exception\ContentControlException;
+use MkGrow\ContentControl\Exception\ZipArchiveException;
+use MkGrow\ContentControl\Exception\DocumentNotFoundException;
+use MkGrow\ContentControl\Exception\TemporaryFileException;
 
 /**
  * Factory para criar Writers com suporte a Content Controls
@@ -13,6 +17,34 @@ use PhpOffice\PhpWord\Writer\WriterInterface;
  * Writers customizados no core. Em vez disso, utiliza a IOFactory
  * padrão do PHPWord e um workaround baseado em manipulação de ZIP
  * para injetar Content Controls no document.xml de arquivos .docx.
+ * 
+ * ## Design Decision: ZIP Manipulation Workaround
+ * 
+ * **Rationale**: PHPWord não possui suporte nativo para Content Controls (Structured Document Tags)
+ * conforme ISO/IEC 29500-1:2016 §17.5.2. Estender o core do PHPWord requer fork ou patch upstream,
+ * que quebra compatibilidade e dificulta atualizações. Esta biblioteca opta por injeção pós-geração
+ * via manipulação do arquivo DOCX (que é um ZIP contendo XMLs).
+ * 
+ * **Workflow**:
+ * 1. PHPWord gera .docx padrão (sem Content Controls)
+ * 2. Arquivo temporário é aberto como ZipArchive
+ * 3. word/document.xml é extraído e parseado
+ * 4. XML dos Content Controls é injetado antes de `</w:body>`
+ * 5. document.xml atualizado é reescrito no ZIP
+ * 6. Arquivo final é movido para destino
+ * 
+ * **Tradeoffs**:
+ * - ✅ Mantém compatibilidade total com PHPWord (sem fork)
+ * - ✅ Suporta atualizações do PHPWord sem modificação
+ * - ✅ Content Controls conformes com ISO/IEC 29500-1
+ * - ⚠️  Overhead de I/O (arquivo temporário + ZIP manipulation)
+ * - ⚠️  Depende de ext-zip (já requerida por PHPWord)
+ * - ❌ Não integra com Writers nativos do PHPWord
+ * 
+ * **Limitações**:
+ * - Content Controls devem ser criados separadamente e injetados via `saveWithContentControls()`
+ * - Não suporta serialização incremental (todo documento gerado antes da injeção)
+ * - Posição dos Content Controls é sempre antes de `</w:body>` (final do documento)
  * 
  * @since 2.0.0
  */
@@ -50,9 +82,14 @@ class IOFactory
      * 
      * @return void
      * @internal
+     * @deprecated Use IOFactory::saveWithContentControls() instead
      */
     public static function registerCustomWriters(): void
     {
+        trigger_error(
+            'ContentControl: IOFactory::registerCustomWriters() is deprecated and will be removed. Use IOFactory::saveWithContentControls() instead.',
+            E_USER_DEPRECATED
+        );
         // Placeholder para futura implementação
         // Requer extensão do PHPWord ou approach alternativo
     }
@@ -66,8 +103,12 @@ class IOFactory
      * @param PhpWord $phpWord Documento PHPWord base
      * @param mixed[] $contentControls Content Controls a adicionar. Elementos que não são instâncias de ContentControl são silenciosamente ignorados.
      * @param string $filename Caminho do arquivo de saída
-     * @return bool Sucesso da operação
+     * @return void
      * @throws \PhpOffice\PhpWord\Exception\Exception Exceção propagada da biblioteca PHPWord ao criar o Writer ou salvar o documento base
+     * @throws \RuntimeException If target directory is not writable or file move fails
+     * @throws ZipArchiveException If ZIP operations fail
+     * @throws DocumentNotFoundException If word/document.xml is missing
+     * @throws TemporaryFileException If temporary file cleanup fails
      * 
      * @example
      * ```php
@@ -88,11 +129,13 @@ class IOFactory
         PhpWord $phpWord,
         array $contentControls,
         string $filename
-    ): bool {
+    ): void {
         // Verificar se o diretório de destino existe
         $targetDir = dirname($filename);
         if (!is_dir($targetDir) || !is_writable($targetDir)) {
-            return false;
+            throw new \RuntimeException(
+                'ContentControl: Target directory not writable: ' . dirname($filename)
+            );
         }
         
         // 1. Verificar se há Content Controls antes de fazer operações de ZIP
@@ -106,7 +149,6 @@ class IOFactory
         
         // 2. Salvar documento base
         $tempFile = sys_get_temp_dir() . '/phpword_' . uniqid() . '.docx';
-        $success = false;
         
         try {
             $writer = self::createWriter($phpWord);
@@ -114,20 +156,26 @@ class IOFactory
             
             // Se não há Content Controls, apenas copiar o arquivo e retornar
             if (!$hasContentControls) {
-                return rename($tempFile, $filename);
+                if (!rename($tempFile, $filename)) {
+                    throw new \RuntimeException(
+                        'ContentControl: Failed to move file from ' . $tempFile . ' to ' . $filename
+                    );
+                }
+                return;
             }
             
             // 3. Abrir como ZIP
             $zip = new \ZipArchive();
-            if ($zip->open($tempFile) !== true) {
-                return false;
+            $openResult = $zip->open($tempFile);
+            if ($openResult !== true) {
+                throw new ZipArchiveException($openResult, $tempFile);
             }
             
             // 4. Ler document.xml
             $documentXml = $zip->getFromName('word/document.xml');
             if ($documentXml === false) {
                 $zip->close();
-                return false;
+                throw new DocumentNotFoundException('word/document.xml', $tempFile);
             }
             
             // 5. Gerar XML dos Content Controls
@@ -155,18 +203,50 @@ class IOFactory
             $zip->close();
             
             // 8. Mover para destino
-            $success = rename($tempFile, $filename);
-            
-            return $success;
+            if (!rename($tempFile, $filename)) {
+                throw new \RuntimeException(
+                    'ContentControl: Failed to move file from ' . $tempFile . ' to ' . $filename
+                );
+            }
         } finally {
             // Limpar arquivo temporário se ainda existir
             if (file_exists($tempFile)) {
-                if (!unlink($tempFile) && file_exists($tempFile)) {
-                    error_log(
-                        'MkGrow\\ContentControl\\IOFactory: Failed to delete temporary file: ' . $tempFile
-                    );
-                }
+                self::unlinkWithRetry($tempFile);
             }
         }
+    }
+
+    /**
+     * Tenta deletar arquivo com múltiplas tentativas
+     * 
+     * Em Windows, arquivos podem estar brevemente bloqueados após operações de ZIP.
+     * Esta função tenta deletar com retries e clearstatcache.
+     * 
+     * @param string $filePath Caminho do arquivo a deletar
+     * @param int $maxAttempts Número máximo de tentativas
+     * @return void
+     * @throws TemporaryFileException Se todas tentativas falharem
+     */
+    private static function unlinkWithRetry(string $filePath, int $maxAttempts = 3): void
+    {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            clearstatcache(true, $filePath);
+            
+            if (@unlink($filePath)) {
+                return; // Sucesso
+            }
+            
+            if (!file_exists($filePath)) {
+                return; // Arquivo já não existe
+            }
+            
+            // Esperar antes de próxima tentativa (exceto na última)
+            if ($attempt < $maxAttempts) {
+                usleep(100000); // 100ms
+            }
+        }
+        
+        // Todas tentativas falharam
+        throw new TemporaryFileException($filePath);
     }
 }

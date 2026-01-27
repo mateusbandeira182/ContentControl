@@ -159,6 +159,13 @@ class ContentControl extends AbstractContainer
     private string $lockType;
 
     /**
+     * Cache de existência de classes Writer para evitar class_exists repetidos
+     * 
+     * @var array<string, bool>
+     */
+    private static array $writerCache = [];
+
+    /**
      * Cria novo Content Control envolvendo um container PHPWord
      * 
      * @param AbstractContainer $content Container PHPWord (Section, TextRun, etc)
@@ -201,7 +208,7 @@ class ContentControl extends AbstractContainer
         $this->validateOptions($options);
 
         // Atribuir propriedades com defaults
-        $this->id = $options['id'] ?? $this->generateId();
+        $this->id = isset($options['id']) ? $this->validateId($options['id']) : $this->generateId();
         $this->alias = $options['alias'] ?? '';
         $this->tag = $options['tag'] ?? '';
         $this->type = $options['type'] ?? self::TYPE_RICH_TEXT;
@@ -275,6 +282,11 @@ class ContentControl extends AbstractContainer
         if (isset($options['tag']) && $options['tag'] !== '') {
             $this->validateTag($options['tag']);
         }
+
+        // Validar id se fornecido
+        if (isset($options['id'])) {
+            $this->validateId($options['id']);
+        }
     }
 
     /**
@@ -307,9 +319,16 @@ class ContentControl extends AbstractContainer
         // Verificar caracteres de controle que podem causar problemas
         // Bloqueia C0 controls (0x00-0x1F) e C1 controls (0x7F-0x9F)
         // Usa modificador 'u' para suporte correto a UTF-8
-        if (preg_match('/[\x00-\x1F\x7F-\x9F]/u', $alias)) {
+        if (preg_match('/[\x00-\x1F\x7F-\x9F]/u', $alias) === 1) {
             throw new \InvalidArgumentException(
                 'Alias must not contain control characters'
+            );
+        }
+
+        // Verificar caracteres reservados XML que podem causar problemas de parsing
+        if (preg_match('/[<>&"\']/', $alias) === 1) {
+            throw new \InvalidArgumentException(
+                'ContentControl: Alias contains XML reserved characters'
             );
         }
     }
@@ -343,11 +362,69 @@ class ContentControl extends AbstractContainer
         }
 
         // Tag deve seguir padrão de identificador: começa com letra ou _, depois alfanumérico, -, _, .
-        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_.-]*$/', $tag)) {
+        if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_.-]*$/', $tag) !== 1) {
             throw new \InvalidArgumentException(
                 'Tag must start with a letter or underscore and contain only alphanumeric characters, hyphens, underscores, and periods'
             );
         }
+
+        // Verificar caracteres reservados XML que podem causar problemas de parsing
+        if (preg_match('/[<>&"\']/', $tag) === 1) {
+            throw new \InvalidArgumentException(
+                'ContentControl: Tag contains XML reserved characters'
+            );
+        }
+    }
+
+    /**
+     * Valida e normaliza o ID do Content Control
+     * 
+     * O ID deve ser um número de 8 dígitos entre 10000000 e 99999999.
+     * Aceita tanto string quanto int como entrada.
+     * 
+     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.14
+     * 
+     * @param mixed $id Valor a ser validado (string ou int)
+     * @throws \InvalidArgumentException Se ID inválido
+     * @return string ID validado como string de 8 dígitos
+     */
+    private function validateId($id): string
+    {
+        // Validar tipo
+        if (!is_string($id) && !is_int($id)) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'ContentControl: Invalid ID type. Expected string or int, got %s',
+                    gettype($id)
+                )
+            );
+        }
+
+        // Converter para string se necessário
+        $idString = (string) $id;
+
+        // Validar formato (8 dígitos)
+        if (preg_match('/^\d{8}$/', $idString) !== 1) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'ContentControl: Invalid ID format. Must be 8 digits, got "%s"',
+                    $idString
+                )
+            );
+        }
+
+        // Validar range (10000000 - 99999999)
+        $idInt = (int) $idString;
+        if ($idInt < 10000000 || $idInt > 99999999) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'ContentControl: Invalid ID range. Must be between 10000000 and 99999999, got %d',
+                    $idInt
+                )
+            );
+        }
+
+        return $idString;
     }
 
     /**
@@ -492,9 +569,12 @@ class ContentControl extends AbstractContainer
                 libxml_clear_errors();
                 libxml_use_internal_errors($previousUseInternalErrors);
                 
+                // Filtrar apenas erros reais (não warnings)
+                $actualErrors = array_filter($errors, fn($e) => $e->level >= LIBXML_ERR_ERROR);
+                
                 $errorMessages = array_map(function($error) {
                     return trim($error->message);
-                }, $errors);
+                }, $actualErrors);
                 
                 $errorText = count($errorMessages) > 0 
                     ? implode('; ', $errorMessages)
@@ -517,9 +597,11 @@ class ContentControl extends AbstractContainer
         // Retornar apenas elemento <w:sdt> (sem declaração XML)
         $xml = $doc->saveXML($sdt);
         
-        // saveXML pode retornar false em caso de erro, mas isso não deve ocorrer
-        // pois controlamos a estrutura. Por segurança, garantimos retorno string.
-        return $xml !== false ? $xml : '';
+        // saveXML pode retornar false em caso de erro
+        // Assertion garante type narrowing para PHPStan Level 9
+        assert($xml !== false, 'Failed to serialize Content Control to XML');
+        
+        return $xml;
     }
 
     /**
@@ -589,14 +671,15 @@ class ContentControl extends AbstractContainer
         // Montar nome da classe Writer
         $writerClass = "PhpOffice\\PhpWord\\Writer\\Word2007\\Element\\{$elementClass}";
         
-        // Verificar se Writer existe
-        if (!class_exists($writerClass)) {
+        // Verificar se Writer existe (com cache)
+        self::$writerCache[$writerClass] ??= class_exists($writerClass);
+        if (!self::$writerCache[$writerClass]) {
             // Elemento não suportado - ignorar silenciosamente
             return;
         }
         
         // Determinar se elemento precisa de wrapper <w:p>
-        $needsParagraphWrapper = $this->needsParagraphWrapper($elementClass);
+        $needsParagraphWrapper = $this->needsParagraphWrapper($element);
 
         // Writer espera um flag "sem wrapper de parágrafo" (true = não gerar <w:p>)
         $withoutParagraphWrapper = !$needsParagraphWrapper;
@@ -621,19 +704,17 @@ class ContentControl extends AbstractContainer
      * - Image: Requer <w:p><w:r><w:drawing>...</w:drawing></w:r></w:p>
      * - Link: Similar a Text
      * 
-     * @param string $elementClass Nome da classe PHPWord (ex: "Text", "Table")
+     * @param \PhpOffice\PhpWord\Element\AbstractElement $element Elemento PHPWord
      * @return bool true se precisa de wrapper, false caso contrário
      */
-    private function needsParagraphWrapper(string $elementClass): bool
+    private function needsParagraphWrapper(\PhpOffice\PhpWord\Element\AbstractElement $element): bool
     {
-        $noWrapperElements = [
-            'Table',
-            'PageBreak',
-            'Section',
-            'Header',
-            'Footer',
-        ];
-        
-        return !in_array($elementClass, $noWrapperElements, true);
+        return !(
+            $element instanceof \PhpOffice\PhpWord\Element\Table ||
+            $element instanceof \PhpOffice\PhpWord\Element\PageBreak ||
+            $element instanceof \PhpOffice\PhpWord\Element\Section ||
+            $element instanceof \PhpOffice\PhpWord\Element\Header ||
+            $element instanceof \PhpOffice\PhpWord\Element\Footer
+        );
     }
 }
