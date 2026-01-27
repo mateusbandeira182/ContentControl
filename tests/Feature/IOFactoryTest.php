@@ -205,10 +205,11 @@ describe('IOFactory - Save with Content Controls', function () {
 
     test('registerCustomWriters emite deprecation warning', function () {
         // Capturar error handler atual
-        set_error_handler(function($errno, $errstr) {
+        set_error_handler(function(int $errno, string $errstr): bool {
             expect($errno)->toBe(E_USER_DEPRECATED);
             expect($errstr)->toContain('registerCustomWriters() is deprecated');
             expect($errstr)->toContain('Use IOFactory::saveWithContentControls()');
+            return true;
         }, E_USER_DEPRECATED);
         
         IOFactory::registerCustomWriters();

@@ -2,10 +2,21 @@
 
 use MkGrow\ContentControl\Assert;
 
+/**
+ * Helper para retornar valores como mixed (evita PHPStan narrowing)
+ * 
+ * @template T
+ * @param T $value
+ * @return mixed
+ */
+function mixedValue(mixed $value): mixed {
+    return $value;
+}
+
 describe('Assert', function () {
     describe('notNull()', function () {
         it('does not throw when value is not null', function () {
-            $value = 'test';
+            $value = mixedValue('test');
             
             Assert::notNull($value, 'Value should not be null');
             
@@ -13,13 +24,13 @@ describe('Assert', function () {
         });
 
         it('throws LogicException when value is null', function () {
-            $value = null;
+            $value = mixedValue(null);
             
             Assert::notNull($value, 'Custom error message');
         })->throws(\LogicException::class, 'Custom error message');
 
         it('works with objects', function () {
-            $object = new stdClass();
+            $object = mixedValue(new stdClass());
             
             Assert::notNull($object, 'Object should not be null');
             
@@ -27,7 +38,7 @@ describe('Assert', function () {
         });
 
         it('works with arrays', function () {
-            $array = [1, 2, 3];
+            $array = mixedValue([1, 2, 3]);
             
             Assert::notNull($array, 'Array should not be null');
             
@@ -35,7 +46,7 @@ describe('Assert', function () {
         });
 
         it('works with zero', function () {
-            $value = 0;
+            $value = mixedValue(0);
             
             Assert::notNull($value, 'Zero should not be null');
             
@@ -43,7 +54,7 @@ describe('Assert', function () {
         });
 
         it('works with empty string', function () {
-            $value = '';
+            $value = mixedValue('');
             
             Assert::notNull($value, 'Empty string should not be null');
             
@@ -51,7 +62,7 @@ describe('Assert', function () {
         });
 
         it('works with false', function () {
-            $value = false;
+            $value = mixedValue(false);
             
             Assert::notNull($value, 'False should not be null');
             
