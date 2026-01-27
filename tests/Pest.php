@@ -7,7 +7,7 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\PhpWord;
 use MkGrow\ContentControl\ContentControl;
 
-// Autoload para fixtures de teste
+// Autoload for test fixtures
 require_once __DIR__ . '/Fixtures/SampleElements.php';
 
 /*
@@ -25,7 +25,7 @@ uses()->in('Unit', 'Feature');
 */
 
 /**
- * Valida se a string é XML bem formado
+ * Validates if the string is well-formed XML
  */
 expect()->extend('toBeValidXml', function () {
     /** @var string $xml */
@@ -43,7 +43,7 @@ expect()->extend('toBeValidXml', function () {
 });
 
 /**
- * Verifica presença de elemento XML
+ * Verifies presence of XML element
  */
 expect()->extend('toHaveXmlElement', function (string $elementName) {
     /** @var string $xml */
@@ -95,7 +95,7 @@ expect()->extend('toHaveXmlAttribute', function (string $attribute, ?string $exp
 */
 
 /**
- * Cria uma Section PHPWord básica
+ * Creates a basic PHPWord Section
  */
 function createSection(): Section
 {
@@ -104,7 +104,7 @@ function createSection(): Section
 }
 
 /**
- * Cria uma Section com elemento Text
+ * Creates a Section with Text element
  */
 function createSectionWithText(string $text = 'Sample text'): Section
 {
@@ -114,7 +114,7 @@ function createSectionWithText(string $text = 'Sample text'): Section
 }
 
 /**
- * Cria um ContentControl com configuração customizável
+ * Creates a ContentControl with customizable configuration
  * 
  * @param array<string, string> $options
  */
@@ -125,7 +125,7 @@ function createContentControl(array $options = []): ContentControl
 }
 
 /**
- * Cria um ContentControl com todas as propriedades configuradas
+ * Creates a ContentControl with all properties configured
  */
 function createFullContentControl(): ContentControl
 {
@@ -140,7 +140,7 @@ function createFullContentControl(): ContentControl
 }
 
 /**
- * Valida estrutura SDT completa
+ * Validates complete SDT structure
  */
 function assertValidSdtStructure(string $xml): void
 {
@@ -188,7 +188,7 @@ function getXmlAttributeValue(string $xml, string $elementName, string $attribut
 }
 
 /**
- * Cria uma Table PHPWord simples
+ * Creates a simple PHPWord Table
  */
 function createSimpleTable(int $rows = 2, int $cols = 2): Table
 {
@@ -206,7 +206,7 @@ function createSimpleTable(int $rows = 2, int $cols = 2): Table
 }
 
 /**
- * Normaliza XML removendo whitespace para comparação
+ * Normalizes XML by removing whitespace for comparison
  */
 function normalizeXml(string $xml): string
 {
