@@ -291,20 +291,16 @@ $controlFinal2 = new ContentControl($section2, [
 // Salvar documento
 $outputFile = __DIR__ . '/exemplo-content-controls.docx';
 
-$saved = IOFactory::saveWithContentControls(
+IOFactory::saveWithContentControls(
     $phpWordFinal,
     [$controlFinal1, $controlFinal2],
     $outputFile
 );
 
-if ($saved) {
-    echo "✓ Documento salvo com sucesso!\n";
-    echo "✓ Arquivo: {$outputFile}\n";
-    echo "✓ Tamanho: " . number_format(filesize($outputFile) / 1024, 2) . " KB\n";
-    echo "\n🎉 Abra o arquivo no Microsoft Word para visualizar os Content Controls!\n";
-} else {
-    echo "✗ Erro ao salvar documento\n";
-}
+echo "✓ Documento salvo com sucesso!\n";
+echo "✓ Arquivo: {$outputFile}\n";
+echo "✓ Tamanho: " . number_format(filesize($outputFile) / 1024, 2) . " KB\n";
+echo "\n🎉 Abra o arquivo no Microsoft Word para visualizar os Content Controls!\n";
 
 echo "\n";
 
