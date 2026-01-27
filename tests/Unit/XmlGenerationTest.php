@@ -208,54 +208,27 @@ test('XML é válido e bem formado', function () {
 
 describe('XML Generation - Error Handling', function () {
     
-    test('lança DOMException quando appendXML falha com XML malformado', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
+    test('verifica que DOMDocument::appendXML falha com XML malformado', function () {
+        // Criar um XMLWriter que gera XML malformado
+        $xmlWriter = new \PhpOffice\PhpWord\Shared\XMLWriter();
+        $xmlWriter->startDocument('1.0', 'UTF-8');
+        $xmlWriter->writeRaw('<w:p><w:t>unclosed tag'); // XML malformado
         
-        // Criar um ContentControl mock que testa o comportamento de erro
-        $mockControl = new class($section) extends ContentControl {
-            // Sobrescrever getXml para injetar XML malformado no fluxo
-            public function getXml(): string {
-                $doc = new \DOMDocument('1.0', 'UTF-8');
-                $doc->formatOutput = false;
-                
-                $sdt = $doc->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:sdt');
-                $doc->appendChild($sdt);
-                
-                $sdtContent = $doc->createElement('w:sdtContent');
-                
-                // Tentar adicionar XML malformado - isso deve falhar
-                $fragment = $doc->createDocumentFragment();
-                $previousUseInternalErrors = libxml_use_internal_errors(true);
-                $success = $fragment->appendXML('<w:p><w:t>unclosed tag');
-                
-                if ($success === false) {
-                    $errors = libxml_get_errors();
-                    libxml_clear_errors();
-                    libxml_use_internal_errors($previousUseInternalErrors);
-                    
-                    $errorMessages = array_map(function($error) {
-                        return trim($error->message);
-                    }, $errors);
-                    
-                    $errorText = count($errorMessages) > 0 
-                        ? implode('; ', $errorMessages)
-                        : 'Unknown error';
-                    
-                    throw new \DOMException(
-                        'Failed to parse inner XML content: ' . $errorText
-                    );
-                }
-                
-                libxml_clear_errors();
-                libxml_use_internal_errors($previousUseInternalErrors);
-                $sdtContent->appendChild($fragment);
-                
-                return '';
-            }
-        };
+        // Obter o XML malformado
+        $malformedXml = $xmlWriter->getData();
         
-        // Deve lançar DOMException
-        $mockControl->getXml();
-    })->throws(DOMException::class, 'Failed to parse inner XML content');
+        // Usar DOMDocument para tentar fazer parse - deve falhar
+        $doc = new \DOMDocument('1.0', 'UTF-8');
+        $fragment = $doc->createDocumentFragment();
+        
+        $previousUseInternalErrors = libxml_use_internal_errors(true);
+        $success = $fragment->appendXML($malformedXml);
+        
+        // Verificar que realmente falhou
+        expect($success)->toBeFalse();
+        
+        // Restaurar configuração
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousUseInternalErrors);
+    });
 });
