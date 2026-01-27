@@ -219,6 +219,8 @@ class ContentControl extends AbstractContainer
      * Lança InvalidArgumentException se:
      * - type não está na lista de TYPE_* constantes
      * - lockType não está na lista de LOCK_* constantes
+     * - alias contém caracteres problemáticos ou excede limite de comprimento
+     * - tag contém caracteres problemáticos ou excede limite de comprimento
      * 
      * @param array<string, mixed> $options
      * @throws \InvalidArgumentException
@@ -261,6 +263,85 @@ class ContentControl extends AbstractContainer
                     $invalidLockType,
                     implode(', ', $validLockTypes)
                 )
+            );
+        }
+
+        // Validar alias se fornecido
+        if (isset($options['alias']) && $options['alias'] !== '') {
+            $this->validateAlias($options['alias']);
+        }
+
+        // Validar tag se fornecido
+        if (isset($options['tag']) && $options['tag'] !== '') {
+            $this->validateTag($options['tag']);
+        }
+    }
+
+    /**
+     * Valida o valor do alias
+     * 
+     * O alias é um nome amigável exibido no Word. Esta validação garante:
+     * - Comprimento máximo de 255 caracteres (limite prático para exibição)
+     * - Não contém caracteres de controle (0x00-0x1F, 0x7F-0x9F)
+     * 
+     * @param mixed $alias Valor a ser validado
+     * @throws \InvalidArgumentException Se alias inválido
+     * @return void
+     */
+    private function validateAlias($alias): void
+    {
+        if (!is_string($alias)) {
+            throw new \InvalidArgumentException(
+                sprintf('Alias must be a string, %s given', gettype($alias))
+            );
+        }
+
+        // Limite de comprimento razoável para exibição
+        if (strlen($alias) > 255) {
+            throw new \InvalidArgumentException(
+                sprintf('Alias must not exceed 255 characters, got %d characters', strlen($alias))
+            );
+        }
+
+        // Verificar caracteres de controle que podem causar problemas
+        if (preg_match('/[\x00-\x1F\x7F-\x9F]/', $alias)) {
+            throw new \InvalidArgumentException(
+                'Alias must not contain control characters'
+            );
+        }
+    }
+
+    /**
+     * Valida o valor da tag
+     * 
+     * A tag é um identificador de metadados para uso programático. Esta validação garante:
+     * - Comprimento máximo de 255 caracteres
+     * - Apenas caracteres alfanuméricos, hífens, underscores e pontos
+     * - Deve começar com letra ou underscore (convenção de identificadores)
+     * 
+     * @param mixed $tag Valor a ser validado
+     * @throws \InvalidArgumentException Se tag inválida
+     * @return void
+     */
+    private function validateTag($tag): void
+    {
+        if (!is_string($tag)) {
+            throw new \InvalidArgumentException(
+                sprintf('Tag must be a string, %s given', gettype($tag))
+            );
+        }
+
+        // Limite de comprimento
+        if (strlen($tag) > 255) {
+            throw new \InvalidArgumentException(
+                sprintf('Tag must not exceed 255 characters, got %d characters', strlen($tag))
+            );
+        }
+
+        // Tag deve seguir padrão de identificador: começa com letra ou _, depois alfanumérico, -, _, .
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_.-]*$/', $tag)) {
+            throw new \InvalidArgumentException(
+                'Tag must start with a letter or underscore and contain only alphanumeric characters, hyphens, underscores, and periods'
             );
         }
     }
