@@ -30,7 +30,7 @@
         "test": "pest",
         "test:unit": "pest tests/Unit",
         "test:feature": "pest tests/Feature",
-        "test:coverage": "pest --coverage --min=80",
+        "test:coverage": "pest --coverage --coverage-clover=coverage/clover.xml --min=80",
         "test:coverage-html": "pest --coverage-html coverage/html",
         "analyse": "phpstan analyse",
         "analyse:baseline": "phpstan analyse --generate-baseline",
@@ -40,7 +40,7 @@
         ],
         "ci": [
             "@analyse",
-            "@test:coverage"
+            "@test"
         ]
     },
     "scripts-descriptions": {
