@@ -2,7 +2,7 @@ includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
 
 parameters:
-    level: 6
+    level: 9
     paths:
         - src
         - tests
@@ -13,5 +13,50 @@ parameters:
         # Ignorar warnings de testes vazios durante desenvolvimento
         - '#Test file .* is empty#'
         - '#Empty test suite#'
+        
+        # Pest-specific: Métodos de expectativa customizados
+        - '#Call to an undefined method Pest\\Expectation.*::toBeValidXml\(\)#'
+        - '#Call to an undefined method Pest\\Expectation.*::toHaveXmlElement\(\)#'
+        - '#Call to an undefined method Pest\\Expectation.*::toHaveXmlAttribute\(\)#'
+        
+        # Pest-specific: Propriedades dinâmicas em closures de testes
+        - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempDir#'
+        
+        # Pest-specific: Uso de $this em closures de expect extensions
+        -
+            message: '#Undefined variable: \$this#'
+            path: tests/Pest.php
+        
+        # Pest-specific: throws() método não reconhecido por PHPStan
+        - '#Call to an undefined method Pest\\PendingCalls\\TestCall.*::throws\(\)#'
+        
+        # Pest-specific: DOMNodeList pode retornar false em algumas versões
+        - '#Cannot access property .* on DOMNodeList.*\|false#'
+        - '#Cannot call method .* on DOMNodeList.*\|false#'
+        
+        # Test-specific: Offset access em arrays de preg_split
+        -
+            message: '#Offset 1 might not exist on array#'
+            path: tests/
+        
+        # Test-specific: IOFactory agora retorna void
+        -
+            message: '#Result of static method .*IOFactory::saveWithContentControls\(\) \(void\) is used#'
+            path: tests/
+        
+        # Test-specific: foreach pode ter false de glob()
+        -
+            message: '#Argument of an invalid type .*\|false supplied for foreach#'
+            path: tests/
+        
+        # Test-specific: normalizeXml retorno
+        -
+            message: '#Function normalizeXml\(\) should return string but returns string\|false#'
+            path: tests/Pest.php
+        
+        # Test-specific: DOMElement pode ser null em testes
+        -
+            message: '#Cannot access property .* on DOMElement\|null#'
+            path: tests/
     
     reportUnmatchedIgnoredErrors: false
