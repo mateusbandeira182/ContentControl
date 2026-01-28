@@ -77,10 +77,17 @@ final class SDTRegistry
             
             // Proteção contra overflow (teoricamente inalcançável)
             if ($this->sequentialCounter > IDValidator::getMaxId()) {
-                throw new \RuntimeException(
-                    sprintf(
-                        'SDTRegistry: ID range exhausted during sequential fallback. Sequential counter reached %d. Total IDs marked as used: %d',
-                        $this->sequentialCounter,
+                $maxId = IDValidator::getMaxId();  
+                $minId = IDValidator::getMinId();  
+                $rangeSize = $maxId - $minId + 1;  
+
+                throw new \RuntimeException(  
+                    sprintf(  
+                        'SDTRegistry: ID range exhausted during sequential fallback. Sequential counter reached %d (min ID: %d, max ID: %d, range size: %d). Total IDs marked as used: %d',  
+                        $this->sequentialCounter,  
+                        $minId,  
+                        $maxId,  
+                        $rangeSize,
                         count($this->usedIds)
                     )
                 );
@@ -116,27 +123,9 @@ final class SDTRegistry
         // 2. Verificar ID duplicado ANTES de marcar como usado
         if ($config->id !== '' && isset($this->usedIds[$config->id])) {
             // Procurar se já existe outro elemento com esse ID no registry
-            $idInRegistry = false;
-            foreach ($this->registry as $entry) {
-                if ($entry['config']->id === $config->id) {
-                    $idInRegistry = true;
-                    break;
-                }
-            }
-
-            if ($idInRegistry) {
                 throw new \InvalidArgumentException(
-                    sprintf(
-                        'SDTRegistry: ID "%s" already in use by another element',
-                        $config->id
-                    )
-                );
-            }
-
-            // ID já está marcado como usado, mas não associado a nenhum elemento registrado
-            throw new \InvalidArgumentException(
                 sprintf(
-                    'SDTRegistry: ID "%s" is already reserved and cannot be reused',
+                    'SDTRegistry: ID "%s" is already in use and cannot be reused',
                     $config->id
                 )
             );

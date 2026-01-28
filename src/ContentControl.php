@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace MkGrow\ContentControl;
 
+use PhpOffice\Math\Element\AbstractElement;
+use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\IOFactory as PHPWordIOFactory;
@@ -208,7 +210,7 @@ final class ContentControl
      * Adiciona Content Control envolvendo um elemento
      * 
      * @template T of mixed
-     * @param T $element Elemento PHPWord (Section, Table, etc)
+     * @param AbstractContainer | AbstractElement $element Elemento PHPWord (Section, Table, etc)
      * @param array{
      *     id?: string,
      *     alias?: string,
@@ -216,7 +218,7 @@ final class ContentControl
      *     type?: string,
      *     lockType?: string
      * } $options Configurações do Content Control
-     * @return T O mesmo elemento (para fluent API)
+     * @return AbstractContainer | AbstractElement O mesmo elemento (para fluent API)
      * 
      * @example
      * ```php
@@ -234,7 +236,7 @@ final class ContentControl
      * $cc->save('documento.docx');
      * ```
      */
-    public function addContentControl($element, array $options = [])
+    public function addContentControl(AbstractContainer | AbstractElement $element, array $options = []): AbstractContainer | AbstractElement
     {
         // Criar config a partir das opções
         $config = SDTConfig::fromArray($options);

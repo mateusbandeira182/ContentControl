@@ -114,20 +114,6 @@ function createSectionWithText(string $text = 'Sample text'): Section
 }
 
 /**
- * Creates a ContentControl instance with customizable configuration (v2.0 API)
- * 
- * @param array<string, string> $options
- */
-function createContentControl(array $options = []): ContentControl
-{
-    $cc = new ContentControl();
-    $section = $cc->addSection();
-    $section->addText('Sample text');
-    $cc->addContentControl($section, $options);
-    return $cc;
-}
-
-/**
  * Creates a ContentControl with all properties configured (v2.0 API)
  */
 function createFullContentControl(): ContentControl
