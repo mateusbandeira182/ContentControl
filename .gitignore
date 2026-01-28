@@ -7,6 +7,7 @@ composer.lock
 .vscode
 .github/prompts
 .github/copilot-instructions.md
+.review
 # Cobertura de testes
 coverage/
 .phpunit.result.cache

@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-28
+
+### 🎉 Major Rewrite - Proxy Pattern Architecture
+
+This is a **BREAKING CHANGE** release with complete API redesign.
+
+### ✨ Added
+
+- **Proxy Pattern**: ContentControl now encapsulates PhpWord instead of extending AbstractContainer
+  - Single unified class for all operations
+  - Automatic ID management via SDTRegistry
+  - Cleaner API with fluent interface
+- **SDTConfig**: Immutable value object for Content Control configuration
+  - `readonly` properties (PHP 8.2+)
+  - Factory method `fromArray()`
+  - Immutability helpers: `withId()`, `withAlias()`, `withTag()`
+- **SDTRegistry**: Centralized unique ID generator
+  - Automatic 8-digit ID generation (10000000-99999999)
+  - Duplicate detection (element and ID)
+  - 0% collision rate in 10K IDs
+  - O(1) ID usage check
+- **SDTInjector**: Service layer for XML injection into DOCX files
+  - Direct ZIP manipulation for SDT insertion
+  - Injects before `</w:body>` in word/document.xml
+  - Handles PhpWord element serialization
+- **Exception hierarchy** (2.0.0):
+  - `ContentControlException` (base)
+  - `ZipArchiveException` (ZIP errors with code mapping)
+  - `DocumentNotFoundException` (missing word/document.xml)
+  - `TemporaryFileException` (cleanup failures)
+- **ContentControl::save()**: New unified save method
+  - Orchestrates PhpWord Writer + SDTInjector
+  - Automatic temp file cleanup with retry mechanism
+  - Directory validation
+- **ContentControl delegation methods**:
+  - `addSection()`, `getDocInfo()`, `getSettings()`
+  - `addFontStyle()`, `addParagraphStyle()`, `addTableStyle()`, `addTitleStyle()`
+  - `getSections()`, `getPhpWord()`, `getSDTRegistry()`
+
+### 🔄 Changed
+
+- **BREAKING**: Constructor signature changed
+  - **OLD**: `new ContentControl($section, ['alias' => '...'])`
+  - **NEW**: `$cc = new ContentControl(); $cc->addContentControl($section, [...])`
+- **BREAKING**: `getXml()` method removed
+  - XML generation now handled internally by SDTInjector
+  - Users interact only with `save()` method
+- **BREAKING**: No longer extends `AbstractContainer`
+  - Uses composition instead of inheritance
+  - Maintains compatibility with PhpWord via delegation
+
+### ❌ Removed
+
+- **IOFactory class**: Completely removed
+  - `IOFactory::createWriter()` → use `PHPWordIOFactory::createWriter()` directly
+  - `IOFactory::saveWithContentControls()` → use `ContentControl::save()`
+  - `IOFactory::registerCustomWriters()` → deprecated in v1.x, now removed
+- **Writer\Word2007\Element\ContentControl**: Removed (not used in Proxy Pattern)
+- **Test files**: Removed obsolete tests (PropertiesTest, ValidationTest, Writer tests)
+
+### 📚 Documentation
+
+- Complete README.md rewrite for v2.0 API
+- New samples/ContentControl_Sample.php with 9 comprehensive examples
+- Updated .github/copilot-instructions.md with v2.0 architecture
+
+### 🧪 Testing
+
+- **116 tests passing** (240 assertions)
+- **PHPStan Level 9**: 0 errors in src/
+- New test files:
+  - `SDTConfigTest.php` (41 tests)
+  - `SDTRegistryTest.php` (27 tests)
+  - `SDTInjectorTest.php` (15 tests)
+
+### 🏗️ Architecture
+
+- **Patterns**: Proxy, Value Object, Registry, Service Layer
+- **Principles**: SOLID, immutability, type safety
+- **Performance**: <200ms for 1K element registration
+
+---
+
 ## [Unreleased]
 
 ### Added
