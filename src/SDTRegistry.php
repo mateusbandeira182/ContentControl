@@ -36,10 +36,22 @@ final class SDTRegistry
     private array $usedIds = [];
 
     /**
+     * Contador sequencial para fallback quando geração aleatória falhar
+     * 
+     * Inicia no ID mínimo permitido (10000000)
+     * 
+     * @var int
+     */
+    private int $sequentialCounter = 10000000;
+
+    /**
      * Gera ID único de 8 dígitos
      * 
-     * Tenta até 100 vezes gerar um ID que não esteja em uso.
+     * Tenta até 100 vezes gerar um ID aleatório que não esteja em uso.
+     * Se todas as tentativas falharem, usa contador sequencial como fallback.
+     * 
      * Probabilidade de colisão em 10.000 IDs: ~0.01%
+     * Fallback garante sucesso mesmo em ranges saturados.
      * 
      * @return string ID único de 8 dígitos
      */
@@ -47,8 +59,9 @@ final class SDTRegistry
     {
         $maxAttempts = 100;
         
+        // Tentar geração aleatória
         for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
-            $id = (string) random_int(10000000, 99999999);
+            $id = IDValidator::generateRandom();
             
             if (!isset($this->usedIds[$id])) {
                 $this->usedIds[$id] = true;
@@ -56,14 +69,26 @@ final class SDTRegistry
             }
         }
         
-        // @phpstan-ignore-next-line - Código teoricamente inalcançável, mas mantido por segurança
-        throw new \RuntimeException(
-            sprintf(
-                'SDTRegistry: Failed to generate unique ID after %d attempts. Total IDs in use: %d',
-                $maxAttempts,
-                count($this->usedIds)
-            )
-        );
+        // Fallback: usar contador sequencial
+        while (isset($this->usedIds[(string) $this->sequentialCounter])) {
+            $this->sequentialCounter++;
+            
+            // Proteção contra overflow (teoricamente inalcançável)
+            if ($this->sequentialCounter > IDValidator::getMaxId()) {
+                throw new \RuntimeException(
+                    sprintf(
+                        'SDTRegistry: ID range exhausted. Total IDs in use: %d',
+                        count($this->usedIds)
+                    )
+                );
+            }
+        }
+        
+        $id = str_pad((string) $this->sequentialCounter, 8, '0', STR_PAD_LEFT);
+        $this->sequentialCounter++;
+        $this->usedIds[$id] = true;
+        
+        return $id;
     }
 
     /**
@@ -77,7 +102,7 @@ final class SDTRegistry
      */
     public function register($element, SDTConfig $config): void
     {
-        // Detectar elemento duplicado (comparação por identidade)
+        // 1. Detectar elemento duplicado PRIMEIRO (comparação por identidade)
         foreach ($this->registry as $entry) {
             if ($entry['element'] === $element) {
                 throw new \InvalidArgumentException(
@@ -86,18 +111,11 @@ final class SDTRegistry
             }
         }
 
-        // Marcar ID como usado (se não for vazio e ainda não estiver usado)
-        // Nota: IDs gerados por generateUniqueId() já estão marcados
-        if ($config->id !== '' && !isset($this->usedIds[$config->id])) {
-            $this->usedIds[$config->id] = true;
-        }
-
-        // Verificar se ID está duplicado APÓS marcá-lo
-        // (permite IDs vindos de generateUniqueId() que já estão marcados)
+        // 2. Verificar ID duplicado ANTES de marcar como usado
         if ($config->id !== '' && isset($this->usedIds[$config->id])) {
-            // Procurar se já existe outro elemento com esse ID
+            // Procurar se já existe outro elemento com esse ID no registry
             foreach ($this->registry as $entry) {
-                if ($entry['config']->id === $config->id && $entry['element'] !== $element) {
+                if ($entry['config']->id === $config->id) {
                     throw new \InvalidArgumentException(
                         sprintf(
                             'SDTRegistry: ID "%s" already in use by another element',
@@ -108,7 +126,12 @@ final class SDTRegistry
             }
         }
 
-        // Adicionar ao registry
+        // 3. Marcar ID como usado APENAS SE PASSAR nas validações
+        if ($config->id !== '') {
+            $this->usedIds[$config->id] = true;
+        }
+
+        // 4. Adicionar ao registry
         $this->registry[] = ['element' => $element, 'config' => $config];
     }
 

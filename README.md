@@ -89,6 +89,66 @@ $cc->addContentControl($table, [
 $cc->save('catalogo.docx');
 ```
 
+### Restrições de Caracteres
+
+#### Alias (Nome Amigável)
+O `alias` é exibido no Word e não pode conter:
+- ❌ Caracteres XML reservados: `< > & " '`
+- ❌ Caracteres de controle (0x00-0x1F, 0x7F-0x9F)
+- ✅ Máximo 255 caracteres UTF-8
+
+```php
+// ✅ Válido
+$cc->addContentControl($section, [
+    'alias' => 'Nome do Cliente (Obrigatório)'
+]);
+
+// ❌ Inválido - contém caracteres XML reservados
+$cc->addContentControl($section, [
+    'alias' => 'Cliente <obrigatório>'  // Exception: XML reserved characters
+]);
+```
+
+#### Tag (Identificador Programático)
+A `tag` é usada para identificação programática e deve:
+- ✅ Começar com letra ou underscore (`a-z`, `A-Z`, `_`)
+- ✅ Conter apenas: letras, números, hífen, underscore, ponto
+- ✅ Máximo 255 caracteres
+- ❌ Não pode conter espaços ou caracteres especiais
+
+```php
+// ✅ Válido
+$cc->addContentControl($section, [
+    'tag' => 'customer-name',
+    'tag' => 'product_price',
+    'tag' => 'field.1.name',
+    'tag' => '_internal_field'
+]);
+
+// ❌ Inválido
+$cc->addContentControl($section, [
+    'tag' => '123-field',        // Não pode começar com número
+    'tag' => 'customer name',    // Não pode conter espaços
+    'tag' => 'field@customer'    // Caractere @ não permitido
+]);
+```
+
+#### ID (Identificador Único)
+- ✅ 8 dígitos (10000000-99999999)
+- ✅ Auto-gerado se omitido
+- ❌ Não pode conter letras ou caracteres especiais
+
+```php
+// ✅ Válido
+$cc->addContentControl($section, ['id' => '12345678']);
+$cc->addContentControl($section, ['id' => '99999999']);
+$cc->addContentControl($section, []);  // ID gerado automaticamente
+
+// ❌ Inválido
+$cc->addContentControl($section, ['id' => '123']);      // Menos de 8 dígitos
+$cc->addContentControl($section, ['id' => 'ABC12345']); // Contém letras
+```
+
 ### Múltiplos Content Controls
 
 ```php

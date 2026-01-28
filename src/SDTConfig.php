@@ -141,31 +141,7 @@ final class SDTConfig
      */
     private function validateId(string $id): void
     {
-        // Permitir string vazia (será preenchido pelo Registry)
-        if ($id === '') {
-            return;
-        }
-
-        // Validar formato (8 dígitos)
-        if (preg_match('/^\d{8}$/', $id) !== 1) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'SDTConfig: Invalid ID format. Must be 8 digits, got "%s"',
-                    $id
-                )
-            );
-        }
-
-        // Validar range (10000000 - 99999999)
-        $idInt = (int) $id;
-        if ($idInt < 10000000 || $idInt > 99999999) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'SDTConfig: Invalid ID range. Must be between 10000000 and 99999999, got %d',
-                    $idInt
-                )
-            );
-        }
+        IDValidator::validate($id);
     }
 
     /**
