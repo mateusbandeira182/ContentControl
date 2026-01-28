@@ -300,7 +300,15 @@ final class ContentControl
     public function save(string $filename, string $format = 'Word2007'): void
     {
         // 1. Validar diretório
-        $dir = dirname($filename);
+        try {
+            $dir = dirname($filename);
+        } catch (\ValueError $e) {
+            // PHP 8.2+: dirname() lança ValueError para caminhos inválidos
+            throw new \RuntimeException(
+                'ContentControl: Invalid file path: ' . $e->getMessage()
+            );
+        }
+        
         if (!is_dir($dir) || !is_writable($dir)) {
             throw new \RuntimeException(
                 'ContentControl: Target directory not writable: ' . $dir
