@@ -790,6 +790,46 @@ tests/
 
 Veja [.github/copilot-instructions.md](.github/copilot-instructions.md) para detalhes da arquitetura.
 
+## ⚠️ Limitações Conhecidas
+
+### Aninhamento de Content Controls
+
+**Problema:** A arquitetura atual v2.0 pode causar duplicação de conteúdo quando Content Controls são aninhados hierarquicamente (ex: Table → Row → Cell).
+
+**Causa:** SDTs são injetados ao final do `<w:body>` com conteúdo serializado, ao invés de envolverem elementos inline na estrutura original.
+
+**Solução Temporária:**
+- ✅ **Envolver apenas elementos "folha"** (Text, TextRun, Image) OU containers de alto nível (Table, Section)
+- ❌ **NUNCA aninhar SDTs** na mesma hierarquia
+
+**Exemplo correto:**
+```php
+// ✅ Opção A: Envolver apenas a Table inteira
+$table = $section->addTable();
+$cc->addContentControl($table, ['alias' => 'Tabela', ...]);
+$table->addRow()->addCell()->addText('Conteúdo');
+
+// ✅ Opção B: Envolver apenas elementos Text individuais
+$text = $section->addText('Texto protegido');
+$cc->addContentControl($text, ['alias' => 'Texto', ...]);
+```
+
+**Exemplo incorreto:**
+```php
+// ❌ NÃO FAZER: Aninhamento (causa duplicação)
+$table = $section->addTable();
+$cc->addContentControl($table, [...]);
+
+$row = $table->addRow();
+$cc->addContentControl($row, [...]); // ← Duplicação!
+
+$cell = $row->addCell();
+$text = $cell->addText('Conteúdo');
+$cc->addContentControl($text, [...]); // ← Triplicação!
+```
+
+**Roadmap para v3.0:** Refatoração para usar API nativa de SDT do PHPWord (`\PhpOffice\PhpWord\Element\SDT`), eliminando completamente a duplicação. Veja [TECHNICAL_REPORT_DUPLICACAO.md](TECHNICAL_REPORT_DUPLICACAO.md) para análise técnica completa.
+
 ## 📝 Changelog
 
 Veja [CHANGELOG.md](CHANGELOG.md) para histórico de versões.
