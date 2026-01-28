@@ -259,6 +259,8 @@ describe('SDTInjector - Injeção em DOCX', function () {
         expect($xml)->toContain('SDT 2');
 
         // Contar ocorrências de <w:sdt>
+        expect($xml)->toBeString();
+        assert(is_string($xml)); // PHPStan type narrowing
         $count = substr_count($xml, '<w:sdt>');
         expect($count)->toBe(2);
 
@@ -299,9 +301,14 @@ describe('SDTInjector - Injeção em DOCX', function () {
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
 
+        expect($xml)->toBeString();
+        assert(is_string($xml)); // PHPStan type narrowing
         $sdtPos = strpos($xml, '<w:sdt>');
         $bodyClosePos = strpos($xml, '</w:body>');
 
+        expect($sdtPos)->not->toBeFalse();
+        expect($bodyClosePos)->not->toBeFalse();
+        assert(is_int($sdtPos) && is_int($bodyClosePos)); // PHPStan type narrowing
         expect($sdtPos)->toBeLessThan($bodyClosePos);
 
         unlink($tempFile);

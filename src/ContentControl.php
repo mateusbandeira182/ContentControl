@@ -6,6 +6,7 @@ namespace MkGrow\ContentControl;
 
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Element\Section;
+use PhpOffice\PhpWord\IOFactory as PHPWordIOFactory;
 
 /**
  * ContentControl v2.0 - Proxy Pattern para PhpWord com suporte a SDTs
@@ -309,7 +310,7 @@ final class ContentControl
         $tempFile = sys_get_temp_dir() . '/phpword_' . uniqid() . '.docx';
 
         try {
-            $writer = IOFactory::createWriter($this->phpWord, $format);
+            $writer = PHPWordIOFactory::createWriter($this->phpWord, $format);
             $writer->save($tempFile);
 
             // 3. Injetar SDTs se houver

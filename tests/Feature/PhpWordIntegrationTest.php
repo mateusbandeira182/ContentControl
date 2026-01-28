@@ -36,6 +36,8 @@ describe('PHPWord Integration - Documento Completo', function () {
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
             
+            expect($xml)->toBeString();
+            assert(is_string($xml)); // PHPStan type narrowing
             $dom = new DOMDocument();
             expect(@$dom->loadXML($xml))->toBeTrue();
         } finally {

@@ -1,229 +1,324 @@
-# ContentControl - PHPWord Extension
+# ContentControl v2.0 - PHPWord Extension
 
-Biblioteca PHP que estende PHPOffice/PHPWord para adicionar suporte a Content Controls (Structured Document Tags) do Microsoft Word.
+[![PHPStan Level 9](https://img.shields.io/badge/PHPStan-Level%209-brightgreen.svg)](https://phpstan.org/)
+[![Tests](https://img.shields.io/badge/tests-116%20passing-brightgreen.svg)](https://pestphp.com/)
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.2-blue.svg)](https://www.php.net/)
 
-## Instalação
+Biblioteca PHP que adiciona suporte a **Content Controls** (Structured Document Tags conforme ISO/IEC 29500-1:2016 §17.5.2) para PHPOffice/PHPWord.
+
+## ✨ Features
+
+- 🎯 **API Simples**: Proxy Pattern unificado - uma classe para tudo
+- 🔒 **Content Controls**: Rich Text, Plain Text, Picture, Group
+- 🛡️ **Proteção de Conteúdo**: Bloqueio de SDT, conteúdo ou desbloqueado
+- 🔑 **IDs Únicos**: Gerenciamento automático de IDs (8 dígitos)
+- ✅ **Type Safety**: PHPStan Level 9 strict mode
+- 📝 **ISO Compliant**: Conforme ISO/IEC 29500-1:2016
+
+## 📦 Instalação
 
 ```bash
 composer require mkgrow/content-control
 ```
 
-## Uso Básico
+**Requisitos:**
+- PHP 8.2+
+- ext-dom, ext-zip, ext-mbstring
+- phpoffice/phpword ^1.4
+
+## 🚀 Uso Rápido
 
 ```php
 use MkGrow\ContentControl\ContentControl;
-use PhpOffice\PhpWord\PhpWord;
 
-$phpWord = new PhpWord();
-$section = $phpWord->addSection();
-$section->addText('Conteúdo protegido');
+// 1. Criar instância do ContentControl (proxy para PhpWord)
+$cc = new ContentControl();
 
-$contentControl = new ContentControl($section, [
-    'id' => 'ctrl-1',
-    'alias' => 'Meu Controle',
-    'tag' => 'protected',
-    'lockType' => 'sdtContentLocked'
+// 2. Adicionar conteúdo ao documento
+$section = $cc->addSection();
+$section->addText('Este texto está protegido por Content Control');
+
+// 3. Envolver Section em Content Control
+$cc->addContentControl($section, [
+    'alias' => 'Nome do Cliente',      // Nome exibido no Word
+    'tag' => 'customer-name',          // ID para programação
+    'type' => ContentControl::TYPE_RICH_TEXT,
+    'lockType' => ContentControl::LOCK_SDT_LOCKED  // Não pode deletar
 ]);
 
-$xml = $contentControl->getXml();
+// 4. Salvar documento (.docx com SDTs injetados)
+$cc->save('documento.docx');
 ```
 
-## Error Handling
+## 📖 Documentação
 
-A partir da versão 2.0, a biblioteca utiliza exceptions customizadas para tratamento de erros mais robusto.
+### Content Control Types
 
-### Abordagem Simples
+```php
+ContentControl::TYPE_RICH_TEXT    // Texto com formatação (padrão)
+ContentControl::TYPE_PLAIN_TEXT   // Texto simples
+ContentControl::TYPE_PICTURE      // Controle de imagem
+ContentControl::TYPE_GROUP        // Agrupa elementos
+```
 
-Para casos simples, capture a exception base para todos os erros da biblioteca:
+### Lock Types
+
+```php
+ContentControl::LOCK_NONE              // Sem bloqueio (padrão)
+ContentControl::LOCK_SDT_LOCKED        // Não pode deletar o SDT
+ContentControl::LOCK_CONTENT_LOCKED    // Não pode editar conteúdo
+ContentControl::LOCK_UNLOCKED          // Explicitamente desbloqueado
+```
+
+### Configuração Completa
+
+```php
+$cc = new ContentControl();
+$section = $cc->addSection();
+$table = $section->addTable();
+// ... adicionar linhas/células
+
+$cc->addContentControl($table, [
+    'id' => '12345678',                           // ID único (opcional - auto-gerado)
+    'alias' => 'Tabela de Produtos',              // Nome amigável
+    'tag' => 'products-table',                    // Tag para busca programática
+    'type' => ContentControl::TYPE_RICH_TEXT,     // Tipo do controle
+    'lockType' => ContentControl::LOCK_CONTENT_LOCKED  // Bloquear edição
+]);
+
+$cc->save('catalogo.docx');
+```
+
+### Múltiplos Content Controls
+
+```php
+$cc = new ContentControl();
+
+// Seção 1: Cliente
+$section1 = $cc->addSection();
+$section1->addText('Nome: ___________');
+$cc->addContentControl($section1, [
+    'alias' => 'Dados do Cliente',
+    'tag' => 'customer-info'
+]);
+
+// Seção 2: Produto
+$section2 = $cc->addSection();
+$section2->addText('Produto: ___________');
+$cc->addContentControl($section2, [
+    'alias' => 'Informações do Produto',
+    'tag' => 'product-info'
+]);
+
+$cc->save('formulario.docx');
+```
+
+### Delegação PHPWord
+
+ContentControl é um **Proxy** para `PhpWord`, então você pode usar todos os métodos:
+
+```php
+$cc = new ContentControl();
+
+// Configurar documento
+$cc->getDocInfo()->setTitle('Meu Documento');
+$cc->getDocInfo()->setCreator('Sistema XYZ');
+
+// Adicionar estilos
+$cc->addFontStyle('negrito', ['bold' => true]);
+$cc->addParagraphStyle('centralizado', ['alignment' => 'center']);
+
+// Adicionar seções
+$section = $cc->addSection(['orientation' => 'landscape']);
+$section->addText('Texto em negrito', 'negrito', 'centralizado');
+
+$cc->save('documento-estilizado.docx');
+```
+
+### Tratamento de Erros
+
+#### Abordagem Simples
 
 ```php
 use MkGrow\ContentControl\ContentControl;
-use MkGrow\ContentControl\IOFactory;
 use MkGrow\ContentControl\Exception\ContentControlException;
-use PhpOffice\PhpWord\PhpWord;
 
 try {
-    $phpWord = new PhpWord();
-    $section = $phpWord->addSection();
+    $cc = new ContentControl();
+    $section = $cc->addSection();
     $section->addText('Conteúdo');
     
-    $control = new ContentControl($section, [
+    $cc->addContentControl($section, [
         'alias' => 'Campo Principal',
         'tag' => 'main-field'
     ]);
     
-    IOFactory::saveWithContentControls(
-        $phpWord,
-        [$control],
-        '/caminho/documento.docx'
-    );
+    $cc->save('/caminho/documento.docx');
     
     echo "Documento salvo com sucesso!";
     
 } catch (ContentControlException $e) {
-    // Captura todos os erros da biblioteca
-    error_log("Erro ao salvar documento: " . $e->getMessage());
-    // Tratar erro (exibir mensagem, retry, etc)
+    // Captura TODOS os erros da biblioteca
+    error_log("Erro: " . $e->getMessage());
 }
 ```
 
-### Tratamento Granular
-
-Para controle mais fino, capture exceptions específicas:
+#### Tratamento Granular
 
 ```php
-use MkGrow\ContentControl\IOFactory;
 use MkGrow\ContentControl\Exception\ZipArchiveException;
 use MkGrow\ContentControl\Exception\DocumentNotFoundException;
 use MkGrow\ContentControl\Exception\TemporaryFileException;
 
 try {
-    IOFactory::saveWithContentControls($phpWord, [$control], $filename);
+    $cc->save($filename);
     
 } catch (ZipArchiveException $e) {
-    // Erro ao manipular arquivo ZIP (corrupto, formato inválido)
-    error_log("Arquivo DOCX corrompido ou inválido: " . $e->getMessage());
+    // Erro ao manipular ZIP (arquivo corrupto)
+    error_log("DOCX inválido: " . $e->getMessage());
     
 } catch (DocumentNotFoundException $e) {
-    // word/document.xml ausente no DOCX
-    error_log("Estrutura DOCX inválida: " . $e->getMessage());
+    // word/document.xml ausente (estrutura inválida)
+    error_log("Estrutura DOCX corrompida: " . $e->getMessage());
     
 } catch (TemporaryFileException $e) {
-    // Falha ao limpar arquivo temporário (pode ser ignorado)
-    error_log("Aviso: arquivo temporário não removido: " . $e->getMessage());
+    // Falha ao limpar temp file (pode ignorar)
+    error_log("Aviso: temp file não removido: " . $e->getMessage());
     
 } catch (\RuntimeException $e) {
-    // Diretório não gravável, falha ao mover arquivo
-    error_log("Erro de permissão ou I/O: " . $e->getMessage());
+    // Diretório não gravável, falha I/O
+    error_log("Erro de permissão: " . $e->getMessage());
 }
 ```
 
-### Hierarquia de Exceptions
+#### Hierarquia de Exceptions
 
 ```
-RuntimeException (built-in)
+RuntimeException (PHP built-in)
 └── ContentControlException (base)
     ├── ZipArchiveException
     ├── DocumentNotFoundException
     └── TemporaryFileException
 ```
 
-Todas as exceptions customizadas estendem `ContentControlException`, permitindo captura unificada ou granular conforme necessidade.
-
-## Desenvolvimento
+## 🧪 Desenvolvimento
 
 ### Setup Inicial
 
 ```bash
-# Clonar o repositório
 git clone https://github.com/mkgrow/content-control.git
 cd content-control
-
-# Instalar dependências
 composer install
 ```
 
 ### Executar Testes
 
 ```bash
-# Todos os testes
-composer test
-
-# Apenas testes unitários
-composer test:unit
-
-# Apenas testes de feature
-composer test:feature
-
-# Com cobertura (requer Xdebug)
-composer test:coverage
-
-# Gerar relatório HTML de cobertura
-composer test:coverage-html
+composer test              # Todos os testes (116 testes, 240 assertions)
+composer test:unit         # Apenas unit tests
+composer test:feature      # Apenas integration tests
+composer test:coverage     # Com cobertura (requer Xdebug)
 ```
-
-Após gerar o relatório HTML, abra `coverage/html/index.html` no navegador.
 
 ### Análise Estática
 
 ```bash
-# Executar PHPStan
-composer analyse
-
-# Gerar baseline (primeira vez ou após refatorações grandes)
-composer analyse:baseline
+composer analyse           # PHPStan Level 9 strict mode
+composer check             # Análise + Testes
 ```
 
-### Validação Completa
-
-```bash
-# Executar análise estática + testes
-composer check
-
-# Comando usado no CI/CD
-composer ci
-```
-
-### Estrutura de Testes
+### Estrutura do Projeto
 
 ```
+src/
+├── ContentControl.php      # Classe principal (Proxy Pattern)
+├── SDTConfig.php          # Value Object para configuração
+├── SDTRegistry.php        # Registry de IDs únicos
+├── SDTInjector.php        # Service Layer (injeção de XML)
+├── Assert.php             # Utility para type narrowing
+└── Exception/             # Hierarquia de exceptions
+    ├── ContentControlException.php
+    ├── ZipArchiveException.php
+    ├── DocumentNotFoundException.php
+    └── TemporaryFileException.php
+
 tests/
-├── Pest.php              # Configuração e helpers globais
-├── Unit/                 # Testes unitários da classe ContentControl
-│   ├── ContentControlTest.php
-│   ├── PropertiesTest.php
-│   └── XmlGenerationTest.php
-├── Feature/              # Testes de integração com PHPWord
-│   ├── PhpWordIntegrationTest.php
-│   └── ElementSerializationTest.php
-└── Fixtures/             # Dados de teste reutilizáveis
-    └── SampleElements.php
+├── Unit/                  # Testes unitários (83 tests)
+│   ├── SDTConfigTest.php
+│   ├── SDTRegistryTest.php
+│   └── SDTInjectorTest.php
+└── Feature/               # Testes de integração (7 tests)
+    ├── ElementSerializationTest.php
+    └── PhpWordIntegrationTest.php
 ```
-
-### Cobertura de Código
-
-**Mínimo exigido:** 80%
-
-Para visualizar a cobertura atual:
-
-```bash
-composer test:coverage-html
-```
-
-O relatório será gerado em `coverage/html/index.html`.
-
-### Requisitos
-
-- PHP 8.2 ou superior
-- Extensão `ext-dom`
-- Extensão `ext-zip`
-- Extensão `ext-mbstring`
-
-## Contribuindo
-
-Contribuições são bem-vindas! Siga estas etapas:
-
-1. Fork o repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Faça suas alterações
-4. Execute os testes e validações (`composer check`)
-5. Commit suas mudanças (`git commit -m 'Add: nova feature'`)
-6. Push para a branch (`git push origin feature/nova-feature`)
-7. Abra um Pull Request
 
 ### Padrões de Código
 
-- PSR-12 para estilo de código
-- **PHPStan level 9** (máximo rigor de type safety)
-- Cobertura de testes mínima de 80%
-- Documentação PHPDoc completa com tipos
-- Exception-based error handling (não retornar `false` para erros)
+- ✅ PSR-12 code style
+- ✅ PHPStan Level 9 (máximo rigor)
+- ✅ 80%+ test coverage
+- ✅ Exception-based error handling
+- ✅ Immutable value objects (readonly properties)
+- ✅ Type hints completos (strict_types=1)
 
-## Licença
+## 🏗️ Arquitetura v2.0
 
-MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+### Design Patterns
 
-## Créditos
+- **Proxy Pattern**: ContentControl encapsula PhpWord + SDTRegistry
+- **Value Object**: SDTConfig imutável com readonly properties
+- **Registry Pattern**: SDTRegistry gerencia IDs únicos
+- **Service Layer**: SDTInjector abstrai manipulação de ZIP
+
+### Decisões de Design
+
+**Por que não estender PHPWord?**
+- ✅ Mantém compatibilidade (sem fork)
+- ✅ Permite atualizações do PHPWord
+- ✅ Reduz acoplamento
+- ⚠️  Requer manipulação de ZIP pós-geração
+
+**Por que injeção pós-geração?**
+- PHPWord não tem suporte nativo a SDTs
+- Fork quebraria compatibilidade com upstream
+- Injeção via ZIP mantém conformidade ISO/IEC 29500-1
+
+Veja [.github/copilot-instructions.md](.github/copilot-instructions.md) para detalhes da arquitetura.
+
+## 📝 Changelog
+
+Veja [CHANGELOG.md](CHANGELOG.md) para histórico de versões.
+
+**v2.0.0 (Breaking Changes):**
+- ✨ Proxy Pattern: API unificada via classe ContentControl
+- ✨ Gerenciamento automático de IDs únicos
+- ✨ Value Objects imutáveis (SDTConfig)
+- ✨ Exception-based error handling
+- ❌ REMOVED: IOFactory (use `ContentControl::save()`)
+- ❌ REMOVED: Herança de AbstractContainer
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas!
+
+1. Fork o repositório
+2. Crie uma branch (`git checkout -b feature/nova-feature`)
+3. Faça commit (`git commit -m 'Add: nova feature'`)
+4. Execute testes (`composer check`)
+5. Push (`git push origin feature/nova-feature`)
+6. Abra um Pull Request
+
+**Critérios de aceitação:**
+- PHPStan Level 9 sem erros
+- Testes com cobertura ≥80%
+- PHPDoc completo com tipos
+
+## 📄 Licença
+
+MIT License - veja [LICENSE](LICENSE) para detalhes.
+
+## 🙏 Créditos
 
 - Desenvolvido por [MkGrow](https://github.com/mkgrow)
 - Baseado em [PHPOffice/PHPWord](https://github.com/PHPOffice/PHPWord)
+- Conforme ISO/IEC 29500-1:2016 (Office Open XML)
