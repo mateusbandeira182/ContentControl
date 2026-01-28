@@ -29,8 +29,10 @@ test('save lança RuntimeException se diretório for caminho inválido', functio
     $section = $cc->addSection();
     $section->addText('Test content');
     
-    // Caminho com caracteres inválidos
-    $invalidPath = ':\invalid\\0path\\document.docx';
+    // Caminho com caractere nulo (causa ValueError em is_dir/is_writable no PHP 8.2+)
+    // Usar separador de diretório apropriado para o sistema operacional
+    $sep = DIRECTORY_SEPARATOR;
+    $invalidPath = "{$sep}invalid{$sep}\0path{$sep}document.docx";
     
     expect(fn() => $cc->save($invalidPath))
         ->toThrow(\RuntimeException::class);
