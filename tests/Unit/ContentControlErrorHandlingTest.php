@@ -17,8 +17,8 @@ test('save lança RuntimeException se diretório não for gravável', function (
     $section->addText('Test content');
     
     // Tentar salvar em diretório que não existe/não é gravável
-    // Em Windows: usar caminho de sistema
-    $invalidPath = 'Z:\nonexistent\path\document.docx';
+    // Usar caminho absoluto que não existe em Linux e Windows
+    $invalidPath = '/nonexistent_dir_12345/subdir/document.docx';
     
     expect(fn() => $cc->save($invalidPath))
         ->toThrow(\RuntimeException::class, 'Target directory not writable');
