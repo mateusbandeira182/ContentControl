@@ -38,11 +38,13 @@ final class SDTInjector
     {
         // Abrir arquivo como ZIP
         $zip = new \ZipArchive();
+        $zipOpened = false;
         $openResult = $zip->open($docxPath);
         if ($openResult !== true) {
             throw new ZipArchiveException($openResult, $docxPath);
         }
 
+        $zipOpened = true;
         try {
             // Ler document.xml
             $documentXml = $zip->getFromName('word/document.xml');
@@ -71,7 +73,9 @@ final class SDTInjector
             $zip->deleteName('word/document.xml');
             $zip->addFromString('word/document.xml', $documentXml);
         } finally {
-            $zip->close();
+            if ($zipOpened) {
+                $zip->close();
+            }
         }
     }
 
@@ -149,10 +153,19 @@ final class SDTInjector
             throw new \DOMException('SDTInjector: Failed to serialize Content Control to XML');
         }
 
-        // Remover declaração de namespace (será herdado do document.xml)
-        $xml = str_replace(' xmlns:w="' . self::WORDML_NAMESPACE . '"', '', $xml);
+        // Remover declaração de namespace (será herdado do document.xml) de forma robusta
+        $cleanXml = preg_replace(
+            '/\s+xmlns:w=("|\')' . preg_quote(self::WORDML_NAMESPACE, '/') . '\1/',
+            '',
+            $xml,
+            1
+        );
 
-        return $xml;
+        if ($cleanXml === null) {
+            throw new \DOMException('SDTInjector: Failed to remove WordprocessingML namespace from serialized XML');
+        }
+
+        return $cleanXml;
     }
 
     /**

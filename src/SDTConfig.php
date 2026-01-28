@@ -173,15 +173,17 @@ final class SDTConfig
         // Verificar caracteres de controle que podem causar problemas
         // Bloqueia C0 controls (0x00-0x1F) e C1 controls (0x7F-0x9F)
         if (preg_match('/[\x00-\x1F\x7F-\x9F]/u', $alias) === 1) {
+            // Sanitizar alias para exibição segura
+            $sanitized = addcslashes($alias, "\x00..\x1F\x7F..\x9F");
             throw new \InvalidArgumentException(
-                'SDTConfig: Alias must not contain control characters'
+                sprintf('SDTConfig: Alias "%s" must not contain control characters', $sanitized)
             );
         }
 
         // Verificar caracteres reservados XML que podem causar problemas de parsing
         if (preg_match('/[<>&"\']/', $alias) === 1) {
             throw new \InvalidArgumentException(
-                'SDTConfig: Alias contains XML reserved characters'
+                sprintf('SDTConfig: Alias "%s" contains XML reserved characters', $alias)
             );
         }
     }
@@ -216,7 +218,7 @@ final class SDTConfig
         // Tag deve seguir padrão de identificador: começa com letra ou _, depois alfanumérico, -, _, .
         if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_.-]*$/', $tag) !== 1) {
             throw new \InvalidArgumentException(
-                'SDTConfig: Tag must start with a letter or underscore and contain only alphanumeric characters, hyphens, underscores, and periods'
+                sprintf('SDTConfig: Tag "%s" must start with a letter or underscore and contain only alphanumeric characters, hyphens, underscores, and periods', $tag)
             );
         }
     }
