@@ -81,8 +81,8 @@ final class SDTInjector
             $sortedTuples = $this->sortElementsByDepth($sdtTuples);
 
             // 4. Processar cada elemento
-            foreach ($sortedTuples as $tuple) {
-                $this->processElement($dom, $tuple['element'], $tuple['config']);
+            foreach ($sortedTuples as $index => $tuple) {
+                $this->processElement($dom, $tuple['element'], $tuple['config'], $index);
             }
 
             // 5. Serializar DOM modificado
@@ -184,10 +184,11 @@ final class SDTInjector
      * @param \DOMDocument $dom Documento DOM
      * @param mixed $element Elemento PHPWord
      * @param SDTConfig $config Configuração do Content Control
+     * @param int $elementIndex Índice do elemento na ordem de processamento (0-indexed)
      * @return void
      * @throws \RuntimeException Se não conseguir localizar elemento
      */
-    private function processElement(\DOMDocument $dom, mixed $element, SDTConfig $config): void
+    private function processElement(\DOMDocument $dom, mixed $element, SDTConfig $config, int $elementIndex): void
     {
         // Validar que elemento é object
         if (!is_object($element)) {
@@ -195,7 +196,7 @@ final class SDTInjector
         }
         
         // Localizar elemento no DOM
-        $targetElement = $this->locator->findElementInDOM($dom, $element);
+        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex);
         
         if ($targetElement === null) {
             throw new \RuntimeException(
@@ -574,20 +575,35 @@ final class SDTInjector
      * Elementos mais profundos (Cell) são processados antes de elementos
      * mais rasos (Table), evitando re-wrapping de elementos já envolvidos.
      * 
+     * Usa ordenação estável: quando profundidades iguais, mantém ordem original.
+     * 
      * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples
      * @return array<int, array{element: mixed, config: SDTConfig}> Tuplas ordenadas
      */
     private function sortElementsByDepth(array $sdtTuples): array
     {
-        usort($sdtTuples, function ($a, $b) {
-            $depthA = $this->getElementDepth($a['element']);
-            $depthB = $this->getElementDepth($b['element']);
+        // Adicionar índice original para ordenação estável
+        $withIndex = array_map(function ($tuple, $index) {
+            return ['tuple' => $tuple, 'originalIndex' => $index];
+        }, $sdtTuples, array_keys($sdtTuples));
+
+        usort($withIndex, function ($a, $b) {
+            $depthA = $this->getElementDepth($a['tuple']['element']);
+            $depthB = $this->getElementDepth($b['tuple']['element']);
             
             // Ordenar decrescente (mais profundo primeiro)
-            return $depthB <=> $depthA;
+            $depthComparison = $depthB <=> $depthA;
+            
+            // Se profundidades iguais, manter ordem original (estabilidade)
+            if ($depthComparison === 0) {
+                return $a['originalIndex'] <=> $b['originalIndex'];
+            }
+            
+            return $depthComparison;
         });
         
-        return $sdtTuples;
+        // Extrair tuplas ordenadas
+        return array_map(fn($item) => $item['tuple'], $withIndex);
     }
 
     /**

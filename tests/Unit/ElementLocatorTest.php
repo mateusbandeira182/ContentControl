@@ -22,12 +22,10 @@ describe('ElementLocator', function () {
         // Criar um elemento Text real que será serializado como <w:p>
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $section->addText('Primeiro');
-        $text = $section->addText('Segundo');  // Este é o que vamos buscar
-        $section->addText('Terceiro');
+        $text = $section->addText('Primeiro');  // v3.0: sempre busca [1] (primeiro livre)
 
-        // Buscar 2º parágrafo (ordem 1, 0-indexed)
-        $found = $locator->findElementInDOM($dom, $text, 1);
+        // v3.0: Sempre busca [1] (primeiro elemento livre que não está em SDT)
+        $found = $locator->findElementInDOM($dom, $text, 0);
 
         expect($found)->not->toBeNull();
         expect($found->nodeName)->toBe('w:p');
@@ -36,7 +34,7 @@ describe('ElementLocator', function () {
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
         $textNode = $xpath->query('.//w:t', $found)->item(0);
-        expect($textNode->textContent)->toBe('Segundo');
+        expect($textNode->textContent)->toBe('Primeiro');  // Agora espera "Primeiro" (primeiro livre)
     });
 
     test('findElementInDOM localiza Table por ordem', function () {
@@ -64,9 +62,12 @@ describe('ElementLocator', function () {
 
     test('findElementInDOM retorna null se não encontrar', function () {
         $dom = new DOMDocument();
+        // XML sem parágrafos - apenas uma tabela
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-            <w:p><w:r><w:t>Único</w:t></w:r></w:p>
+            <w:tbl>
+                <w:tr><w:tc><w:p><w:r><w:t>Tabela</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl>
         </w:body>';
         $dom->loadXML($xml);
 
@@ -74,11 +75,12 @@ describe('ElementLocator', function () {
         
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $text = $section->addText('Inexistente');
+        $text = $section->addText('Texto qualquer');  // Busca <w:p> mas XML só tem <w:tbl>
 
-        // Buscar 5º elemento (não existe)
-        $found = $locator->findElementInDOM($dom, $text, 4);
+        // v3.0: Testa que retorna null quando tipo não existe
+        $found = $locator->findElementInDOM($dom, $text, 0);
 
+        // Deve retornar null pois não há <w:p> direto em <w:body> (apenas dentro de <w:tc>)
         expect($found)->toBeNull();
     });
 

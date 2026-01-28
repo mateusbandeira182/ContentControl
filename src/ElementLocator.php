@@ -77,6 +77,39 @@ final class ElementLocator
             return null;
         }
 
+        // Para células, buscar apenas células NÃO envolvidas em SDTs
+        // Isso evita localizar células que já foram movidas para <w:sdtContent>
+        // Sempre busca [1] pois células são removidas do resultado após wrapping
+        if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
+            $query = '//w:body//w:tc[not(ancestor::w:sdtContent)][1]';
+            
+            $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
+            if ($nodes === null || $nodes === false || $nodes->length === 0) {
+                return null;
+            }
+
+            $node = $nodes->item(0);
+            return ($node instanceof DOMElement) ? $node : null;
+        }
+
+        // Para outros elementos (Text, Table, etc), aplicar filtro similar
+        // e sempre usar [1] pois elementos wrappados são removidos do resultado
+        if ($element instanceof \PhpOffice\PhpWord\Element\Text ||
+            $element instanceof \PhpOffice\PhpWord\Element\TextRun ||
+            $element instanceof \PhpOffice\PhpWord\Element\Table) {
+            // Buscar apenas elementos NÃO envolvidos em SDTs
+            $query .= '[not(ancestor::w:sdtContent)][1]';
+            
+            $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
+            if ($nodes === null || $nodes === false || $nodes->length === 0) {
+                return null;
+            }
+
+            $node = $nodes->item(0);
+            return ($node instanceof DOMElement) ? $node : null;
+        }
+
+        // Para outros elementos sem filtro, usar índice de registro
         // XPath é 1-indexed
         $xpathPosition = $order + 1;
         $query .= "[{$xpathPosition}]";
