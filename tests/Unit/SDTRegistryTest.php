@@ -31,6 +31,7 @@ describe('SDTRegistry - Geração de IDs', function () {
         
         for ($i = 0; $i < 10000; $i++) {
             $id = $registry->generateUniqueId();
+            $registry->markIdAsUsed($id); // Marcar como usado para próxima iteração
             $ids[$id] = true;
         }
         
