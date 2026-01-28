@@ -30,7 +30,7 @@ test('save lança RuntimeException se diretório for caminho inválido', functio
     $section->addText('Test content');
     
     // Caminho com caracteres inválidos
-    $invalidPath = ":\invalid\0path\document.docx";
+    $invalidPath = ':\invalid\\0path\\document.docx';
     
     expect(fn() => $cc->save($invalidPath))
         ->toThrow(\RuntimeException::class);
