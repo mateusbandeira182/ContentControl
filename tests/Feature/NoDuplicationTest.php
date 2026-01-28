@@ -30,6 +30,7 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         $zip->close();
         
         expect($documentXml)->toBeString();
+        assert(is_string($documentXml));
         
         // Contar ocorrências do texto
         $textOccurrences = substr_count($documentXml, 'Texto único que não deve duplicar');
@@ -66,6 +67,8 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         $zip->open($outputPath);
         $documentXml = $zip->getFromName('word/document.xml');
         $zip->close();
+        
+        assert(is_string($documentXml));
         
         // Verificar não duplicação
         $cellR0C0Count = substr_count($documentXml, 'Cell R0C0');
@@ -106,6 +109,8 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         $zip->open($outputPath);
         $documentXml = $zip->getFromName('word/document.xml');
         $zip->close();
+        
+        assert(is_string($documentXml));
         
         // Verificar não duplicação
         $protectedCellCount = substr_count($documentXml, 'Conteúdo da célula protegida');
@@ -150,6 +155,8 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         $zip->open($outputPath);
         $documentXml = $zip->getFromName('word/document.xml');
         $zip->close();
+        
+        assert(is_string($documentXml));
         
         // Verificar não duplicação de TODOS os conteúdos
         expect(substr_count($documentXml, 'Texto antes da tabela'))->toBe(1);

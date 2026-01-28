@@ -34,6 +34,7 @@ describe('ElementLocator', function () {
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
         $textNode = $xpath->query('.//w:t', $found)->item(0);
+        assert($textNode !== null);
         expect($textNode->textContent)->toBe('Primeiro');  // Agora espera "Primeiro" (primeiro livre)
     });
 
@@ -119,6 +120,8 @@ describe('ElementLocator', function () {
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
         $paragraph = $xpath->query('//w:p')->item(0);
 
+        assert($paragraph instanceof DOMElement);
+
         $locator = new ElementLocator();
         
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
@@ -141,6 +144,8 @@ describe('ElementLocator', function () {
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
         $paragraph = $xpath->query('//w:p')->item(0);
+
+        assert($paragraph instanceof DOMElement);
 
         $locator = new ElementLocator();
         

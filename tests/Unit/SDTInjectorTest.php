@@ -350,6 +350,7 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
         // Validar conteúdo dentro de SDT
         $wrappedParagraph = $xpath->query('//w:sdt/w:sdtContent/w:p')->item(0);
         expect($wrappedParagraph)->not->toBeNull();
+        assert($wrappedParagraph !== null);
         expect($wrappedParagraph->textContent)->toBe('Original');
 
         // Validar NÃO há parágrafo órfão fora do SDT
@@ -385,15 +386,19 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
 
         // Validar propriedades
         $idNode = $xpath->query('//w:sdt/w:sdtPr/w:id')->item(0);
+        assert($idNode instanceof DOMElement);
         expect($idNode->getAttribute('w:val'))->toBe('87654321');
 
         $aliasNode = $xpath->query('//w:sdt/w:sdtPr/w:alias')->item(0);
+        assert($aliasNode instanceof DOMElement);
         expect($aliasNode->getAttribute('w:val'))->toBe('Alias Test');
 
         $tagNode = $xpath->query('//w:sdt/w:sdtPr/w:tag')->item(0);
+        assert($tagNode instanceof DOMElement);
         expect($tagNode->getAttribute('w:val'))->toBe('tag-test');
 
         $lockNode = $xpath->query('//w:sdt/w:sdtPr/w:lock')->item(0);
+        assert($lockNode instanceof DOMElement);
         expect($lockNode->getAttribute('w:val'))->toBe('sdtLocked');
     });
 
@@ -474,6 +479,9 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
 
         $sorted = $method->invoke($injector, $sdtTuples);
 
+        assert(is_array($sorted));
+        /** @var array<int, array{element: mixed, config: SDTConfig}> $sorted */
+
         // Verificar ordem: Cell (depth 3) deve vir antes de Table (depth 1)
         expect($sorted[0]['element'])->toBe($cell);
         expect($sorted[1]['element'])->toBe($table);
@@ -524,6 +532,9 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
         $method->setAccessible(true);
 
         $sorted = $method->invoke($injector, $sdtTuples);
+
+        assert(is_array($sorted));
+        /** @var array<int, array{element: mixed, config: SDTConfig}> $sorted */
 
         // Primeiros elementos devem ser Cells (depth 3)
         expect($sorted[0]['element'])->toBeInstanceOf(\PhpOffice\PhpWord\Element\Cell::class);

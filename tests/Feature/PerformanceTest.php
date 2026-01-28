@@ -185,6 +185,8 @@ describe('Performance - v3.0 (DOM Inline Wrapping)', function () {
         $documentXml = $zip->getFromName('word/document.xml');
         $zip->close();
 
+        assert(is_string($documentXml));
+
         $dom = new DOMDocument();
         $dom->loadXML($documentXml);
 
