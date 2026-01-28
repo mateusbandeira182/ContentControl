@@ -36,47 +36,99 @@ final class SDTInjector
      */
     public function inject(string $docxPath, array $sdtTuples): void
     {
-        // Abrir arquivo como ZIP
+        $zip = $this->openDocxAsZip($docxPath);
+
+        try {
+            $documentXml = $this->readDocumentXml($zip, $docxPath);
+            $sdtsXml = $this->generateSDTsXml($sdtTuples);
+            $documentXml = $this->injectXmlBeforeBodyClose($documentXml, $sdtsXml);
+            $this->updateDocumentXml($zip, $documentXml);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * Abre arquivo DOCX como ZipArchive
+     * 
+     * @param string $docxPath Caminho do arquivo DOCX
+     * @return \ZipArchive Instância do ZIP aberto
+     * @throws ZipArchiveException Se falhar ao abrir
+     */
+    private function openDocxAsZip(string $docxPath): \ZipArchive
+    {
         $zip = new \ZipArchive();
-        $zipOpened = false;
         $openResult = $zip->open($docxPath);
         if ($openResult !== true) {
             throw new ZipArchiveException($openResult, $docxPath);
         }
+        return $zip;
+    }
 
-        $zipOpened = true;
-        try {
-            // Ler document.xml
-            $documentXml = $zip->getFromName('word/document.xml');
-            if ($documentXml === false) {
-                throw new DocumentNotFoundException('word/document.xml', $docxPath);
-            }
-
-            // Gerar XML dos SDTs
-            $sdtsXml = '';
-            foreach ($sdtTuples as $tuple) {
-                $sdtsXml .= $this->createSDTElement($tuple['element'], $tuple['config']);
-            }
-
-            // Injetar antes de </w:body>
-            $bodyClosePos = strpos($documentXml, '</w:body>');
-            if ($bodyClosePos !== false) {
-                $documentXml = substr_replace(
-                    $documentXml,
-                    $sdtsXml,
-                    $bodyClosePos,
-                    0
-                );
-            }
-
-            // Atualizar document.xml
-            $zip->deleteName('word/document.xml');
-            $zip->addFromString('word/document.xml', $documentXml);
-        } finally {
-            if ($zipOpened) {
-                $zip->close();
-            }
+    /**
+     * Lê conteúdo do word/document.xml
+     * 
+     * @param \ZipArchive $zip Arquivo ZIP aberto
+     * @param string $docxPath Caminho do arquivo (para mensagens de erro)
+     * @return string Conteúdo XML do documento
+     * @throws DocumentNotFoundException Se word/document.xml não existir
+     */
+    private function readDocumentXml(\ZipArchive $zip, string $docxPath): string
+    {
+        $documentXml = $zip->getFromName('word/document.xml');
+        if ($documentXml === false) {
+            throw new DocumentNotFoundException('word/document.xml', $docxPath);
         }
+        return $documentXml;
+    }
+
+    /**
+     * Gera XML de todos os Content Controls
+     * 
+     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples Tuplas elemento→config
+     * @return string XML concatenado de todos os SDTs
+     */
+    private function generateSDTsXml(array $sdtTuples): string
+    {
+        $sdtsXml = '';
+        foreach ($sdtTuples as $tuple) {
+            $sdtsXml .= $this->createSDTElement($tuple['element'], $tuple['config']);
+        }
+        return $sdtsXml;
+    }
+
+    /**
+     * Injeta XML dos SDTs antes da tag de fechamento </w:body>
+     * 
+     * @param string $documentXml XML original do documento
+     * @param string $sdtsXml XML dos Content Controls a injetar
+     * @return string XML modificado com SDTs injetados
+     */
+    private function injectXmlBeforeBodyClose(string $documentXml, string $sdtsXml): string
+    {
+        $bodyClosePos = strpos($documentXml, '</w:body>');
+        if ($bodyClosePos !== false) {
+            $documentXml = substr_replace(
+                $documentXml,
+                $sdtsXml,
+                $bodyClosePos,
+                0
+            );
+        }
+        return $documentXml;
+    }
+
+    /**
+     * Atualiza word/document.xml no arquivo ZIP
+     * 
+     * @param \ZipArchive $zip Arquivo ZIP aberto
+     * @param string $documentXml Novo conteúdo XML do documento
+     * @return void
+     */
+    private function updateDocumentXml(\ZipArchive $zip, string $documentXml): void
+    {
+        $zip->deleteName('word/document.xml');
+        $zip->addFromString('word/document.xml', $documentXml);
     }
 
     /**

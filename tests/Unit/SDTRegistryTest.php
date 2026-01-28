@@ -38,10 +38,16 @@ describe('SDTRegistry - Geração de IDs', function () {
         expect(count($ids))->toBe(10000);
     });
 
-    test('marca ID gerado como usado', function () {
+    test('ID gerado não é marcado como usado até register()', function () {
         $registry = new SDTRegistry();
         $id = $registry->generateUniqueId();
         
+        // ID gerado não está marcado como usado até ser registrado
+        expect($registry->isIdUsed($id))->toBeFalse();
+        
+        // Após registrar, o ID deve estar marcado como usado
+        $section = createSection();
+        $registry->register($section, new SDTConfig(id: $id));
         expect($registry->isIdUsed($id))->toBeTrue();
     });
 });
@@ -92,16 +98,19 @@ describe('SDTRegistry - Registro de elementos', function () {
             ->toThrow(InvalidArgumentException::class, 'already in use');
     });
 
-    test('rejeita ID que foi reservado por generateUniqueId', function () {
+    test('permite registrar ID gerado por generateUniqueId', function () {
         $registry = new SDTRegistry();
         $section = createSection();
         
-        // Gerar um ID único (isso reserva o ID)
-        $reservedId = $registry->generateUniqueId();
+        // Gerar um ID único
+        $generatedId = $registry->generateUniqueId();
         
-        // Tentar registrar um elemento com o ID reservado deve lançar exceção
-        expect(fn() => $registry->register($section, new SDTConfig(id: $reservedId)))
-            ->toThrow(InvalidArgumentException::class, 'already reserved and cannot be reused');
+        // Deve permitir registrar elemento com o ID gerado (não está reservado)
+        $registry->register($section, new SDTConfig(id: $generatedId));
+        
+        // Após registro, ID deve estar marcado como usado
+        expect($registry->isIdUsed($generatedId))->toBeTrue();
+        expect($registry->count())->toBe(1);
     });
 
     test('aceita config com ID vazio', function () {
@@ -223,10 +232,16 @@ describe('SDTRegistry - has', function () {
 });
 
 describe('SDTRegistry - isIdUsed', function () {
-    test('retorna true para ID gerado', function () {
+    test('retorna false para ID apenas gerado (sem register)', function () {
         $registry = new SDTRegistry();
         $id = $registry->generateUniqueId();
         
+        // ID gerado não está marcado como usado até ser registrado
+        expect($registry->isIdUsed($id))->toBeFalse();
+        
+        // Após registrar, deve estar marcado como usado
+        $section = createSection();
+        $registry->register($section, new SDTConfig(id: $id));
         expect($registry->isIdUsed($id))->toBeTrue();
     });
 

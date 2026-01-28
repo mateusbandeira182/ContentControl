@@ -53,6 +53,9 @@ final class SDTRegistry
      * Probabilidade de colisão em 10.000 IDs: ~0.01%
      * Fallback garante sucesso mesmo em ranges saturados.
      * 
+     * IMPORTANTE: O ID retornado NÃO é automaticamente marcado como usado.
+     * Isso ocorre em register() para evitar marcar IDs que nunca serão registrados.
+     * 
      * @return string ID único de 8 dígitos
      */
     public function generateUniqueId(): string
@@ -64,7 +67,6 @@ final class SDTRegistry
             $id = IDValidator::generateRandom();
             
             if (!isset($this->usedIds[$id])) {
-                $this->usedIds[$id] = true;
                 return $id;
             }
         }
@@ -87,7 +89,6 @@ final class SDTRegistry
         
         $id = str_pad((string) $this->sequentialCounter, 8, '0', STR_PAD_LEFT);
         $this->sequentialCounter++;
-        $this->usedIds[$id] = true;
         
         return $id;
     }

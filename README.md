@@ -26,7 +26,240 @@ composer require mkgrow/content-control
 - ext-dom, ext-zip, ext-mbstring
 - phpoffice/phpword ^1.4
 
-## 🚀 Uso Rápido
+## � Migração v1.x → v2.0
+
+### Principais Breaking Changes
+
+A versão 2.0 introduz uma nova arquitetura baseada no **Proxy Pattern**, eliminando a necessidade de gerenciar manualmente a classe `IOFactory` e simplificando drasticamente a API.
+
+#### 1. Classe IOFactory Removida
+
+**❌ v1.x (Deprecated):**
+```php
+use PhpOffice\PhpWord\PhpWord;
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\IOFactory;
+
+$phpWord = new PhpWord();
+$section = $phpWord->addSection();
+$section->addText('Conteúdo');
+
+$control = new ContentControl($section, [
+    'id' => '12345678',
+    'alias' => 'Nome do Cliente'
+]);
+
+// Salvamento manual via IOFactory
+IOFactory::saveWithContentControls($phpWord, [$control], 'output.docx');
+```
+
+**✅ v2.0 (Current):**
+```php
+use MkGrow\ContentControl\ContentControl;
+
+// ContentControl encapsula PhpWord automaticamente
+$cc = new ContentControl();
+$section = $cc->addSection();
+$section->addText('Conteúdo');
+
+// Registrar Content Control
+$cc->addContentControl($section, [
+    'id' => '12345678',  // Opcional - auto-gerado se omitido
+    'alias' => 'Nome do Cliente'
+]);
+
+// Salvamento direto
+$cc->save('output.docx');
+```
+
+#### 2. API de Constructor Alterada
+
+**❌ v1.x:**
+```php
+// Content Control criado passando elemento no constructor
+$control = new ContentControl($section, ['alias' => 'Campo']);
+```
+
+**✅ v2.0:**
+```php
+// Content Control registrado após adicionar conteúdo
+$section = $cc->addSection();
+$cc->addContentControl($section, ['alias' => 'Campo']);
+```
+
+#### 3. Writer Customizado Removido
+
+**❌ v1.x:** Necessário configurar Writer manualmente  
+**✅ v2.0:** Injeção de SDTs totalmente automatizada em `$cc->save()`
+
+### Exemplo Completo de Migração
+
+#### Código v1.x (Deprecated)
+```php
+<?php
+use PhpOffice\PhpWord\PhpWord;
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\IOFactory;
+
+// Criar documento base
+$phpWord = new PhpWord();
+$section = $phpWord->addSection();
+$section->addText('Prezado(a) Cliente,');
+
+// Criar Content Control
+$customerSection = $phpWord->addSection();
+$customerSection->addText('Nome: __________');
+$control1 = new ContentControl($customerSection, [
+    'id' => '12345678',
+    'alias' => 'Dados do Cliente',
+    'tag' => 'customer-data',
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+// Criar outro Content Control
+$productSection = $phpWord->addSection();
+$productSection->addText('Produto: __________');
+$control2 = new ContentControl($productSection, [
+    'id' => '87654321',
+    'alias' => 'Informações do Produto',
+    'tag' => 'product-info'
+]);
+
+// Salvar manualmente
+IOFactory::saveWithContentControls(
+    $phpWord, 
+    [$control1, $control2], 
+    'contrato.docx'
+);
+```
+
+#### Código v2.0 (Current)
+```php
+<?php
+use MkGrow\ContentControl\ContentControl;
+
+// ContentControl é o ponto único de entrada
+$cc = new ContentControl();
+
+// Adicionar conteúdo normalmente
+$section = $cc->addSection();
+$section->addText('Prezado(a) Cliente,');
+
+// Seção 1: Dados do Cliente
+$customerSection = $cc->addSection();
+$customerSection->addText('Nome: __________');
+$cc->addContentControl($customerSection, [
+    // ID omitido - será gerado automaticamente
+    'alias' => 'Dados do Cliente',
+    'tag' => 'customer-data',
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+// Seção 2: Informações do Produto
+$productSection = $cc->addSection();
+$productSection->addText('Produto: __________');
+$cc->addContentControl($productSection, [
+    'alias' => 'Informações do Produto',
+    'tag' => 'product-info'
+]);
+
+// Salvamento único com injeção automática
+$cc->save('contrato.docx');
+```
+
+### Benefícios da Migração
+
+| Aspecto | v1.x | v2.0 |
+|---------|------|------|
+| **Classes para importar** | 3 (PhpWord, ContentControl, IOFactory) | 1 (ContentControl) |
+| **Gerenciamento de IDs** | Manual (obrigatório) | Automático (opcional) |
+| **Error Handling** | Retorno booleano | Exceptions tipadas |
+| **Type Safety** | PHPStan Level 7 | PHPStan Level 9 Strict |
+| **Imutabilidade** | Propriedades públicas mutáveis | Value Objects readonly |
+| **API Fluente** | ❌ Não suportada | ✅ Fluent chaining |
+
+### Guia de Migração Passo a Passo
+
+1. **Remover imports antigos:**
+   ```php
+   // ❌ Remover
+   use PhpOffice\PhpWord\PhpWord;
+   use MkGrow\ContentControl\IOFactory;
+   ```
+
+2. **Substituir criação de PhpWord:**
+   ```php
+   // ❌ v1.x
+   $phpWord = new PhpWord();
+   
+   // ✅ v2.0
+   $cc = new ContentControl();
+   ```
+
+3. **Atualizar adição de seções:**
+   ```php
+   // ❌ v1.x
+   $section = $phpWord->addSection();
+   
+   // ✅ v2.0 (delega transparentemente)
+   $section = $cc->addSection();
+   ```
+
+4. **Migrar criação de Content Controls:**
+   ```php
+   // ❌ v1.x
+   $control = new ContentControl($section, ['alias' => '...']);
+   
+   // ✅ v2.0
+   $cc->addContentControl($section, ['alias' => '...']);
+   ```
+
+5. **Substituir salvamento:**
+   ```php
+   // ❌ v1.x
+   IOFactory::saveWithContentControls($phpWord, [$control1, $control2], 'file.docx');
+   
+   // ✅ v2.0
+   $cc->save('file.docx');
+   ```
+
+### Casos Avançados: PhpWord Existente
+
+Se você já tem uma instância de `PhpWord` e quer usar Content Controls:
+
+```php
+use PhpOffice\PhpWord\PhpWord;
+use MkGrow\ContentControl\ContentControl;
+
+// Documento PHPWord existente
+$phpWord = new PhpWord();
+$phpWord->getDocInfo()->setTitle('Meu Documento');
+// ... configurações existentes ...
+
+// Encapsular em ContentControl
+$cc = new ContentControl($phpWord);
+
+// Continuar normalmente
+$section = $cc->addSection();
+$cc->addContentControl($section, ['alias' => 'Campo']);
+$cc->save('documento.docx');
+```
+
+### Troubleshooting
+
+**Erro: `Class IOFactory not found`**
+- **Causa:** Código v1.x usando API antiga
+- **Solução:** Remover `use MkGrow\ContentControl\IOFactory` e usar `$cc->save()`
+
+**Erro: `ContentControl::__construct() expects 0-1 parameters, 2 given`**
+- **Causa:** Tentando passar elemento no constructor (padrão v1.x)
+- **Solução:** Usar `$cc->addContentControl($element, $options)` após criar seção
+
+**IDs duplicados após migração:**
+- **Causa:** IDs hardcoded podem colidir com IDs gerados
+- **Solução:** Remover parâmetro `id` das opções (deixar auto-gerar) ou usar IDs únicos
+
+## �🚀 Uso Rápido
 
 ```php
 use MkGrow\ContentControl\ContentControl;
@@ -259,6 +492,218 @@ RuntimeException (PHP built-in)
     ├── ZipArchiveException
     ├── DocumentNotFoundException
     └── TemporaryFileException
+```
+
+#### Cenários Práticos de Error Handling
+
+##### Validação de Entrada do Usuário
+
+```php
+use MkGrow\ContentControl\ContentControl;
+
+function createProtectedDocument(string $customerName, string $outputPath): void
+{
+    try {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+        $section->addText("Cliente: {$customerName}");
+        
+        // Validação automática via SDTConfig
+        $cc->addContentControl($section, [
+            'alias' => $customerName,  // Pode lançar exception se contém < > & " '
+            'tag' => 'customer-name',
+            'lockType' => ContentControl::LOCK_SDT_LOCKED
+        ]);
+        
+        $cc->save($outputPath);
+        
+    } catch (\InvalidArgumentException $e) {
+        // Entrada inválida (caracteres XML reservados, ID inválido, etc)
+        throw new \DomainException(
+            "Nome do cliente contém caracteres inválidos: " . $e->getMessage(),
+            0,
+            $e
+        );
+    } catch (\RuntimeException $e) {
+        // Erro de I/O (diretório não gravável, disco cheio)
+        throw new \RuntimeException(
+            "Falha ao salvar documento em {$outputPath}: " . $e->getMessage(),
+            0,
+            $e
+        );
+    }
+}
+
+// Uso
+try {
+    createProtectedDocument('João Silva', '/docs/contrato.docx');
+} catch (\DomainException $e) {
+    echo "Erro de validação: " . $e->getMessage();
+} catch (\RuntimeException $e) {
+    echo "Erro do sistema: " . $e->getMessage();
+}
+```
+
+##### Processamento em Lote com Recuperação
+
+```php
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\Exception\ContentControlException;
+
+function processMultipleDocuments(array $customers, string $outputDir): array
+{
+    $results = ['success' => [], 'failed' => []];
+    
+    foreach ($customers as $customer) {
+        try {
+            $cc = new ContentControl();
+            $section = $cc->addSection();
+            $section->addText("Cliente: {$customer['name']}");
+            
+            $cc->addContentControl($section, [
+                'alias' => $customer['name'],
+                'tag' => "customer-{$customer['id']}"
+            ]);
+            
+            $filename = "{$outputDir}/customer-{$customer['id']}.docx";
+            $cc->save($filename);
+            
+            $results['success'][] = $customer['id'];
+            
+        } catch (ContentControlException $e) {
+            // Erro específico da biblioteca - logar e continuar
+            error_log("Falha ao processar cliente {$customer['id']}: " . $e->getMessage());
+            $results['failed'][] = [
+                'id' => $customer['id'],
+                'error' => $e->getMessage()
+            ];
+            
+        } catch (\Throwable $e) {
+            // Erro inesperado - logar e continuar
+            error_log("Erro inesperado para cliente {$customer['id']}: " . $e->getMessage());
+            $results['failed'][] = [
+                'id' => $customer['id'],
+                'error' => 'Sistema indisponível'
+            ];
+        }
+    }
+    
+    return $results;
+}
+
+// Uso
+$customers = [
+    ['id' => 1, 'name' => 'João Silva'],
+    ['id' => 2, 'name' => 'Maria Santos'],
+    ['id' => 3, 'name' => 'Cliente <Inválido>'],  // Falhará
+];
+
+$results = processMultipleDocuments($customers, '/tmp/docs');
+echo "Processados: " . count($results['success']) . "\n";
+echo "Falharam: " . count($results['failed']) . "\n";
+```
+
+##### Validação de Permissões
+
+```php
+use MkGrow\ContentControl\ContentControl;
+
+function ensureDirectoryWritable(string $path): void
+{
+    if (!is_dir($path)) {
+        if (!mkdir($path, 0755, true)) {
+            throw new \RuntimeException("Não foi possível criar diretório: {$path}");
+        }
+    }
+    
+    if (!is_writable($path)) {
+        throw new \RuntimeException("Diretório sem permissão de escrita: {$path}");
+    }
+}
+
+function saveSecureDocument(string $content, string $outputPath): void
+{
+    // Validar diretório ANTES de processar
+    ensureDirectoryWritable(dirname($outputPath));
+    
+    try {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+        $section->addText($content);
+        
+        $cc->addContentControl($section, [
+            'alias' => 'Conteúdo Protegido',
+            'lockType' => ContentControl::LOCK_CONTENT_LOCKED
+        ]);
+        
+        $cc->save($outputPath);
+        
+    } catch (\RuntimeException $e) {
+        // Se falhou após validação, pode ser disco cheio ou arquivo bloqueado
+        throw new \RuntimeException(
+            "Erro ao salvar documento (disco cheio ou arquivo em uso): " . $e->getMessage(),
+            0,
+            $e
+        );
+    }
+}
+```
+
+##### Retry com Exponential Backoff
+
+```php
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\Exception\TemporaryFileException;
+
+function saveWithRetry(ContentControl $cc, string $path, int $maxAttempts = 3): void
+{
+    $attempt = 0;
+    $lastException = null;
+    
+    while ($attempt < $maxAttempts) {
+        try {
+            $cc->save($path);
+            return; // Sucesso
+            
+        } catch (TemporaryFileException $e) {
+            // Falha ao limpar temp file - não afeta documento final, ignorar
+            error_log("Aviso: " . $e->getMessage());
+            return;
+            
+        } catch (\RuntimeException $e) {
+            $attempt++;
+            $lastException = $e;
+            
+            if ($attempt < $maxAttempts) {
+                // Exponential backoff: 100ms, 400ms, 1600ms
+                $delay = (int) (100000 * pow(4, $attempt - 1));
+                error_log("Tentativa {$attempt} falhou, aguardando " . ($delay / 1000) . "ms...");
+                usleep($delay);
+            }
+        }
+    }
+    
+    // Todas as tentativas falharam
+    throw new \RuntimeException(
+        "Falha ao salvar documento após {$maxAttempts} tentativas: " . 
+        ($lastException ? $lastException->getMessage() : 'erro desconhecido'),
+        0,
+        $lastException
+    );
+}
+
+// Uso em ambiente com I/O instável (rede, disco lento)
+try {
+    $cc = new ContentControl();
+    $section = $cc->addSection();
+    $section->addText('Documento crítico');
+    
+    saveWithRetry($cc, '/mnt/network/document.docx');
+    echo "Salvo com sucesso!\n";
+    
+} catch (\RuntimeException $e) {
+    echo "Falha definitiva: " . $e->getMessage() . "\n";
+}
 ```
 
 ## 🧪 Desenvolvimento
