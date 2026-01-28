@@ -314,3 +314,134 @@ describe('SDTInjector - Injeção em DOCX', function () {
         unlink($tempFile);
     });
 });
+
+describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
+
+    test('wrapElementInline move elemento sem duplicar', function () {
+        $dom = new DOMDocument();
+        $xml = '<?xml version="1.0"?>
+        <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:p><w:r><w:t>Original</w:t></w:r></w:p>
+        </w:body>';
+        $dom->loadXML($xml);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        
+        $paragraph = $xpath->query('//w:p')->item(0);
+        
+        // Debug: validar que encontrou o parágrafo
+        expect($paragraph)->not->toBeNull();
+
+        $injector = new SDTInjector();
+        $config = new SDTConfig(id: '12345678', alias: 'Test');
+
+        // Chamar método privado via Reflection
+        $reflection = new ReflectionClass($injector);
+        $method = $reflection->getMethod('wrapElementInline');
+        $method->setAccessible(true);
+        $method->invoke($injector, $paragraph, $config);
+        
+        // Validar estrutura
+        $sdt = $xpath->query('//w:sdt')->item(0);
+        expect($sdt)->not->toBeNull();
+
+        // Validar conteúdo dentro de SDT
+        $wrappedParagraph = $xpath->query('//w:sdt/w:sdtContent/w:p')->item(0);
+        expect($wrappedParagraph)->not->toBeNull();
+        expect($wrappedParagraph->textContent)->toBe('Original');
+
+        // Validar NÃO há parágrafo órfão fora do SDT
+        $orphanParagraphs = $xpath->query('//w:body/w:p');
+        expect($orphanParagraphs->length)->toBe(0);
+    });
+
+    test('wrapElementInline cria propriedades SDT corretas', function () {
+        $dom = new DOMDocument();
+        $xml = '<?xml version="1.0"?>
+        <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:p><w:r><w:t>Test</w:t></w:r></w:p>
+        </w:body>';
+        $dom->loadXML($xml);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        
+        $paragraph = $xpath->query('//w:p')->item(0);
+
+        $injector = new SDTInjector();
+        $config = new SDTConfig(
+            id: '87654321',
+            alias: 'Alias Test',
+            tag: 'tag-test',
+            lockType: ContentControl::LOCK_SDT_LOCKED
+        );
+
+        $reflection = new ReflectionClass($injector);
+        $method = $reflection->getMethod('wrapElementInline');
+        $method->setAccessible(true);
+        $method->invoke($injector, $paragraph, $config);
+
+        // Validar propriedades
+        $idNode = $xpath->query('//w:sdt/w:sdtPr/w:id')->item(0);
+        expect($idNode->getAttribute('w:val'))->toBe('87654321');
+
+        $aliasNode = $xpath->query('//w:sdt/w:sdtPr/w:alias')->item(0);
+        expect($aliasNode->getAttribute('w:val'))->toBe('Alias Test');
+
+        $tagNode = $xpath->query('//w:sdt/w:sdtPr/w:tag')->item(0);
+        expect($tagNode->getAttribute('w:val'))->toBe('tag-test');
+
+        $lockNode = $xpath->query('//w:sdt/w:sdtPr/w:lock')->item(0);
+        expect($lockNode->getAttribute('w:val'))->toBe('sdtLocked');
+    });
+
+    test('isElementProcessed detecta elementos já processados', function () {
+        $dom = new DOMDocument();
+        $xml = '<?xml version="1.0"?>
+        <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:p><w:r><w:t>Test</w:t></w:r></w:p>
+        </w:body>';
+        $dom->loadXML($xml);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        
+        $paragraph = $xpath->query('//w:p')->item(0);
+
+        $injector = new SDTInjector();
+
+        $reflection = new ReflectionClass($injector);
+        
+        // Marcar como processado
+        $markMethod = $reflection->getMethod('markElementAsProcessed');
+        $markMethod->setAccessible(true);
+        $markMethod->invoke($injector, $paragraph);
+
+        // Verificar
+        $isProcessedMethod = $reflection->getMethod('isElementProcessed');
+        $isProcessedMethod->setAccessible(true);
+        $isProcessed = $isProcessedMethod->invoke($injector, $paragraph);
+
+        expect($isProcessed)->toBeTrue();
+    });
+
+    test('wrapElementInline lança exceção se elemento sem owner document', function () {
+        $injector = new SDTInjector();
+        $config = new SDTConfig(id: '12345678');
+
+        // Criar documento mas não adicionar o elemento ao documento
+        $doc = new DOMDocument();
+        $element = $doc->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
+        // NÃO adicionar ao documento, deixar órfão
+        
+        // Elemento tem ownerDocument mas não tem parent
+        $reflection = new ReflectionClass($injector);
+        $method = $reflection->getMethod('wrapElementInline');
+        $method->setAccessible(true);
+
+        expect(fn() => $method->invoke($injector, $element, $config))
+            ->toThrow(\RuntimeException::class, 'Target element has no parent node');
+    });
+
+});

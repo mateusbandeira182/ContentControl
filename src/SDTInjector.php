@@ -26,6 +26,13 @@ final class SDTInjector
     private const WORDML_NAMESPACE = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
     /**
+     * Registry de elementos já processados (evita re-wrapping)
+     * 
+     * @var array<string, true>
+     */
+    private array $processedElements = [];
+
+    /**
      * Injeta Content Controls em arquivo DOCX existente
      * 
      * @param string $docxPath Caminho do arquivo DOCX
@@ -229,34 +236,37 @@ final class SDTInjector
      */
     private function createSdtProperties(\DOMDocument $doc, SDTConfig $config): \DOMElement
     {
-        $sdtPr = $doc->createElement('w:sdtPr');
+        // Detectar namespace (usar o do documento ou padrão)
+        $nsUri = self::WORDML_NAMESPACE;
+        
+        $sdtPr = $doc->createElementNS($nsUri, 'w:sdtPr');
 
         // ID (obrigatório) - §17.5.2.14
-        $id = $doc->createElement('w:id');
+        $id = $doc->createElementNS($nsUri, 'w:id');
         $id->setAttribute('w:val', $config->id);
         $sdtPr->appendChild($id);
 
         // Alias (opcional) - §17.5.2.6
         if ($config->alias !== '') {
-            $alias = $doc->createElement('w:alias');
+            $alias = $doc->createElementNS($nsUri, 'w:alias');
             $alias->setAttribute('w:val', $config->alias);
             $sdtPr->appendChild($alias);
         }
 
         // Tag (opcional) - §17.5.2.33
         if ($config->tag !== '') {
-            $tag = $doc->createElement('w:tag');
+            $tag = $doc->createElementNS($nsUri, 'w:tag');
             $tag->setAttribute('w:val', $config->tag);
             $sdtPr->appendChild($tag);
         }
 
         // Tipo de Content Control (obrigatório)
-        $typeElement = $doc->createElement($this->getTypeElementName($config->type));
+        $typeElement = $doc->createElementNS($nsUri, $this->getTypeElementName($config->type));
         $sdtPr->appendChild($typeElement);
 
         // Lock (condicional) - §17.5.2.23
         if ($config->lockType !== ContentControl::LOCK_NONE) {
-            $lock = $doc->createElement('w:lock');
+            $lock = $doc->createElementNS($nsUri, 'w:lock');
             $lock->setAttribute('w:val', $config->lockType);
             $sdtPr->appendChild($lock);
         }
@@ -375,5 +385,90 @@ final class SDTInjector
             $element instanceof \PhpOffice\PhpWord\Element\Header ||
             $element instanceof \PhpOffice\PhpWord\Element\Footer
         );
+    }
+
+    /**
+     * Envolve elemento DOM inline com estrutura <w:sdt>
+     * 
+     * Workflow:
+     * 1. Criar <w:sdt><w:sdtPr>...</w:sdtPr><w:sdtContent></w:sdtContent></w:sdt>
+     * 2. Inserir SDT antes do elemento original no DOM tree
+     * 3. MOVER elemento para dentro de <w:sdtContent> (appendChild move o nó)
+     * 4. Marcar como processado
+     * 
+     * IMPORTANTE: appendChild() em nó existente = MOVE (não duplica)
+     * 
+     * @param \DOMElement $targetElement Elemento DOM a envolver
+     * @param SDTConfig $config Configuração do Content Control
+     * @return void
+     * @throws \RuntimeException Se elemento não tiver parent ou owner document
+     */
+    private function wrapElementInline(\DOMElement $targetElement, SDTConfig $config): void
+    {
+        // Validar pre-condições
+        $dom = $targetElement->ownerDocument;
+        if ($dom === null) {
+            throw new \RuntimeException('SDTInjector: Target element has no owner document');
+        }
+
+        $parent = $targetElement->parentNode;
+        if ($parent === null) {
+            throw new \RuntimeException('SDTInjector: Target element has no parent node');
+        }
+
+        // Detectar namespace do documento (normalmente está no elemento root ou parent)
+        $nsUri = $targetElement->namespaceURI;
+        if ($nsUri === null || $nsUri === '') {
+            $nsUri = self::WORDML_NAMESPACE;
+        }
+
+        // 1. Criar estrutura <w:sdt> COM namespace
+        $sdt = $dom->createElementNS($nsUri, 'w:sdt');
+        
+        // 2. Adicionar propriedades <w:sdtPr>
+        $sdtPr = $this->createSdtProperties($dom, $config);
+        $sdt->appendChild($sdtPr);
+        
+        // 3. Criar container <w:sdtContent> COM namespace
+        $sdtContent = $dom->createElementNS($nsUri, 'w:sdtContent');
+        
+        // 4. Inserir SDT ANTES do elemento original
+        $parent->insertBefore($sdt, $targetElement);
+        
+        // 5. MOVER elemento para dentro de <w:sdtContent>
+        // ⚠️ IMPORTANTE: appendChild() MOVE o nó (não duplica)
+        $sdtContent->appendChild($targetElement);
+        
+        // 6. Completar estrutura SDT
+        $sdt->appendChild($sdtContent);
+        
+        // 7. Marcar como processado
+        $this->markElementAsProcessed($targetElement);
+    }
+
+    /**
+     * Verifica se elemento já foi processado (evita re-wrapping)
+     * 
+     * @param \DOMElement $element Elemento DOM a verificar
+     * @return bool true se já processado
+     */
+    private function isElementProcessed(\DOMElement $element): bool
+    {
+        $path = $element->getNodePath();
+        return isset($this->processedElements[$path]);
+    }
+
+    /**
+     * Marca elemento como processado
+     * 
+     * Usa NodePath como chave única (ex: "/w:body[1]/w:sdt[1]/w:sdtContent[1]/w:p[1]")
+     * 
+     * @param \DOMElement $element Elemento DOM a marcar
+     * @return void
+     */
+    private function markElementAsProcessed(\DOMElement $element): void
+    {
+        $path = $element->getNodePath();
+        $this->processedElements[$path] = true;
     }
 }
