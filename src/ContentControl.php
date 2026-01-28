@@ -209,7 +209,6 @@ final class ContentControl
     /**
      * Adiciona Content Control envolvendo um elemento
      * 
-     * @template T of mixed
      * @param AbstractContainer | AbstractElement $element Elemento PHPWord (Section, Table, etc)
      * @param array{
      *     id?: string,
