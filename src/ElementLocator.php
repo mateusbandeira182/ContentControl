@@ -147,6 +147,11 @@ final class ElementLocator
             return '//w:body/w:tbl';
         }
 
+        // Cell: buscar <w:tc> (table cell)
+        if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
+            return '//w:body//w:tc';
+        }
+
         // Section: não localiza (não serializado como elemento único)
         // Containers são processados via seus elementos filhos
 
@@ -187,6 +192,25 @@ final class ElementLocator
                     if ($firstCell instanceof DOMElement) {
                         $text = $this->extractTextContent($firstCell);
                         $parts[] = $text;
+                    }
+                }
+            }
+        }
+
+        // Cell: extrair conteúdo textual de elementos filhos
+        if ($domElement->nodeName === 'w:tc' && $this->xpath !== null) {
+            $parts[] = 'cell';  // Compatível com ElementIdentifier
+            
+            // Buscar elementos filhos (parágrafos dentro da célula)
+            $childParagraphs = $this->xpath->query('.//w:p', $domElement);
+            if ($childParagraphs !== false) {
+                foreach ($childParagraphs as $p) {
+                    if ($p instanceof DOMElement) {
+                        $text = $this->extractTextContent($p);
+                        if ($text !== '') {
+                            $parts[] = 'text';
+                            $parts[] = $text;
+                        }
                     }
                 }
             }

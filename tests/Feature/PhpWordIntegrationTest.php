@@ -12,10 +12,10 @@ describe('PHPWord Integration - Documento Completo', function () {
         
         // Criar section com conteúdo
         $section = $cc->addSection();
-        $section->addText('Este é um Content Control funcional', ['bold' => true]);
+        $textElement = $section->addText('Este é um Content Control funcional', ['bold' => true]);
         
-        // Envolver em Content Control
-        $cc->addContentControl($section, [
+        // Envolver elemento Text em Content Control (v3.0 não suporta Section)
+        $cc->addContentControl($textElement, [
             'alias' => 'Campo de Teste',
             'tag' => 'test-field',
             'type' => ContentControl::TYPE_RICH_TEXT,
@@ -48,15 +48,16 @@ describe('PHPWord Integration - Documento Completo', function () {
     });
 
     test('integra com fixtures de elementos', function () {
-        // TextRun
+        // Table (elemento complexo)
         $cc1 = new ContentControl();
         $section1 = $cc1->addSection();
         
-        $textRun = $section1->addTextRun();
-        $textRun->addText('Texto normal ');
-        $textRun->addText('Texto negrito', ['bold' => true]);
+        $table = $section1->addTable();
+        $table->addRow();
+        $table->addCell(2000)->addText('Célula 1');
+        $table->addCell(2000)->addText('Célula 2');
         
-        $cc1->addContentControl($section1, ['type' => ContentControl::TYPE_RICH_TEXT]);
+        $cc1->addContentControl($table, ['type' => ContentControl::TYPE_GROUP]);
         
         $tempFile1 = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {
@@ -67,15 +68,17 @@ describe('PHPWord Integration - Documento Completo', function () {
             $xml1 = $zip->getFromName('word/document.xml');
             $zip->close();
             
-            expect($xml1)->toContain('Texto normal');
-            expect($xml1)->toContain('Texto negrito');
+            // Validar Table protegida
+            expect($xml1)->toContain('Célula 1');
+            expect($xml1)->toContain('Célula 2');
+            expect($xml1)->toContain('<w:group');
         } finally {
             if (file_exists($tempFile1)) {
                 unlink($tempFile1);
             }
         }
         
-        // Table
+        // Test adicional: proteger apenas uma célula da tabela
         $cc2 = new ContentControl();
         $section2 = $cc2->addSection();
         
@@ -87,7 +90,8 @@ describe('PHPWord Integration - Documento Completo', function () {
             }
         }
         
-        $cc2->addContentControl($section2, ['type' => ContentControl::TYPE_GROUP]);
+        // Proteger Table inteiro (não Section)
+        $cc2->addContentControl($table, ['type' => ContentControl::TYPE_GROUP]);
         
         $tempFile2 = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {

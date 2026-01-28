@@ -45,6 +45,15 @@ final class SDTRegistry
     private int $sequentialCounter = 10000000;
 
     /**
+     * Marcadores de elementos (para localização rápida no futuro)
+     * 
+     * Estrutura: [objectId => markerId]
+     * 
+     * @var array<int, string>
+     */
+    private array $elementMarkers = [];
+
+    /**
      * Gera ID único de 8 dígitos
      * 
      * Tenta até 100 vezes gerar um ID aleatório que não esteja em uso.
@@ -101,15 +110,15 @@ final class SDTRegistry
     }
 
     /**
-     * Registra elemento com sua configuração SDT
+     * Registra elemento com sua configuração SDT (v3.0 - com marcador)
      * 
-     * @param mixed $element Elemento PHPWord (Section, Table, etc)
+     * @param object $element Elemento PHPWord (Section, Table, etc)
      * @param SDTConfig $config Configuração do Content Control
      * @return void
      * @throws \InvalidArgumentException Se elemento já registrado
      * @throws \InvalidArgumentException Se ID da config já está em uso
      */
-    public function register($element, SDTConfig $config): void
+    public function register(object $element, SDTConfig $config): void
     {
         // 1. Detectar elemento duplicado PRIMEIRO (comparação por identidade)
         foreach ($this->registry as $entry) {
@@ -136,7 +145,12 @@ final class SDTRegistry
             $this->usedIds[$config->id] = true;
         }
 
-        // 4. Adicionar ao registry
+        // 4. Gerar marcador (v3.0)
+        $marker = ElementIdentifier::generateMarker($element);
+        $objectId = spl_object_id($element);
+        $this->elementMarkers[$objectId] = $marker;
+
+        // 5. Adicionar ao registry
         $this->registry[] = ['element' => $element, 'config' => $config];
     }
 
@@ -153,10 +167,10 @@ final class SDTRegistry
     /**
      * Retorna configuração de um elemento específico
      * 
-     * @param mixed $element Elemento a buscar
+     * @param object $element Elemento a buscar
      * @return SDTConfig|null Configuração ou null se não encontrado
      */
-    public function getConfig($element): ?SDTConfig
+    public function getConfig(object $element): ?SDTConfig
     {
         foreach ($this->registry as $entry) {
             if ($entry['element'] === $element) {
@@ -170,10 +184,10 @@ final class SDTRegistry
     /**
      * Verifica se elemento está registrado
      * 
-     * @param mixed $element Elemento a verificar
+     * @param object $element Elemento a verificar
      * @return bool true se registrado, false caso contrário
      */
-    public function has($element): bool
+    public function has(object $element): bool
     {
         foreach ($this->registry as $entry) {
             if ($entry['element'] === $element) {
@@ -227,5 +241,28 @@ final class SDTRegistry
     {
         $this->registry = [];
         $this->usedIds = [];
+        $this->elementMarkers = [];
+    }
+
+    /**
+     * Retorna marcador de um elemento (v3.0)
+     * 
+     * @param object $element Elemento PHPWord
+     * @return string|null Marcador ou null se não registrado
+     */
+    public function getMarkerForElement(object $element): ?string
+    {
+        $objectId = spl_object_id($element);
+        return $this->elementMarkers[$objectId] ?? null;
+    }
+
+    /**
+     * Retorna todos os marcadores registrados (v3.0)
+     * 
+     * @return array<int, string> Mapa objectId → markerId
+     */
+    public function getAllMarkers(): array
+    {
+        return $this->elementMarkers;
     }
 }

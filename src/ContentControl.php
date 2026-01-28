@@ -209,7 +209,7 @@ final class ContentControl
     /**
      * Adiciona Content Control envolvendo um elemento
      * 
-     * @param AbstractContainer | AbstractElement $element Elemento PHPWord (Section, Table, etc)
+     * @param object $element Elemento PHPWord (Section, Table, Cell, Text, etc)
      * @param array{
      *     id?: string,
      *     alias?: string,
@@ -217,7 +217,7 @@ final class ContentControl
      *     type?: string,
      *     lockType?: string
      * } $options Configurações do Content Control
-     * @return AbstractContainer | AbstractElement O mesmo elemento (para fluent API)
+     * @return object O mesmo elemento (para fluent API)
      * 
      * @example
      * ```php
@@ -235,7 +235,7 @@ final class ContentControl
      * $cc->save('documento.docx');
      * ```
      */
-    public function addContentControl(AbstractContainer | AbstractElement $element, array $options = []): AbstractContainer | AbstractElement
+    public function addContentControl(object $element, array $options = []): object
     {
         // Criar config a partir das opções
         $config = SDTConfig::fromArray($options);

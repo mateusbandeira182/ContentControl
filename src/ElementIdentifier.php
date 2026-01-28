@@ -106,6 +106,23 @@ final class ElementIdentifier
             }
         }
 
+        // Cell: incluir tipo e conteúdo de elementos filhos
+        if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
+            $parts[] = 'cell';
+            $childElements = $element->getElements();
+            foreach ($childElements as $child) {
+                if ($child instanceof \PhpOffice\PhpWord\Element\Text) {
+                    $parts[] = 'text';
+                    $parts[] = $child->getText();
+                } elseif ($child instanceof \PhpOffice\PhpWord\Element\TextRun) {
+                    $parts[] = 'textrun';
+                    $parts[] = $child->getText();
+                } elseif ($child instanceof \PhpOffice\PhpWord\Element\Table) {
+                    $parts[] = 'table';
+                }
+            }
+        }
+
         return implode('|', $parts);
     }
 }

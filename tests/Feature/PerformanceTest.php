@@ -28,12 +28,13 @@ describe('Performance Tests', function () {
     test('salva documento com 100 Content Controls em tempo razoável', function () {
         $cc = new ContentControl();
         
-        // Criar 100 seções com Content Controls
+        // Criar 100 elementos Text com Content Controls
+        $section = $cc->addSection(); // Criar seção ANTES do loop
+        
         for ($i = 0; $i < 100; $i++) {
-            $section = $cc->addSection();
-            $section->addText("Seção {$i}");
+            $textElement = $section->addText("Texto protegido {$i}");
             
-            $cc->addContentControl($section, [
+            $cc->addContentControl($textElement, [
                 'alias' => "Campo {$i}",
                 'tag' => "field-{$i}",
                 'type' => ContentControl::TYPE_RICH_TEXT,
@@ -55,7 +56,7 @@ describe('Performance Tests', function () {
             // Validar arquivo criado
             expect(file_exists($tempFile))->toBeTrue();
             
-            // Validar tamanho razoável (> 8KB para 100 seções - ajustado de 10KB)
+            // Validar tamanho razoável (> 8KB para 100 elementos)
             $fileSize = filesize($tempFile);
             expect($fileSize)->toBeGreaterThan(8192, "Arquivo muito pequeno: {$fileSize} bytes");
             
@@ -141,5 +142,62 @@ describe('Performance Tests', function () {
         );
         
         expect($registry->count())->toBe(1000);
+    });
+});
+describe('Performance - v3.0 (DOM Inline Wrapping)', function () {
+    test('v3.0 performance com 100 elementos', function () {
+        $startTime = microtime(true);
+        $startMemory = memory_get_usage();
+
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+
+        // Adicionar 100 elementos
+        $elements = [];
+        for ($i = 0; $i < 100; $i++) {
+            $text = $section->addText("Elemento {$i}");
+            $elements[] = $text;
+        }
+
+        // Registrar todos como SDTs
+        foreach ($elements as $i => $element) {
+            $cc->addContentControl($element, [
+                'alias' => "Element {$i}"
+            ]);
+        }
+
+        $outputFile = sys_get_temp_dir() . '/perf_test_100_elements.docx';
+        $cc->save($outputFile);
+
+        $endTime = microtime(true);
+        $endMemory = memory_get_usage();
+
+        $executionTime = $endTime - $startTime;
+        $memoryUsed = ($endMemory - $startMemory) / 1024 / 1024;  // MB
+
+        // Benchmarks esperados (ajustar conforme hardware)
+        expect($executionTime)->toBeLessThan(5.0);  // < 5 segundos
+        expect($memoryUsed)->toBeLessThan(50);  // < 50 MB
+
+        // Validar duplicação usando XPath
+        $zip = new ZipArchive();
+        $zip->open($outputFile);
+        $documentXml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        $dom = new DOMDocument();
+        $dom->loadXML($documentXml);
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        // Verificar amostra aleatória (elementos 10, 50, 90)
+        foreach ([10, 50, 90] as $idx) {
+            $textNodes = $xpath->query("//w:t[contains(., 'Elemento {$idx}')]");
+            expect($textNodes->length)->toBe(1, "Elemento {$idx} deve aparecer exatamente 1 vez (duplicação detectada!)");
+        }
+
+        // Cleanup
+        unlink($outputFile);
     });
 });

@@ -187,21 +187,20 @@ describe('SDTInjector - Serialização de elementos', function () {
 
 describe('SDTInjector - Injeção em DOCX', function () {
     test('injeta SDT em arquivo DOCX', function () {
-        // Criar DOCX base
+        // Criar DOCX base com elemento Text
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
-        $section->addText('Base content');
+        $textElement = $section->addText('SDT content to protect');
 
         $tempFile = sys_get_temp_dir() . '/test_inject_' . uniqid() . '.docx';
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tempFile);
 
-        // Criar SDT para injetar
-        $sdtSection = createSectionWithText('SDT content');
+        // Criar SDT para injetar (usando elemento Text, não Section)
         $config = new SDTConfig(id: '12345678', alias: 'Test SDT');
 
         $tuples = [
-            ['element' => $sdtSection, 'config' => $config]
+            ['element' => $textElement, 'config' => $config]
         ];
 
         // Injetar
@@ -216,29 +215,30 @@ describe('SDTInjector - Injeção em DOCX', function () {
 
         expect($xml)->toContain('<w:sdt>');
         expect($xml)->toContain('Test SDT');
-        expect($xml)->toContain('SDT content');
+        expect($xml)->toContain('SDT content to protect');
 
         unlink($tempFile);
     });
 
     test('injeta múltiplos SDTs', function () {
-        // Criar DOCX base
+        // Criar DOCX base com múltiplos elementos Text
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
-        $section->addText('Base content');
+        $text1 = $section->addText('SDT 1 content');
+        $text2 = $section->addText('SDT 2 content');
 
         $tempFile = sys_get_temp_dir() . '/test_multi_inject_' . uniqid() . '.docx';
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tempFile);
 
-        // Criar múltiplos SDTs
+        // Criar múltiplos SDTs (usando elementos Text)
         $tuples = [
             [
-                'element' => createSectionWithText('SDT 1'),
+                'element' => $text1,
                 'config' => new SDTConfig(id: '12345678', alias: 'First')
             ],
             [
-                'element' => createSectionWithText('SDT 2'),
+                'element' => $text2,
                 'config' => new SDTConfig(id: '87654321', alias: 'Second')
             ],
         ];
@@ -275,19 +275,20 @@ describe('SDTInjector - Injeção em DOCX', function () {
     });
 
     test('injeta antes de </w:body>', function () {
-        // Criar DOCX base
+        // Criar DOCX base com elemento Text
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $section->addText('Before SDT');
+        $textToProtect = $section->addText('SDT content to protect');
 
         $tempFile = sys_get_temp_dir() . '/test_position_' . uniqid() . '.docx';
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tempFile);
 
-        // Injetar SDT
+        // Injetar SDT (envolvendo elemento existente)
         $tuples = [
             [
-                'element' => createSectionWithText('SDT content'),
+                'element' => $textToProtect,
                 'config' => new SDTConfig(id: '12345678')
             ]
         ];
@@ -444,4 +445,101 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
             ->toThrow(\RuntimeException::class, 'Target element has no parent node');
     });
 
+});
+describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
+    test('ordena Cell antes de Table', function () {
+        // Criar elementos PHPWord
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $table = $section->addTable();
+        $table->addRow();
+        $cell = $table->addCell(2000);
+        $cell->addText('Cell content');
+
+        // Criar configs
+        $cellConfig = new SDTConfig(id: '11111111', alias: 'Cell Control');
+        $tableConfig = new SDTConfig(id: '22222222', alias: 'Table Control');
+
+        // Array desordenado (Table primeiro)
+        $sdtTuples = [
+            ['element' => $table, 'config' => $tableConfig],
+            ['element' => $cell, 'config' => $cellConfig],
+        ];
+
+        // Usar reflexão para chamar sortElementsByDepth
+        $injector = new SDTInjector();
+        $reflection = new ReflectionClass($injector);
+        $method = $reflection->getMethod('sortElementsByDepth');
+        $method->setAccessible(true);
+
+        $sorted = $method->invoke($injector, $sdtTuples);
+
+        // Verificar ordem: Cell (depth 3) deve vir antes de Table (depth 1)
+        expect($sorted[0]['element'])->toBe($cell);
+        expect($sorted[1]['element'])->toBe($table);
+    });
+
+    test('getElementDepth retorna valores corretos', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $table = $section->addTable();
+        $table->addRow();
+        $cell = $table->addCell(2000);
+        $text = $section->addText('Text');
+
+        $injector = new SDTInjector();
+        $reflection = new ReflectionClass($injector);
+        $method = $reflection->getMethod('getElementDepth');
+        $method->setAccessible(true);
+
+        expect($method->invoke($injector, $cell))->toBe(3);
+        expect($method->invoke($injector, $table))->toBe(1);
+        expect($method->invoke($injector, $section))->toBe(1);
+        expect($method->invoke($injector, $text))->toBe(1);
+    });
+
+    test('ordena múltiplos elementos corretamente', function () {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $table1 = $section->addTable();
+        $table1->addRow();
+        $cell1 = $table1->addCell(2000);
+        $table2 = $section->addTable();
+        $table2->addRow();
+        $cell2 = $table2->addCell(2000);
+        $text = $section->addText('Text');
+
+        // Array desordenado
+        $sdtTuples = [
+            ['element' => $table1, 'config' => new SDTConfig(id: '11111111')],
+            ['element' => $cell1, 'config' => new SDTConfig(id: '22222222')],
+            ['element' => $text, 'config' => new SDTConfig(id: '33333333')],
+            ['element' => $table2, 'config' => new SDTConfig(id: '44444444')],
+            ['element' => $cell2, 'config' => new SDTConfig(id: '55555555')],
+        ];
+
+        $injector = new SDTInjector();
+        $reflection = new ReflectionClass($injector);
+        $method = $reflection->getMethod('sortElementsByDepth');
+        $method->setAccessible(true);
+
+        $sorted = $method->invoke($injector, $sdtTuples);
+
+        // Primeiros elementos devem ser Cells (depth 3)
+        expect($sorted[0]['element'])->toBeInstanceOf(\PhpOffice\PhpWord\Element\Cell::class);
+        expect($sorted[1]['element'])->toBeInstanceOf(\PhpOffice\PhpWord\Element\Cell::class);
+        
+        // Últimos 3 elementos devem ser Tables ou Text (depth 1)
+        // Ordem entre eles não é garantida (mesma profundidade)
+        $depths = [
+            $sorted[2]['element'] instanceof \PhpOffice\PhpWord\Element\Table ||
+            $sorted[2]['element'] instanceof \PhpOffice\PhpWord\Element\Text,
+            $sorted[3]['element'] instanceof \PhpOffice\PhpWord\Element\Table ||
+            $sorted[3]['element'] instanceof \PhpOffice\PhpWord\Element\Text,
+            $sorted[4]['element'] instanceof \PhpOffice\PhpWord\Element\Table ||
+            $sorted[4]['element'] instanceof \PhpOffice\PhpWord\Element\Text,
+        ];
+        
+        expect($depths)->each->toBeTrue();
+    });
 });
