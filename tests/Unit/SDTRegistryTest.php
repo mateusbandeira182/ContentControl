@@ -92,6 +92,18 @@ describe('SDTRegistry - Registro de elementos', function () {
             ->toThrow(InvalidArgumentException::class, 'already in use');
     });
 
+    test('rejeita ID que foi reservado por generateUniqueId', function () {
+        $registry = new SDTRegistry();
+        $section = createSection();
+        
+        // Gerar um ID único (isso reserva o ID)
+        $reservedId = $registry->generateUniqueId();
+        
+        // Tentar registrar um elemento com o ID reservado deve lançar exceção
+        expect(fn() => $registry->register($section, new SDTConfig(id: $reservedId)))
+            ->toThrow(InvalidArgumentException::class, 'already reserved and cannot be reused');
+    });
+
     test('aceita config com ID vazio', function () {
         $registry = new SDTRegistry();
         $section = createSection();
@@ -103,7 +115,7 @@ describe('SDTRegistry - Registro de elementos', function () {
     });
 
     // Edge case: Multiple elements can have empty IDs because the duplicate check
-    // explicitly skips empty IDs (see SDTRegistry::register line 116).
+    // in SDTRegistry::register explicitly skips empty IDs.
     // This allows elements without IDs to be registered multiple times.
     // When the document is saved, Word will auto-generate unique IDs if needed.
     test('múltiplos elementos com ID vazio não causam erro', function () {
