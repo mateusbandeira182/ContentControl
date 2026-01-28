@@ -114,29 +114,36 @@ function createSectionWithText(string $text = 'Sample text'): Section
 }
 
 /**
- * Creates a ContentControl with customizable configuration
+ * Creates a ContentControl instance with customizable configuration (v2.0 API)
  * 
  * @param array<string, string> $options
  */
 function createContentControl(array $options = []): ContentControl
 {
-    $section = createSection();
-    return new ContentControl($section, $options);
+    $cc = new ContentControl();
+    $section = $cc->addSection();
+    $section->addText('Sample text');
+    $cc->addContentControl($section, $options);
+    return $cc;
 }
 
 /**
- * Creates a ContentControl with all properties configured
+ * Creates a ContentControl with all properties configured (v2.0 API)
  */
 function createFullContentControl(): ContentControl
 {
-    $section = createSectionWithText('Full content control');
+    $cc = new ContentControl();
+    $section = $cc->addSection();
+    $section->addText('Full content control');
     
-    return new ContentControl($section, [
-        'id' => 'test-id-123',
+    $cc->addContentControl($section, [
+        'id' => '12345678',
         'alias' => 'Test Control',
         'tag' => 'test-tag',
-        'lockType' => 'sdtContentLocked'
+        'lockType' => ContentControl::LOCK_CONTENT_LOCKED
     ]);
+    
+    return $cc;
 }
 
 /**

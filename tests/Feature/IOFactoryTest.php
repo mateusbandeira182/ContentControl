@@ -43,11 +43,11 @@ describe('IOFactory - Save with Content Controls', function () {
     });
     
     test('salva documento com Content Control único', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
+        $cc = new ContentControl();
+        $section = $cc->addSection();
         $section->addText('Documento com Content Control');
         
-        $control = new ContentControl($section, [
+        $cc->addContentControl($section, [
             'alias' => 'Campo Principal',
             'tag' => 'main-field',
             'type' => ContentControl::TYPE_RICH_TEXT,
@@ -55,48 +55,40 @@ describe('IOFactory - Save with Content Controls', function () {
         
         $filename = $this->tempDir . '/test-single-control.docx';
         
-        IOFactory::saveWithContentControls(
-            $phpWord,
-            [$control],
-            $filename
-        );
+        $cc->save($filename);
         
         expect(file_exists($filename))->toBeTrue();
         expect(filesize($filename))->toBeGreaterThan(0);
     });
     
     test('salva documento com múltiplos Content Controls', function () {
-        $phpWord = new PhpWord();
+        $cc = new ContentControl();
         
         // Control 1: Texto
-        $section1 = $phpWord->addSection();
+        $section1 = $cc->addSection();
         $section1->addText('Campo 1');
-        $control1 = new ContentControl($section1, ['tag' => 'field-1']);
+        $cc->addContentControl($section1, ['tag' => 'field-1']);
         
         // Control 2: Tabela
-        $section2 = $phpWord->addSection();
+        $section2 = $cc->addSection();
         $table = $section2->addTable();
         $table->addRow();
         $table->addCell(2000)->addText('Dados');
-        $control2 = new ContentControl($section2, ['tag' => 'field-2']);
+        $cc->addContentControl($section2, ['tag' => 'field-2']);
         
         $filename = $this->tempDir . '/test-multiple-controls.docx';
         
-        IOFactory::saveWithContentControls(
-            $phpWord,
-            [$control1, $control2],
-            $filename
-        );
+        $cc->save($filename);
         
         expect(file_exists($filename))->toBeTrue();
     });
     
     test('valida estrutura XML do documento salvo', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
+        $cc = new ContentControl();
+        $section = $cc->addSection();
         $section->addText('Teste de validação');
         
-        $control = new ContentControl($section, [
+        $cc->addContentControl($section, [
             'alias' => 'Validação',
             'tag' => 'validation-field',
             'lockType' => ContentControl::LOCK_SDT_LOCKED,
@@ -104,7 +96,7 @@ describe('IOFactory - Save with Content Controls', function () {
         
         $filename = $this->tempDir . '/test-validation.docx';
         
-        IOFactory::saveWithContentControls($phpWord, [$control], $filename);
+        $cc->save($filename);
         
         // Abrir ZIP e ler document.xml
         $zip = new ZipArchive();
@@ -123,39 +115,30 @@ describe('IOFactory - Save with Content Controls', function () {
     });
     
     test('lança exceção para caminho inválido', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-        $control = new ContentControl($section);
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+        $cc->addContentControl($section);
         
         // Caminho inválido (diretório inexistente), construído de forma portátil
         $invalidPath = sys_get_temp_dir()
             . DIRECTORY_SEPARATOR . 'nonexistent_subdir_' . bin2hex(random_bytes(8))
             . DIRECTORY_SEPARATOR . 'arquivo.docx';
         
-        expect(fn() => IOFactory::saveWithContentControls(
-            $phpWord,
-            [$control],
-            $invalidPath
-        ))->toThrow(\RuntimeException::class, 'ContentControl: Target directory not writable');
+        expect(fn() => $cc->save($invalidPath))
+            ->toThrow(\RuntimeException::class, 'Target directory not writable');
     });
     
-    test('ignora elementos que não são ContentControl', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-        $section->addText('Apenas texto');
+    test('salva documento sem Content Controls', function () {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+        $section->addText('Documento sem Content Controls');
         
-        $control = new ContentControl($section);
+        $filename = $this->tempDir . '/test-no-controls.docx';
         
-        $filename = $this->tempDir . '/test-mixed-elements.docx';
-        
-        // Passar array com ContentControl e elemento inválido
-        IOFactory::saveWithContentControls(
-            $phpWord,
-            [$control, 'string-invalida', null],
-            $filename
-        );
+        $cc->save($filename);
         
         expect(file_exists($filename))->toBeTrue();
+        expect(filesize($filename))->toBeGreaterThan(0);
     });
     
     test('createWriter retorna Writer válido', function () {
@@ -167,42 +150,7 @@ describe('IOFactory - Save with Content Controls', function () {
         
         expect($writer)->toBeInstanceOf(\PhpOffice\PhpWord\Writer\WriterInterface::class);
     });
-
-    test('salva documento sem Content Controls', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-        $section->addText('Documento sem Content Controls');
-        
-        $filename = $this->tempDir . '/test-no-controls.docx';
-        
-        // Passar array vazio de Content Controls
-        IOFactory::saveWithContentControls(
-            $phpWord,
-            [],
-            $filename
-        );
-        
-        expect(file_exists($filename))->toBeTrue();
-        expect(filesize($filename))->toBeGreaterThan(0);
-    });
-
-    test('salva documento com array contendo apenas elementos inválidos', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
-        $section->addText('Apenas texto');
-        
-        $filename = $this->tempDir . '/test-invalid-only.docx';
-        
-        // Passar array com apenas elementos inválidos
-        IOFactory::saveWithContentControls(
-            $phpWord,
-            ['string', 123, null, new stdClass()],
-            $filename
-        );
-        
-        expect(file_exists($filename))->toBeTrue();
-    });
-
+    
     test('registerCustomWriters emite deprecation warning', function () {
         // Capturar error handler atual
         set_error_handler(function(int $errno, string $errstr): bool {
@@ -217,13 +165,12 @@ describe('IOFactory - Save with Content Controls', function () {
         // Restaurar error handler
         restore_error_handler();
     });
-
+    
     test('falha ao mover arquivo temporário lança RuntimeException', function () {
-        $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
+        $cc = new ContentControl();
+        $section = $cc->addSection();
         $section->addText('Test');
-        
-        $control = new ContentControl($section);
+        $cc->addContentControl($section);
         
         // No Windows, não podemos criar diretório read-only facilmente
         // Vamos usar um caminho que não permite write após criar o arquivo
@@ -234,11 +181,7 @@ describe('IOFactory - Save with Content Controls', function () {
         chmod($filename, 0444);
         
         try {
-            IOFactory::saveWithContentControls(
-                $phpWord,
-                [$control],
-                $filename
-            );
+            $cc->save($filename);
             
             // Se chegou aqui no Windows, o teste não é aplicável
             // (Windows pode sobrescrever arquivos read-only em alguns casos)

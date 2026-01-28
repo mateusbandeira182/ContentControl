@@ -97,156 +97,26 @@ class IOFactory
     /**
      * Salva documento PHPWord com Content Controls via manipulação ZIP
      * 
-     * Workaround que injeta Content Controls diretamente no document.xml
-     * do arquivo .docx gerado, contornando limitação do PHPWord.
-     * 
+     * @deprecated 2.0.0 Use ContentControl::save() instead
      * @param PhpWord $phpWord Documento PHPWord base
-     * @param mixed[] $contentControls Content Controls a adicionar. Elementos que não são instâncias de ContentControl são silenciosamente ignorados.
+     * @param mixed[] $contentControls Content Controls a adicionar
      * @param string $filename Caminho do arquivo de saída
      * @return void
-     * @throws \PhpOffice\PhpWord\Exception\Exception Exceção propagada da biblioteca PHPWord ao criar o Writer ou salvar o documento base
-     * @throws \RuntimeException If target directory is not writable or file move fails
-     * @throws ZipArchiveException If ZIP operations fail
-     * @throws DocumentNotFoundException If word/document.xml is missing
-     * @throws TemporaryFileException If temporary file cleanup fails
-     * 
-     * @example
-     * ```php
-     * $phpWord = new PhpWord();
-     * $section = $phpWord->addSection();
-     * $section->addText('Conteúdo');
-     * 
-     * $control = new ContentControl($section, ['alias' => 'Campo']);
-     * 
-     * IOFactory::saveWithContentControls(
-     *     $phpWord,
-     *     [$control],
-     *     'documento.docx'
-     * );
-     * ```
      */
     public static function saveWithContentControls(
         PhpWord $phpWord,
         array $contentControls,
         string $filename
     ): void {
-        // Verificar se o diretório de destino existe
-        $targetDir = dirname($filename);
-        if (!is_dir($targetDir) || !is_writable($targetDir)) {
-            throw new \RuntimeException(
-                'ContentControl: Target directory not writable: ' . dirname($filename)
-            );
-        }
+        trigger_error(
+            'IOFactory::saveWithContentControls() is deprecated. Use ContentControl::save() instead.',
+            E_USER_DEPRECATED
+        );
         
-        // 1. Verificar se há Content Controls antes de fazer operações de ZIP
-        $hasContentControls = false;
-        foreach ($contentControls as $control) {
-            if ($control instanceof ContentControl) {
-                $hasContentControls = true;
-                break;
-            }
-        }
-        
-        // 2. Salvar documento base
-        $tempFile = sys_get_temp_dir() . '/phpword_' . uniqid() . '.docx';
-        
-        try {
-            $writer = self::createWriter($phpWord);
-            $writer->save($tempFile);
-            
-            // Se não há Content Controls, apenas copiar o arquivo e retornar
-            if (!$hasContentControls) {
-                if (!rename($tempFile, $filename)) {
-                    throw new \RuntimeException(
-                        'ContentControl: Failed to move file from ' . $tempFile . ' to ' . $filename
-                    );
-                }
-                return;
-            }
-            
-            // 3. Abrir como ZIP
-            $zip = new \ZipArchive();
-            $openResult = $zip->open($tempFile);
-            if ($openResult !== true) {
-                throw new ZipArchiveException($openResult, $tempFile);
-            }
-            
-            // 4. Ler document.xml
-            $documentXml = $zip->getFromName('word/document.xml');
-            if ($documentXml === false) {
-                $zip->close();
-                throw new DocumentNotFoundException('word/document.xml', $tempFile);
-            }
-            
-            // 5. Gerar XML dos Content Controls
-            $contentControlsXml = '';
-            foreach ($contentControls as $control) {
-                if ($control instanceof ContentControl) {
-                    $contentControlsXml .= $control->getXml();
-                }
-            }
-            
-            // 6. Injetar antes de </w:body>
-            $bodyClosePos = strpos($documentXml, '</w:body>');
-            if ($bodyClosePos !== false) {
-                $documentXml = substr_replace(
-                    $documentXml,
-                    $contentControlsXml,
-                    $bodyClosePos,
-                    0
-                );
-            }
-            
-            // 7. Atualizar document.xml
-            $zip->deleteName('word/document.xml');
-            $zip->addFromString('word/document.xml', $documentXml);
-            $zip->close();
-            
-            // 8. Mover para destino
-            if (!rename($tempFile, $filename)) {
-                throw new \RuntimeException(
-                    'ContentControl: Failed to move file from ' . $tempFile . ' to ' . $filename
-                );
-            }
-        } finally {
-            // Limpar arquivo temporário se ainda existir
-            if (file_exists($tempFile)) {
-                self::unlinkWithRetry($tempFile);
-            }
-        }
-    }
-
-    /**
-     * Tenta deletar arquivo com múltiplas tentativas
-     * 
-     * Em Windows, arquivos podem estar brevemente bloqueados após operações de ZIP.
-     * Esta função tenta deletar com retries e clearstatcache.
-     * 
-     * @param string $filePath Caminho do arquivo a deletar
-     * @param int $maxAttempts Número máximo de tentativas
-     * @return void
-     * @throws TemporaryFileException Se todas tentativas falharem
-     */
-    private static function unlinkWithRetry(string $filePath, int $maxAttempts = 3): void
-    {
-        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-            clearstatcache(true, $filePath);
-            
-            if (@unlink($filePath)) {
-                return; // Sucesso
-            }
-            
-            if (!file_exists($filePath)) {
-                return; // Arquivo já não existe
-            }
-            
-            // Esperar antes de próxima tentativa (exceto na última)
-            if ($attempt < $maxAttempts) {
-                usleep(100000); // 100ms
-            }
-        }
-        
-        // Todas tentativas falharam
-        throw new TemporaryFileException($filePath);
+        // Esta funcionalidade foi movida para ContentControl::save()
+        // Mantida por compatibilidade temporária
+        throw new \BadMethodCallException(
+            'IOFactory::saveWithContentControls() is deprecated. Use ContentControl::save() instead.'
+        );
     }
 }

@@ -86,19 +86,26 @@ final class SDTRegistry
             }
         }
 
-        // Verificar se ID já está em uso (se não for vazio)
-        if ($config->id !== '' && isset($this->usedIds[$config->id])) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'SDTRegistry: ID "%s" already in use',
-                    $config->id
-                )
-            );
+        // Marcar ID como usado (se não for vazio e ainda não estiver usado)
+        // Nota: IDs gerados por generateUniqueId() já estão marcados
+        if ($config->id !== '' && !isset($this->usedIds[$config->id])) {
+            $this->usedIds[$config->id] = true;
         }
 
-        // Marcar ID como usado (se não for vazio)
-        if ($config->id !== '') {
-            $this->usedIds[$config->id] = true;
+        // Verificar se ID está duplicado APÓS marcá-lo
+        // (permite IDs vindos de generateUniqueId() que já estão marcados)
+        if ($config->id !== '' && isset($this->usedIds[$config->id])) {
+            // Procurar se já existe outro elemento com esse ID
+            foreach ($this->registry as $entry) {
+                if ($entry['config']->id === $config->id && $entry['element'] !== $element) {
+                    throw new \InvalidArgumentException(
+                        sprintf(
+                            'SDTRegistry: ID "%s" already in use by another element',
+                            $config->id
+                        )
+                    );
+                }
+            }
         }
 
         // Adicionar ao registry
