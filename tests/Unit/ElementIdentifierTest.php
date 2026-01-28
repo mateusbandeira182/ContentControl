@@ -154,3 +154,137 @@ describe('ElementIdentifier', function () {
     });
 
 });
+
+describe('ElementIdentifier Cache', function () {
+
+    beforeEach(function () {
+        // Limpar cache antes de cada teste
+        ElementIdentifier::clearCache();
+    });
+
+    afterEach(function () {
+        // Limpar cache após cada teste
+        ElementIdentifier::clearCache();
+    });
+
+    test('clearCache limpa todos os caches', function () {
+        $section = createSection();
+        
+        // Gerar marcador e hash (popula cache)
+        ElementIdentifier::generateMarker($section);
+        ElementIdentifier::generateContentHash($section);
+        
+        $stats = ElementIdentifier::getCacheStats();
+        expect($stats['markers'])->toBe(1);
+        expect($stats['hashes'])->toBe(1);
+        
+        // Limpar cache
+        ElementIdentifier::clearCache();
+        
+        $stats = ElementIdentifier::getCacheStats();
+        expect($stats['markers'])->toBe(0);
+        expect($stats['hashes'])->toBe(0);
+    });
+
+    test('generateMarker usa cache para elemento já processado', function () {
+        $section = createSection();
+        
+        // Primeira chamada - popula cache
+        $marker1 = ElementIdentifier::generateMarker($section);
+        
+        // Segunda chamada - deve retornar do cache (mesmo valor)
+        $marker2 = ElementIdentifier::generateMarker($section);
+        
+        expect($marker1)->toBe($marker2);
+        
+        $stats = ElementIdentifier::getCacheStats();
+        expect($stats['markers'])->toBe(1); // Apenas 1 entrada
+    });
+
+    test('generateContentHash usa cache para elemento já processado', function () {
+        $section = createSection();
+        
+        // Primeira chamada - popula cache
+        $hash1 = ElementIdentifier::generateContentHash($section);
+        
+        // Segunda chamada - deve retornar do cache (mesmo valor)
+        $hash2 = ElementIdentifier::generateContentHash($section);
+        
+        expect($hash1)->toBe($hash2);
+        
+        $stats = ElementIdentifier::getCacheStats();
+        expect($stats['hashes'])->toBe(1); // Apenas 1 entrada
+    });
+
+    test('cache não interfere com elementos diferentes', function () {
+        $section1 = SampleElements::createSectionWithText('Texto 1');
+        $section2 = SampleElements::createSectionWithText('Texto 2');
+        
+        // Gerar marcadores para ambos
+        $marker1 = ElementIdentifier::generateMarker($section1);
+        $marker2 = ElementIdentifier::generateMarker($section2);
+        
+        expect($marker1)->not->toBe($marker2);
+        
+        $stats = ElementIdentifier::getCacheStats();
+        expect($stats['markers'])->toBe(2); // 2 entradas diferentes
+        expect($stats['hashes'])->toBe(2);  // Hashes também cachados
+    });
+
+    test('getCacheStats retorna contadores corretos', function () {
+        ElementIdentifier::clearCache();
+        
+        $section1 = createSection();
+        $section2 = createSection();
+        $section3 = createSection();
+        
+        // Gerar apenas marcadores (que também geram hashes internamente)
+        ElementIdentifier::generateMarker($section1);
+        ElementIdentifier::generateMarker($section2);
+        ElementIdentifier::generateMarker($section3);
+        
+        $stats = ElementIdentifier::getCacheStats();
+        expect($stats['markers'])->toBe(3);
+        expect($stats['hashes'])->toBe(3);
+    });
+
+    test('cache persiste entre chamadas de generateMarker e generateContentHash', function () {
+        $section = createSection();
+        
+        // Gerar hash primeiro
+        $hash = ElementIdentifier::generateContentHash($section);
+        
+        $stats1 = ElementIdentifier::getCacheStats();
+        expect($stats1['hashes'])->toBe(1);
+        expect($stats1['markers'])->toBe(0);
+        
+        // Gerar marcador depois (deve reutilizar hash do cache)
+        $marker = ElementIdentifier::generateMarker($section);
+        
+        $stats2 = ElementIdentifier::getCacheStats();
+        expect($stats2['hashes'])->toBe(1);  // Ainda 1 (reusado)
+        expect($stats2['markers'])->toBe(1); // Agora 1
+        
+        // Verificar que marcador contém o hash
+        expect($marker)->toContain($hash);
+    });
+
+    test('cache melhora performance em chamadas repetidas', function () {
+        $section = SampleElements::createSectionWithTable(10, 5); // Tabela grande
+        
+        // Medir primeira chamada (sem cache)
+        $start1 = microtime(true);
+        $hash1 = ElementIdentifier::generateContentHash($section);
+        $time1 = microtime(true) - $start1;
+        
+        // Medir segunda chamada (com cache)
+        $start2 = microtime(true);
+        $hash2 = ElementIdentifier::generateContentHash($section);
+        $time2 = microtime(true) - $start2;
+        
+        // Segunda chamada deve ser significativamente mais rápida
+        expect($hash1)->toBe($hash2);
+        expect($time2)->toBeLessThan($time1); // Cache é mais rápido
+    });
+
+});

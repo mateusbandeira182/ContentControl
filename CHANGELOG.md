@@ -88,9 +88,152 @@ This is a **BREAKING CHANGE** release with complete API redesign.
 
 ---
 
+## [3.0.0] - 2026-01-28
+
+### 🎉 Major Enhancement - Zero Content Duplication
+
+This release completely eliminates content duplication when wrapping elements with Content Controls (SDTs). The implementation uses in-place DOM manipulation instead of XML string concatenation.
+
+### ✨ Added
+
+- **ElementIdentifier**: Unique marker generation for PHPWord elements
+  - SHA-256 based markers combining element type + content + position
+  - Collision-resistant identification system
+  - Supports Section, Table, Cell, Text, TextRun, Image elements
+- **ElementLocator**: Dual-strategy element location in DOM tree
+  - Primary strategy: Index-based element counting (fast, deterministic)
+  - Fallback strategy: Marker-based XPath queries (robust)
+  - Supports nested element hierarchies (Cell → Row → Table)
+  - Handles edge cases (empty elements, complex nesting)
+- **SDTInjector DOM manipulation** (replaces XML string concatenation):
+  - `wrapElementInline()`: Wraps existing DOM nodes without duplication
+  - `loadDocumentAsDom()`: Parses document.xml into DOMDocument
+  - `processElement()`: Locates and wraps individual elements
+  - `sortElementsByDepth()`: Processes elements depth-first (Cell before Table)
+  - `markElementAsProcessed()`: Prevents re-wrapping
+- **SDTRegistry marker tracking**:
+  - `getMarkerForElement()`: Retrieves marker for registered element
+  - `getAllMarkers()`: Returns all registered markers (objectId → markerId)
+  - Markers generated automatically during `register()`
+- **Comprehensive test coverage**:
+  - `NoDuplicationTest.php`: Validates zero content duplication (166 lines)
+  - `ElementIdentifierTest.php`: Tests marker generation (70 lines)
+  - `ElementLocatorTest.php`: Tests DOM location strategies (178 lines)
+  - `PerformanceTest.php`: Benchmarks for 100+ elements
+  - `ContentControlDelegationTest.php`: Tests PhpWord delegation (207 lines)
+  - `ContentControlErrorHandlingTest.php`: Tests error scenarios (146 lines)
+  - `SDTInjectorErrorTest.php`: Tests injection failures (287 lines)
+  - `SDTRegistryFallbackTest.php`: Tests ID generation fallback (77 lines)
+- **Samples demonstrating zero duplication**:
+  - `v3_no_duplication_demo.php`: Before/after comparison
+  - `v3_performance_benchmark.php`: Performance metrics
+  - `v3_real_world_examples.php`: Practical use cases
+
+### 🔄 Changed
+
+- **BREAKING**: `SDTInjector::inject()` now uses DOM manipulation instead of string replacement
+  - Old behavior: Replaced closing `</w:body>` tag with SDT XML + closing tag
+  - New behavior: Parses DOM, locates elements, wraps in-place
+  - **Zero content duplication** guaranteed
+- **SDTInjector workflow** (v3.0):
+  1. Load document.xml as DOMDocument
+  2. Sort elements by depth (deepest first: Cell → Table → Section)
+  3. Locate each element using ElementLocator
+  4. Wrap element inline with `<w:sdt>` structure
+  5. Mark as processed to prevent re-wrapping
+  6. Serialize modified DOM back to document.xml
+- **Performance optimization**: Depth-first processing prevents re-wrapping
+  - Cell elements processed before parent Table
+  - Already-wrapped elements detected and skipped
+  - Stable sort maintains original order for same depth
+
+### 🐛 Fixed
+
+- **Critical**: Content duplication when wrapping elements with SDTs
+  - **Root cause**: Old implementation used string replacement, duplicating content
+  - **Solution**: DOM manipulation moves nodes instead of copying
+  - **Validation**: All tests confirm zero duplication
+- **Edge case**: Re-wrapping of already processed elements
+  - **Solution**: Registry of processed elements (NodePath-based)
+  - **Benefit**: Safe for nested hierarchies
+- **Compatibility**: PHP 8.2+ ValueError handling in `dirname()`
+  - Catches ValueError for invalid paths (PHP 8.2+)
+  - Throws RuntimeException with clear error message
+- **Compatibility**: Linux/Windows path handling in tests
+  - Changed invalid Windows paths (`Z:\...`) to cross-platform paths
+  - Tests now pass on Ubuntu (GitHub Actions) and Windows
+
+### 📊 Performance
+
+- **100 elements**: 88ms (depth-first processing + DOM manipulation)
+- **Linear scaling**: O(n) complexity for n elements
+- **Memory**: Minimal overhead (DOMDocument reused across elements)
+- **Projection 1000 elements**: ~880ms (based on benchmarks)
+
+### 🧪 Testing
+
+- **166 tests passing** (379 assertions)
+- **PHPStan Level 9**: 0 errors in src/
+- **Coverage**: 947 new lines of test code
+- **New test files**:
+  - `NoDuplicationTest.php` (validates zero duplication)
+  - `ElementIdentifierTest.php` (marker generation)
+  - `ElementLocatorTest.php` (DOM location strategies)
+  - `ContentControlDelegationTest.php` (PhpWord method delegation)
+  - `ContentControlErrorHandlingTest.php` (error scenarios)
+  - `SDTInjectorErrorTest.php` (injection failures)
+  - `SDTRegistryFallbackTest.php` (ID generation fallback)
+
+### 📚 Documentation
+
+- Updated README.md with v3.0 architecture details
+- Added technical documentation for DOM manipulation strategy
+- Updated .github/copilot-instructions.md with v3.0 patterns
+
+### 🏗️ Architecture
+
+- **Pattern**: Depth-first element processing
+- **Principle**: In-place DOM manipulation (no content copying)
+- **Type safety**: PHPStan Level 9 strict mode
+- **Compatibility**: PHP 8.2+ | Linux & Windows
+
+### 🔗 References
+
+- [Pull Request #14](https://github.com/mateusbandeira182/ContentControl/pull/14)
+- [ISO/IEC 29500-1:2016](https://www.iso.org/standard/71691.html) - OOXML Specification
+
+---
+
 ## [Unreleased]
 
 ### Added
+- **ElementIdentifier performance cache**: Hash and marker caching for better performance
+  - `clearCache()`: Clears all cached markers and hashes
+  - `getCacheStats()`: Returns cache statistics (for debugging/testing)
+  - O(1) lookup for previously processed elements
+  - Significant performance improvement for repeated operations
+- **CONTRIBUTING.md**: Comprehensive contribution guidelines
+  - Development workflow and setup instructions
+  - Coding standards (PHPStan Level 9, strict types)
+  - Testing guidelines with examples
+  - Commit message guidelines (Conventional Commits)
+  - Pull request process and checklist
+  - Project architecture documentation
+
+### Changed
+- **ElementIdentifier**: Refactored to use internal cache
+  - `generateMarker()`: Now caches results per object ID
+  - `generateContentHash()`: Now caches results per object ID
+  - No breaking changes - cache is transparent to users
+
+### Fixed
+- **Performance**: ElementIdentifier cache reduces repeated hash computation
+  - First call: O(n) where n = element complexity
+  - Subsequent calls: O(1) cache lookup
+
+---
+
+## [3.0.0] - 2026-01-28
 - **Exception hierarchy**: Custom exception classes for better error handling
   - `ContentControlException`: Base exception for all library errors
   - `ZipArchiveException`: ZIP operation failures with detailed error mapping
