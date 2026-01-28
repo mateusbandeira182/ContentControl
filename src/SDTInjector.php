@@ -38,6 +38,7 @@ final class SDTInjector
     {
         // Abrir arquivo como ZIP
         $zip = new \ZipArchive();
+        $zipOpened = false;
         $openResult = $zip->open($docxPath);
         if ($openResult !== true) {
             throw new ZipArchiveException($openResult, $docxPath);

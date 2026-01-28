@@ -173,8 +173,10 @@ final class SDTConfig
         // Verificar caracteres de controle que podem causar problemas
         // Bloqueia C0 controls (0x00-0x1F) e C1 controls (0x7F-0x9F)
         if (preg_match('/[\x00-\x1F\x7F-\x9F]/u', $alias) === 1) {
+            // Sanitizar alias para exibição segura
+            $sanitized = addcslashes($alias, "\x00..\x1F\x7F..\x9F");
             throw new \InvalidArgumentException(
-                sprintf('SDTConfig: Alias "%s" must not contain control characters', $alias)
+                sprintf('SDTConfig: Alias "%s" must not contain control characters', $sanitized)
             );
         }
 
