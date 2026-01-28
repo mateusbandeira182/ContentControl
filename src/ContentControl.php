@@ -302,16 +302,16 @@ final class ContentControl
         // 1. Validar diretório
         try {
             $dir = dirname($filename);
+            
+            if (!is_dir($dir) || !is_writable($dir)) {
+                throw new \RuntimeException(
+                    'ContentControl: Target directory not writable: ' . $dir
+                );
+            }
         } catch (\ValueError $e) {
-            // PHP 8.2+: dirname() lança ValueError para caminhos inválidos
+            // PHP 8.2+: dirname(), is_dir() ou is_writable() podem lançar ValueError para caminhos inválidos
             throw new \RuntimeException(
                 'ContentControl: Invalid file path: ' . $e->getMessage()
-            );
-        }
-        
-        if (!is_dir($dir) || !is_writable($dir)) {
-            throw new \RuntimeException(
-                'ContentControl: Target directory not writable: ' . $dir
             );
         }
 
