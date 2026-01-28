@@ -77,7 +77,8 @@ final class SDTRegistry
             if ($this->sequentialCounter > IDValidator::getMaxId()) {
                 throw new \RuntimeException(
                     sprintf(
-                        'SDTRegistry: ID range exhausted. Total IDs in use: %d',
+                        'SDTRegistry: ID range exhausted during sequential fallback. Sequential counter reached %d. Total IDs marked as used: %d',
+                        $this->sequentialCounter,
                         count($this->usedIds)
                     )
                 );
@@ -114,16 +115,30 @@ final class SDTRegistry
         // 2. Verificar ID duplicado ANTES de marcar como usado
         if ($config->id !== '' && isset($this->usedIds[$config->id])) {
             // Procurar se já existe outro elemento com esse ID no registry
+            $idInRegistry = false;
             foreach ($this->registry as $entry) {
                 if ($entry['config']->id === $config->id) {
-                    throw new \InvalidArgumentException(
-                        sprintf(
-                            'SDTRegistry: ID "%s" already in use by another element',
-                            $config->id
-                        )
-                    );
+                    $idInRegistry = true;
+                    break;
                 }
             }
+
+            if ($idInRegistry) {
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'SDTRegistry: ID "%s" already in use by another element',
+                        $config->id
+                    )
+                );
+            }
+
+            // ID já está marcado como usado, mas não associado a nenhum elemento registrado
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'SDTRegistry: ID "%s" is already reserved and cannot be reused',
+                    $config->id
+                )
+            );
         }
 
         // 3. Marcar ID como usado APENAS SE PASSAR nas validações

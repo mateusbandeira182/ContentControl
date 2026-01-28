@@ -102,6 +102,10 @@ describe('SDTRegistry - Registro de elementos', function () {
         expect($registry->count())->toBe(1);
     });
 
+    // Edge case: Multiple elements can have empty IDs because the duplicate check
+    // explicitly skips empty IDs (see SDTRegistry::register line 115).
+    // This allows elements without IDs to be registered multiple times.
+    // When the document is saved, Word will auto-generate unique IDs if needed.
     test('múltiplos elementos com ID vazio não causam erro', function () {
         $registry = new SDTRegistry();
         $section1 = createSection();

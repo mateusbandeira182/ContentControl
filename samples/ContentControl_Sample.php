@@ -280,7 +280,7 @@ try {
     // Tentar salvar em diretório inválido
     $ccErro->save('/diretorio/invalido/documento.docx');
     
-} catch (ContentControlException $e) {
+} catch (ContentControlException | \RuntimeException $e) {
     echo "✓ Exception capturada corretamente\n";
     echo "  Mensagem: " . $e->getMessage() . "\n";
 }
