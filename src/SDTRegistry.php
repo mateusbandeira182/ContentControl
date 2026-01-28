@@ -207,6 +207,19 @@ final class SDTRegistry
     }
 
     /**
+     * Marca ID como usado (útil para testes)
+     * 
+     * @param string $id ID a marcar como usado
+     * @return void
+     * @throws \InvalidArgumentException Se ID inválido
+     */
+    public function markIdAsUsed(string $id): void
+    {
+        IDValidator::validate($id);
+        $this->usedIds[$id] = true;
+    }
+
+    /**
      * Retorna contagem de elementos registrados
      * 
      * @return int Número de elementos

@@ -73,7 +73,9 @@ describe('Performance Tests', function () {
         
         $ids = [];
         for ($i = 0; $i < 10000; $i++) {
-            $ids[] = $registry->generateUniqueId();
+            $id = $registry->generateUniqueId();
+            $registry->markIdAsUsed($id); // Marcar como usado para próxima iteração
+            $ids[] = $id;
         }
         
         $elapsedMs = (microtime(true) - $start) * 1000;
