@@ -175,9 +175,9 @@ final class ElementIdentifier
                 $parts[] = "height:{$height}";
             }
             
-            // Extrair source (path ou URL)
-            $source = $element->getSource();
-            $parts[] = basename($source);
+            // Nota: Não incluímos basename($source) pois não é derivável do DOM
+            // de document.xml (requer resolução de relationships). Usar width+height
+            // é suficiente para identificação única de imagens.
         }
 
         // Table: incluir número de linhas e colunas

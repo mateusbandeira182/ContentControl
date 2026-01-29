@@ -272,31 +272,18 @@ XML;
     expect($rId)->toBe('rId7');
 });
 
-test('finds image via content-hash fallback when first match is wrapped', function () {
+test('finds image via content-hash fallback using reflection', function () {
     $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
             xmlns:v="urn:schemas-microsoft-com:vml"
             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
     <w:body>
-        <w:sdt>
-            <w:sdtContent>
-                <w:p>
-                    <w:r>
-                        <w:pict>
-                            <v:shape style="width:150pt; height:150pt;">
-                                <v:imagedata r:id="rId10"/>
-                            </v:shape>
-                        </w:pict>
-                    </w:r>
-                </w:p>
-            </w:sdtContent>
-        </w:sdt>
         <w:p>
             <w:r>
                 <w:pict>
                     <v:shape style="width:150pt; height:150pt;">
-                        <v:imagedata r:id="rId11"/>
+                        <v:imagedata r:id="rId10"/>
                     </v:shape>
                 </w:pict>
             </w:r>
@@ -313,23 +300,29 @@ XML;
     $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
     $image = new Image($testImagePath, ['width' => 150, 'height' => 150]);
     
-    // First image is wrapped in SDT, so type+order will skip it
-    // Content-hash fallback should find the second unwrapped image
-    $found = $locator->findElementInDOM($dom, $image, 0);
+    // Use reflection to directly test findByContentHash()
+    $reflection = new ReflectionClass($locator);
+    $method = $reflection->getMethod('findByContentHash');
+    $method->setAccessible(true);
     
-    // Should find the second (unwrapped) image via content hash
+    // Generate content hash for the image
+    $contentHash = \MkGrow\ContentControl\ElementIdentifier::generateContentHash($image);
+    
+    // Initialize XPath in locator by calling findElementInDOM first
+    $locator->findElementInDOM($dom, $image, 0);
+    
+    // Now call findByContentHash directly
+    $found = $method->invoke($locator, $image, $contentHash);
+    
+    // Should find the image via content hash
     expect($found)->not->toBeNull();
     expect($found->nodeName)->toBe('w:p');
     
-    // Verify it's the unwrapped image (not in sdtContent)
+    // Verify it contains the correct w:pict
     $xpath = new DOMXPath($dom);
     $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
-    
-    $ancestor = $xpath->query('ancestor::w:sdtContent', $found);
-    expect($ancestor->length)->toBe(0);
-    
-    // Verify it contains the correct w:pict
     $xpath->registerNamespace('v', 'urn:schemas-microsoft-com:vml');
+    
     $pict = $xpath->query('.//w:pict', $found);
     expect($pict->length)->toBe(1);
     

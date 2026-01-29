@@ -282,20 +282,10 @@ final class ElementLocator
                                     $parts[] = "height:{$heightMatch[1]}";
                                 }
                                 
-                                // Extrair basename do rId (usado como identificador único)
-                                // Como não temos acesso ao arquivo real, usamos o rId
-                                $imageData = $this->xpath->query('.//v:imagedata', $shape);
-                                if ($imageData !== false && $imageData->length > 0) {
-                                    $imgNode = $imageData->item(0);
-                                    if ($imgNode instanceof DOMElement) {
-                                        $rId = $imgNode->getAttributeNS(
-                                            'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-                                            'id'
-                                        );
-                                        // Usar rId como identificador (formato compatível com basename)
-                                        $parts[] = $rId;
-                                    }
-                                }
+                                // Nota: Não incluímos o r:id (relationship id) no hash pois ele não
+                                // corresponde ao basename do arquivo usado pelo ElementIdentifier e
+                                // não pode ser resolvido para o nome do arquivo sem ler document.xml.rels.
+                                // Usar apenas width+height é suficiente para identificação única.
                             }
                         }
                         
