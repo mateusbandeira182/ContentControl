@@ -130,9 +130,9 @@ jobs:
           # Extract section for this version from CHANGELOG.md
           # This uses explicit start/end conditions to avoid relying on head -n -1
           awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" { in=1; header_nr=NR }
-            in && NR>header_nr && /^## \[/ { exit }
-            in { print }
+            $0 ~ "^## \\[" ver "\\]" { in_section=1; header_nr=NR }
+            in_section && NR>header_nr && /^## \[/ { exit }
+            in_section { print }
           ' CHANGELOG.md > release_notes.md
           
           if [ ! -s release_notes.md ]; then
