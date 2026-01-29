@@ -420,7 +420,7 @@ final class ElementLocator
         $styleName = $depth === 0 ? 'Title' : 'Heading' . $depth;
         
         // Validar que styleName contém apenas alfanuméricos para prevenir injeção XPath
-        if (!preg_match('/^[a-zA-Z0-9]+$/', $styleName)) {
+        if (preg_match('/^[a-zA-Z0-9]+$/', $styleName) !== 1) {
             throw new \RuntimeException(sprintf(
                 'Invalid style name "%s" generated from depth %d',
                 $styleName,
