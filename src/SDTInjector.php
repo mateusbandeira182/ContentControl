@@ -38,6 +38,16 @@ final class SDTInjector
     private ElementLocator $locator;
 
     /**
+     * Cache de mapeamento Header/Footer → arquivo XML
+     * 
+     * Tracks which XML file each Header/Footer object belongs to.
+     * Key: spl_object_id(Header|Footer), Value: XML path (e.g., 'word/header1.xml')
+     * 
+     * @var array<int, string>
+     */
+    private array $headerFooterTracker = [];
+
+    /**
      * Cria nova instância do SDTInjector
      */
     public function __construct()
@@ -642,8 +652,12 @@ final class SDTInjector
         $dom = $this->loadDocumentAsDom($xmlContent);
         
         // 3. Filter elements belonging to this XML file
-        // (For now, process all elements - will be enhanced in FASE 2)
-        $filteredTuples = $sdtTuples;
+        $filteredTuples = $this->filterElementsByXmlFile($sdtTuples, $xmlPath);
+        
+        // Skip processing if no elements belong to this file
+        if (count($filteredTuples) === 0) {
+            return;
+        }
         
         // 4. Sort elements by depth (depth-first)
         $sortedTuples = $this->sortElementsByDepth($filteredTuples);
@@ -692,5 +706,165 @@ final class SDTInjector
         // Text, TextRun, Image (dentro de container)
         // Para simplicidade, considerar depth 1 (mesma prioridade que Section)
         return 1;
+    }
+
+    /**
+     * Discovers header*.xml and footer*.xml files in DOCX ZIP
+     * 
+     * Returns sorted list of XML file paths found in the archive.
+     * Files are sorted alphabetically for predictable processing order.
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @return array<int, string> List of header/footer XML paths (e.g., ['word/footer1.xml', 'word/header1.xml'])
+     */
+    private function discoverHeaderFooterFiles(\ZipArchive $zip): array
+    {
+        $files = [];
+        $numFiles = $zip->numFiles;
+
+        for ($i = 0; $i < $numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+            if (!is_string($filename)) {
+                continue;
+            }
+
+            // Match word/header*.xml or word/footer*.xml
+            if (preg_match('#^word/(header|footer)\d+\.xml$#', $filename) === 1) {
+                $files[] = $filename;
+            }
+        }
+
+        // Sort alphabetically for predictable order
+        sort($files);
+
+        return $files;
+    }
+
+    /**
+     * Maps Header/Footer object to its XML file path
+     * 
+     * Uses sequential numbering based on first access:
+     * - First Header → word/header1.xml
+     * - Second Header → word/header2.xml
+     * - First Footer → word/footer1.xml
+     * 
+     * Results are cached in $headerFooterTracker property.
+     * 
+     * @param object $headerOrFooter Header or Footer instance from PHPWord
+     * @return string XML path (e.g., 'word/header1.xml')
+     */
+    private function getHeaderFooterXmlPath(object $headerOrFooter): string
+    {
+        $objectId = spl_object_id($headerOrFooter);
+
+        // Check cache
+        if (isset($this->headerFooterTracker[$objectId])) {
+            return $this->headerFooterTracker[$objectId];
+        }
+
+        // Determine type (Header or Footer)
+        $className = get_class($headerOrFooter);
+        $isHeader = str_contains($className, 'Header');
+
+        // Count existing mappings of same type
+        $existingCount = 0;
+        foreach ($this->headerFooterTracker as $existingObjectId => $xmlPath) {
+            // Check if this path belongs to same type
+            if ($isHeader && str_starts_with(basename($xmlPath), 'header')) {
+                $existingCount++;
+            } elseif (!$isHeader && str_starts_with(basename($xmlPath), 'footer')) {
+                $existingCount++;
+            }
+        }
+
+        // Generate path (1-indexed)
+        $fileNumber = $existingCount + 1;
+        $xmlPath = $isHeader 
+            ? "word/header{$fileNumber}.xml"
+            : "word/footer{$fileNumber}.xml";
+
+        // Cache and return
+        $this->headerFooterTracker[$objectId] = $xmlPath;
+
+        return $xmlPath;
+    }
+
+    /**
+     * Determines which XML file an element belongs to
+     * 
+     * Uses PHPWord's internal docPart property to determine location:
+     * - docPart='Header' → word/header*.xml
+     * - docPart='Footer' → word/footer*.xml
+     * - docPart='Section' or other → word/document.xml
+     * 
+     * Also uses docPartId to map to specific header/footer number.
+     * 
+     * @param object $element PHPWord element instance
+     * @return string XML path where element should be processed
+     */
+    private function getXmlFileForElement(object $element): string
+    {
+        try {
+            $reflection = new \ReflectionClass($element);
+
+            // Try to get docPart property (available in most PHPWord elements)
+            if ($reflection->hasProperty('docPart')) {
+                $docPartProp = $reflection->getProperty('docPart');
+                $docPartProp->setAccessible(true);
+                $docPart = $docPartProp->getValue($element);
+
+                // Get docPartId if available
+                $docPartId = 1; // Default
+                if ($reflection->hasProperty('docPartId')) {
+                    $docPartIdProp = $reflection->getProperty('docPartId');
+                    $docPartIdProp->setAccessible(true);
+                    $docPartIdValue = $docPartIdProp->getValue($element);
+                    if (is_int($docPartIdValue)) {
+                        $docPartId = $docPartIdValue;
+                    }
+                }
+
+                // Map docPart to XML file
+                if ($docPart === 'Header') {
+                    return 'word/header' . $docPartId . '.xml';
+                } elseif ($docPart === 'Footer') {
+                    return 'word/footer' . $docPartId . '.xml';
+                }
+            }
+        } catch (\ReflectionException $e) {
+            // Reflection failed, assume body
+        }
+
+        // Default to document.xml (main body)
+        return 'word/document.xml';
+    }
+
+    /**
+     * Filters SDT tuples to only include elements from specific XML file
+     * 
+     * Uses getXmlFileForElement() to determine each element's location.
+     * 
+     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples All SDT tuples
+     * @param string $xmlPath Target XML file path (e.g., 'word/header1.xml')
+     * @return array<int, array{element: mixed, config: SDTConfig}> Filtered tuples
+     */
+    private function filterElementsByXmlFile(array $sdtTuples, string $xmlPath): array
+    {
+        $filtered = [];
+
+        foreach ($sdtTuples as $tuple) {
+            // Skip if element is not an object
+            if (!is_object($tuple['element'])) {
+                continue;
+            }
+            
+            $elementXmlPath = $this->getXmlFileForElement($tuple['element']);
+
+            if ($elementXmlPath === $xmlPath) {
+                $filtered[] = $tuple;
+            }
+        }
+
+        return $filtered;
     }
 }

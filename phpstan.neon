@@ -77,6 +77,26 @@ parameters:
             message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
             path: tests/Feature/TitleImageIntegrationTest.php
         
+        # Test-specific: Reflection->invoke returns mixed type
+        -
+            message: '#Argument of an invalid type mixed supplied for foreach#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+        -
+            message: '#Parameter \#1 \$value of function count expects array\|Countable, mixed given#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+        -
+            message: '#Cannot access offset .* on mixed#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+        -
+            message: '#Cannot access property .* on mixed#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+        
+        # FASE 2: Methods used via Reflection in tests and will be used in FASE 4
+        -
+            message: '#Method .*SDTInjector::discoverHeaderFooterFiles\(\) is unused#'
+        -
+            message: '#Method .*SDTInjector::getHeaderFooterXmlPath\(\) is unused#'
+        
         # Test-specific: substr_count pode receber false do ZipArchive::getFromName
         -
             message: '#Parameter .* of function substr_count expects string, string\|false given#'
