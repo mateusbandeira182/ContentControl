@@ -258,8 +258,45 @@ final class ElementLocator
 
         // Paragraph: extrair todo texto
         if ($domElement->nodeName === 'w:p') {
-            // Verificar se é Title (tem w:pStyle)
+            // Verificar se é Image (contém w:pict)
             if ($this->xpath !== null) {
+                $pict = $this->xpath->query('.//w:r/w:pict', $domElement);
+                if ($pict !== false && $pict->length > 0) {
+                    $pictNode = $pict->item(0);
+                    if ($pictNode instanceof DOMElement) {
+                        // Processar como imagem
+                        $parts[] = 'image';
+                        
+                        // Extrair dimensões do atributo style do v:shape
+                        $shapes = $this->xpath->query('.//v:shape', $pictNode);
+                        if ($shapes !== false && $shapes->length > 0) {
+                            $shape = $shapes->item(0);
+                            if ($shape instanceof DOMElement) {
+                                $style = $shape->getAttribute('style');
+                                $parts[] = $style; // Inclui width e height
+                                
+                                // Extrair rId da v:imagedata
+                                $imageData = $this->xpath->query('.//v:imagedata', $shape);
+                                if ($imageData !== false && $imageData->length > 0) {
+                                    $imgNode = $imageData->item(0);
+                                    if ($imgNode instanceof DOMElement) {
+                                        $rId = $imgNode->getAttributeNS(
+                                            'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+                                            'id'
+                                        );
+                                        $parts[] = $rId;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Retornar hash de imagem
+                        $serialized = implode('|', $parts);
+                        return substr(md5($serialized), 0, 8);
+                    }
+                }
+                
+                // Verificar se é Title (tem w:pStyle)
                 $pStyle = $this->xpath->query('.//w:pPr/w:pStyle', $domElement);
                 if ($pStyle !== false && $pStyle->length > 0) {
                     $styleNode = $pStyle->item(0);
@@ -316,34 +353,6 @@ final class ElementLocator
                         if ($text !== '') {
                             $parts[] = 'text';
                             $parts[] = $text;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Image: extrair dimensões e rId
-        if ($domElement->nodeName === 'w:pict' && $this->xpath !== null) {
-            $parts[] = 'image';
-            
-            // Extrair dimensões do atributo style do v:shape
-            $shapes = $this->xpath->query('.//v:shape', $domElement);
-            if ($shapes !== false && $shapes->length > 0) {
-                $shape = $shapes->item(0);
-                if ($shape instanceof DOMElement) {
-                    $style = $shape->getAttribute('style');
-                    $parts[] = $style; // Inclui width e height
-                    
-                    // Extrair rId da v:imagedata
-                    $imageData = $this->xpath->query('.//v:imagedata', $shape);
-                    if ($imageData !== false && $imageData->length > 0) {
-                        $imgNode = $imageData->item(0);
-                        if ($imgNode instanceof DOMElement) {
-                            $rId = $imgNode->getAttributeNS(
-                                'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-                                'id'
-                            );
-                            $parts[] = $rId;
                         }
                     }
                 }
