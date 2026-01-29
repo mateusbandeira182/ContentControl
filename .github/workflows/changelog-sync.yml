@@ -1,0 +1,60 @@
+name: Changelog Sync
+
+on:
+  push:
+    paths:
+      - 'CHANGELOG.md'
+    branches: [main]
+  workflow_dispatch:  # Manual trigger fallback
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync Changelog to docs/
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Copy CHANGELOG.md to docs/
+        run: |
+          # Ensure docs directory exists
+          mkdir -p docs
+          
+          # Copy CHANGELOG.md to docs/changelog.md
+          cp CHANGELOG.md docs/changelog.md
+          
+          echo "✅ Copied CHANGELOG.md → docs/changelog.md"
+      
+      - name: Commit changes
+        continue-on-error: true  # Don't block on sync failure
+        run: |
+          git add docs/changelog.md
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit (changelog already in sync)"
+          else
+            git commit -m "docs: Sync CHANGELOG.md to docs/changelog.md [automated]"
+            git push
+            echo "✅ Changes committed and pushed"
+          fi
+      
+      - name: Display sync info
+        run: |
+          echo "### 📝 Changelog Sync" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source:** CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
+          echo "- **Destination:** docs/changelog.md" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ✅ Synced" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Versioned changelogs (docs/X.x/CHANGELOG-vX.X.X.md) are created by the release workflow when tags are pushed." >> $GITHUB_STEP_SUMMARY

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * ⚠️ DEPRECATED: This sample uses experimental v3.x API and will be updated in v0.1.0
+ * 
+ * @deprecated Will be updated with stable API in v0.1.0
+ */
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -7,12 +13,12 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * ContentControl v3.0 - Exemplo de Casos de Uso Reais
+ * ContentControl - Exemplo de Casos de Uso Reais
  * 
  * Demonstra aplicações práticas de Content Controls
  */
 
-echo "=== ContentControl v3.0 - Casos de Uso Reais ===\n\n";
+echo "=== ContentControl - Casos de Uso Reais ===\n\n";
 
 // ========== CASO 1: Contrato Comercial ==========
 echo "1️⃣ Gerando contrato comercial...\n";
