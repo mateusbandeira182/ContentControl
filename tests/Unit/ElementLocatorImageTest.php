@@ -4,25 +4,15 @@ declare(strict_types=1);
 
 use MkGrow\ContentControl\ElementLocator;
 use MkGrow\ContentControl\ElementIdentifier;
+use MkGrow\ContentControl\Tests\Helpers\TestImageHelper;
 use PhpOffice\PhpWord\Element\Image;
 use PhpOffice\PhpWord\Element\Text;
 
 beforeEach(function () {
     ElementIdentifier::clearCache();
     
-    // Create test image if it doesn't exist
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
-    if (!file_exists($testImagePath)) {
-        $dir = dirname($testImagePath);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
-        }
-        $image = imagecreatetruecolor(1, 1);
-        $red = imagecolorallocate($image, 255, 0, 0);
-        imagefilledrectangle($image, 0, 0, 1, 1, $red);
-        imagepng($image, $testImagePath);
-        imagedestroy($image);
-    }
+    // Garantir que a imagem de teste existe
+    TestImageHelper::ensureTestImageExists();
 });
 
 test('localizes Image element by VML pict', function () {
@@ -51,7 +41,7 @@ XML;
 
     $locator = new ElementLocator();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     $image = new Image($testImagePath, ['width' => 100, 'height' => 100]);
     
     $found = $locator->findElementInDOM($dom, $image, 0);
@@ -67,7 +57,7 @@ XML;
 });
 
 test('hash differentiates Images by dimensions', function () {
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     
     $image1 = new Image($testImagePath, ['width' => 100, 'height' => 100]);
     $hash1 = ElementIdentifier::generateContentHash($image1);
@@ -80,7 +70,7 @@ test('hash differentiates Images by dimensions', function () {
 });
 
 test('hash differentiates Image from Text', function () {
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     
     $image = new Image($testImagePath, ['width' => 100, 'height' => 100]);
     $imageHash = ElementIdentifier::generateContentHash($image);
@@ -129,7 +119,7 @@ XML;
 
     $locator = new ElementLocator();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     $image = new Image($testImagePath, ['width' => 200, 'height' => 150]);
     
     $found = $locator->findElementInDOM($dom, $image, 0);
@@ -172,7 +162,7 @@ XML;
 
     $locator = new ElementLocator();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     $image = new Image($testImagePath, ['width' => 150, 'height' => 150]);
     
     // Should not throw exception
@@ -209,7 +199,7 @@ XML;
 
     $locator = new ElementLocator();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     $image = new Image($testImagePath, ['width' => 100, 'height' => 100]);
     
     $found = $locator->findElementInDOM($dom, $image, 0);
@@ -249,7 +239,7 @@ XML;
 
     $locator = new ElementLocator();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     $image = new Image($testImagePath, ['width' => 100, 'height' => 100]);
     
     $found = $locator->findElementInDOM($dom, $image, 0);
@@ -297,7 +287,7 @@ XML;
 
     $locator = new ElementLocator();
 
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     $image = new Image($testImagePath, ['width' => 150, 'height' => 150]);
     
     // Generate content hash for the image to seed any internal cache

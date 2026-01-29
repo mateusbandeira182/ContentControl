@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Image Element Support**
 - Inline and floating images can be wrapped with Content Controls
 - Automatic detection of `w:pict` elements using VML namespaces (not DrawingML as initially planned)
-- Hash generation based on image dimensions (width/height) and source path
+- Hash generation based on image dimensions (width/height) only
 - Relationship IDs (rId) preserved for image references in `word/_rels/document.xml.rels`
 - `ElementLocator::findImageByOrder()` method with VML namespace support
 

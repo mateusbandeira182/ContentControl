@@ -27,6 +27,11 @@
             "MkGrow\\ContentControl\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "MkGrow\\ContentControl\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Mateus Bandeira",

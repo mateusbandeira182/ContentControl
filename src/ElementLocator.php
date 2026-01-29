@@ -285,7 +285,9 @@ final class ElementLocator
                                 // Nota: Não incluímos o r:id (relationship id) no hash pois ele não
                                 // corresponde ao basename do arquivo usado pelo ElementIdentifier e
                                 // não pode ser resolvido para o nome do arquivo sem ler document.xml.rels.
-                                // Usar apenas width+height é suficiente para identificação única.
+                                // LIMITAÇÃO: Usar apenas width+height pode causar colisões entre imagens
+                                // distintas com as mesmas dimensões. Para identificação única garantida,
+                                // seria necessário resolver relationships ou usar metadados adicionais.
                             }
                         }
                         
@@ -376,7 +378,7 @@ final class ElementLocator
      * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
      *                   Mantido por compatibilidade e possível suporte futuro a múltiplos títulos.
      * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
-     * @throws \ReflectionException Se a propriedade depth não puder ser acessada
+     * @throws \RuntimeException Se a propriedade depth não for um inteiro válido
      * @since 0.1.0
      */
     private function findTitleByDepth(
@@ -404,12 +406,27 @@ final class ElementLocator
                 throw new \RuntimeException('Title depth must be an integer');
             }
         } catch (\ReflectionException $e) {
-            // Fallback: tentar localizar por texto
+            // Não foi possível acessar a propriedade "depth" via Reflection.
+            // Registrar erro e retornar null, pois não há fallback viável sem o depth.
+            error_log(sprintf(
+                'ElementLocator: failed to access "depth" property via Reflection for element of type %s: %s',
+                get_class($element),
+                $e->getMessage()
+            ));
             return null;
         }
 
         // Mapear depth para nome de estilo
         $styleName = $depth === 0 ? 'Title' : 'Heading' . $depth;
+        
+        // Validar que styleName contém apenas alfanuméricos para prevenir injeção XPath
+        if (!preg_match('/^[a-zA-Z0-9]+$/', $styleName)) {
+            throw new \RuntimeException(sprintf(
+                'Invalid style name "%s" generated from depth %d',
+                $styleName,
+                $depth
+            ));
+        }
 
         // Query XPath para localizar por estilo
         $query = sprintf(
