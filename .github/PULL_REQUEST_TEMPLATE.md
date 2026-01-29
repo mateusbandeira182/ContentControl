@@ -37,7 +37,7 @@ Relates to #
 - [ ] All existing tests pass (`composer test`)
 - [ ] Added new tests for new functionality
 - [ ] Manual testing performed
-- [ ] PHPStan Level 9 passes (`vendor/bin/phpstan analyse`)
+- [ ] PHPStan Level 9 passes (`composer analyse`)
 
 ### Test Output
 
