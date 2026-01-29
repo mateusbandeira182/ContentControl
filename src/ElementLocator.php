@@ -273,9 +273,17 @@ final class ElementLocator
                             $shape = $shapes->item(0);
                             if ($shape instanceof DOMElement) {
                                 $style = $shape->getAttribute('style');
-                                $parts[] = $style; // Inclui width e height
                                 
-                                // Extrair rId da v:imagedata
+                                // Parsear width e height do style (formato: "width:100pt; height:100pt;")
+                                if (preg_match('/width:\s*([0-9.]+)pt/i', $style, $widthMatch)) {
+                                    $parts[] = "width:{$widthMatch[1]}";
+                                }
+                                if (preg_match('/height:\s*([0-9.]+)pt/i', $style, $heightMatch)) {
+                                    $parts[] = "height:{$heightMatch[1]}";
+                                }
+                                
+                                // Extrair basename do rId (usado como identificador único)
+                                // Como não temos acesso ao arquivo real, usamos o rId
                                 $imageData = $this->xpath->query('.//v:imagedata', $shape);
                                 if ($imageData !== false && $imageData->length > 0) {
                                     $imgNode = $imageData->item(0);
@@ -284,6 +292,7 @@ final class ElementLocator
                                             'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
                                             'id'
                                         );
+                                        // Usar rId como identificador (formato compatível com basename)
                                         $parts[] = $rId;
                                     }
                                 }
@@ -518,6 +527,8 @@ final class ElementLocator
         if ($this->xpath === null && $domElement->ownerDocument !== null) {
             $this->xpath = new DOMXPath($domElement->ownerDocument);
             $this->xpath->registerNamespace('w', self::WORDML_NS);
+            $this->xpath->registerNamespace('v', self::VML_NS);
+            $this->xpath->registerNamespace('o', self::OFFICE_NS);
         }
 
         // Validar tipo
