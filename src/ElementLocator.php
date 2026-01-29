@@ -205,9 +205,9 @@ final class ElementLocator
             return '//w:body/w:p[w:pPr/w:pStyle]';
         }
 
-        // Image: buscar <w:r> com w:pict (tratado em findImageByOrder)
+        // Image: buscar <w:p> que contenha <w:r>/<w:pict> (tratado em findImageByOrder)
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
-            return '//w:body//w:r/w:pict';
+            return '//w:body//w:p[.//w:r/w:pict]';
         }
 
         // Section: não localiza (não serializado como elemento único)
@@ -366,6 +366,7 @@ final class ElementLocator
      * 
      * @param \PhpOffice\PhpWord\Element\Title $element O Title element a localizar
      * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
+     *                   Mantido por compatibilidade e possível suporte futuro a múltiplos títulos.
      * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
      * @throws \ReflectionException Se a propriedade depth não puder ser acessada
      * @since 0.1.0
@@ -374,6 +375,11 @@ final class ElementLocator
         \PhpOffice\PhpWord\Element\Title $element,
         int $order
     ): ?DOMElement {
+        // NOTE: The $order parameter is intentionally unused.
+        // In v3.0, element de-duplication guarantees that only the first
+        // matching Title exists (order is always 1). We keep this parameter
+        // for interface compatibility with earlier versions and potential
+        // future use.
         if ($this->xpath === null) {
             return null;
         }
@@ -427,11 +433,17 @@ final class ElementLocator
      * - o: urn:schemas-microsoft-com:office:office
      * 
      * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
-     * @return DOMElement|null O elemento w:pict localizado, ou null se não encontrado
+     *                   Mantido por compatibilidade e possível suporte futuro a múltiplas imagens.
+     * @return DOMElement|null O elemento w:p pai contendo w:pict, ou null se não encontrado
      * @since 0.1.0
      */
     private function findImageByOrder(int $order): ?DOMElement
     {
+        // NOTE: The $order parameter is intentionally unused.
+        // In v3.0, element de-duplication guarantees that only the first
+        // matching Image exists (order is always 1). We keep this parameter
+        // for interface compatibility with earlier versions and potential
+        // future use.
         if ($this->xpath === null) {
             return null;
         }
