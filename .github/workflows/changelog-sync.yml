@@ -5,8 +5,6 @@ on:
     paths:
       - 'CHANGELOG.md'
     branches: [main]
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:  # Manual trigger fallback
 
 permissions:
@@ -38,28 +36,8 @@ jobs:
           
           echo "✅ Copied CHANGELOG.md → docs/changelog.md"
       
-      - name: Copy to versioned docs (on tag push)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          # Extract version from tag (e.g., refs/tags/v0.0.0 → 0.0.0)
-          VERSION=${GITHUB_REF#refs/tags/v}
-          
-          # Extract major version (e.g., 0.0.0 → 0)
-          MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
-          
-          # Create versioned directory
-          mkdir -p "docs/${MAJOR_VERSION}.x"
-          
-          # Copy CHANGELOG.md to versioned file
-          cp CHANGELOG.md "docs/${MAJOR_VERSION}.x/CHANGELOG-v${VERSION}.md"
-          
-          echo "✅ Copied CHANGELOG.md → docs/${MAJOR_VERSION}.x/CHANGELOG-v${VERSION}.md"
-          
-          # Add to git
-          git add "docs/${MAJOR_VERSION}.x/CHANGELOG-v${VERSION}.md"
-      
       - name: Commit changes
-        continue-on-error: true  # Don't block release on sync failure
+        continue-on-error: true  # Don't block on sync failure
         run: |
           git add docs/changelog.md
           
@@ -67,12 +45,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit (changelog already in sync)"
           else
-            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-              VERSION=${GITHUB_REF#refs/tags/v}
-              git commit -m "docs: Sync CHANGELOG.md for version v${VERSION} [automated]"
-            else
-              git commit -m "docs: Sync CHANGELOG.md to docs/changelog.md [automated]"
-            fi
+            git commit -m "docs: Sync CHANGELOG.md to docs/changelog.md [automated]"
             git push
             echo "✅ Changes committed and pushed"
           fi
@@ -83,3 +56,5 @@ jobs:
           echo "- **Source:** CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
           echo "- **Destination:** docs/changelog.md" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ✅ Synced" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Versioned changelogs (docs/X.x/CHANGELOG-vX.X.X.md) are created by the release workflow when tags are pushed." >> $GITHUB_STEP_SUMMARY
