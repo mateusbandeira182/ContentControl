@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-01-28
+## [0.0.0] - 2026-01-28
 
-### 🎉 Major Rewrite - Proxy Pattern Architecture
+### 🎉 First Public Release - Proxy Pattern Architecture
 
-This is a **BREAKING CHANGE** release with complete API redesign.
+This is the first public release (v0.0.0 baseline for public versioning).
 
 ### ✨ Added
 
@@ -286,9 +286,11 @@ This release completely eliminates content duplication when wrapping elements wi
 - **Memory**: Writer class cache prevents repeated `class_exists()` calls
 - **Windows compatibility**: Temporary file cleanup now handles file locks with retry mechanism
 
-## [1.0.0] - Previous Release
+## Previous Internal Releases
 
-Initial release with basic Content Control support.
+Internal v1.x, v2.x, and v3.x versions existed before public release. This changelog documents only the public v0.0.0+ versions.
 
-[Unreleased]: https://github.com/mateusbandeira182/ContentControl/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/mateusbandeira182/ContentControl/releases/tag/v1.0.0
+For internal version history, see commit history before the first public release.
+
+[Unreleased]: https://github.com/mateusbandeira182/ContentControl/compare/v0.0.0...HEAD
+[0.0.0]: https://github.com/mateusbandeira182/ContentControl/releases/tag/v0.0.0
