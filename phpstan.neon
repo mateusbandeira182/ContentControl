@@ -58,5 +58,33 @@ parameters:
         -
             message: '#Cannot access property .* on DOMElement\|null#'
             path: tests/
+        
+        # Test-specific: DOMNode item() pode retornar null
+        -
+            message: '#Cannot call method .* on DOMNode\|null#'
+            path: tests/
+        -
+            message: '#Cannot access property .* on DOMNode\|null#'
+            path: tests/
+        
+        # Test-specific: Template type resolution em expect() com null
+        -
+            message: '#Unable to resolve the template type TValue in call to function expect#'
+            path: tests/
+        
+        # Test-specific: Access to undefined property $tempFile (usado em beforeEach/afterEach)
+        -
+            message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
+            path: tests/Feature/TitleImageIntegrationTest.php
+        
+        # Test-specific: substr_count pode receber false do ZipArchive::getFromName
+        -
+            message: '#Parameter .* of function substr_count expects string, string\|false given#'
+            path: tests/
+        
+        # Test-specific: imagefilledrectangle color parameter type
+        -
+            message: '#Parameter .* of function imagefilledrectangle expects int, int<0, max>\|false given#'
+            path: tests/
     
     reportUnmatchedIgnoredErrors: false

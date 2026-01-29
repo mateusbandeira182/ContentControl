@@ -133,6 +133,53 @@ final class ElementIdentifier
             $parts[] = $element->getText();
         }
 
+        // Title: incluir depth e texto
+        if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
+            try {
+                $reflection = new \ReflectionClass($element);
+                $depthProperty = $reflection->getProperty('depth');
+                $depthProperty->setAccessible(true);
+                $depth = $depthProperty->getValue($element);
+                
+                $textProperty = $reflection->getProperty('text');
+                $textProperty->setAccessible(true);
+                $text = $textProperty->getValue($element);
+                
+                // Garantir que depth seja inteiro
+                if (!is_int($depth)) {
+                    throw new \RuntimeException('Title depth must be an integer');
+                }
+                
+                $styleName = $depth === 0 ? 'Title' : 'Heading' . $depth;
+                
+                $parts[] = 'title';
+                $parts[] = $styleName;
+                $parts[] = $text;
+            } catch (\ReflectionException $e) {
+                // Fallback para tratamento como parágrafo
+                $parts[] = 'title';
+            }
+        }
+
+        // Image: incluir dimensões e source
+        if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
+            $parts[] = 'image';
+            
+            // Extrair width e height via getStyle()
+            $style = $element->getStyle();
+            if ($style !== null) {
+                $width = $style->getWidth();
+                $parts[] = "width:{$width}";
+                
+                $height = $style->getHeight();
+                $parts[] = "height:{$height}";
+            }
+            
+            // Extrair source (path ou URL)
+            $source = $element->getSource();
+            $parts[] = basename($source);
+        }
+
         // Table: incluir número de linhas e colunas
         if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
             $parts[] = 'table';  // Corresponde a w:tbl no DOM

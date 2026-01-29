@@ -21,6 +21,8 @@ use DOMXPath;
 final class ElementLocator
 {
     private const WORDML_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    private const VML_NS = 'urn:schemas-microsoft-com:vml';
+    private const OFFICE_NS = 'urn:schemas-microsoft-com:office:office';
 
     /**
      * Cache de XPath instance para reutilização
@@ -45,6 +47,8 @@ final class ElementLocator
         if ($this->xpath === null) {
             $this->xpath = new DOMXPath($dom);
             $this->xpath->registerNamespace('w', self::WORDML_NS);
+            $this->xpath->registerNamespace('v', self::VML_NS);
+            $this->xpath->registerNamespace('o', self::OFFICE_NS);
         }
 
         // Estratégia 1: Por tipo + ordem
@@ -74,6 +78,16 @@ final class ElementLocator
      */
     private function findByTypeAndOrder(object $element, int $order): ?DOMElement
     {
+        // Title: usar método especializado
+        if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
+            return $this->findTitleByDepth($element, $order);
+        }
+
+        // Image: usar método especializado
+        if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
+            return $this->findImageByOrder($order);
+        }
+
         $query = $this->createXPathQuery($element);
 
         // Para células, buscar apenas células NÃO envolvidas em SDTs
@@ -186,6 +200,16 @@ final class ElementLocator
             return '//w:body//w:tc';
         }
 
+        // Title: buscar <w:p> com w:pStyle (tratado em findTitleByDepth)
+        if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
+            return '//w:body/w:p[w:pPr/w:pStyle]';
+        }
+
+        // Image: buscar <w:r> com w:pict (tratado em findImageByOrder)
+        if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
+            return '//w:body//w:r/w:pict';
+        }
+
         // Section: não localiza (não serializado como elemento único)
         // Containers são processados via seus elementos filhos
         
@@ -195,6 +219,8 @@ final class ElementLocator
             \PhpOffice\PhpWord\Element\TextRun::class,
             \PhpOffice\PhpWord\Element\Table::class,
             \PhpOffice\PhpWord\Element\Cell::class,
+            \PhpOffice\PhpWord\Element\Title::class,
+            \PhpOffice\PhpWord\Element\Image::class,
         ];
 
         // Usar nomes de classe curtos para melhor legibilidade na mensagem de erro
@@ -232,6 +258,25 @@ final class ElementLocator
 
         // Paragraph: extrair todo texto
         if ($domElement->nodeName === 'w:p') {
+            // Verificar se é Title (tem w:pStyle)
+            if ($this->xpath !== null) {
+                $pStyle = $this->xpath->query('.//w:pPr/w:pStyle', $domElement);
+                if ($pStyle !== false && $pStyle->length > 0) {
+                    $styleNode = $pStyle->item(0);
+                    if ($styleNode instanceof DOMElement) {
+                        $styleName = $styleNode->getAttribute('w:val');
+                        $parts[] = 'title';
+                        $parts[] = $styleName;
+                        $text = $this->extractTextContent($domElement);
+                        $parts[] = $text;
+                        // Hash diferente de Text comum
+                        $serialized = implode('|', $parts);
+                        return substr(md5($serialized), 0, 8);
+                    }
+                }
+            }
+            
+            // Text/TextRun comum
             $parts[] = 'paragraph';  // Compatível com ElementIdentifier
             $text = $this->extractTextContent($domElement);
             $parts[] = $text;
@@ -277,8 +322,140 @@ final class ElementLocator
             }
         }
 
+        // Image: extrair dimensões e rId
+        if ($domElement->nodeName === 'w:pict' && $this->xpath !== null) {
+            $parts[] = 'image';
+            
+            // Extrair dimensões do atributo style do v:shape
+            $shapes = $this->xpath->query('.//v:shape', $domElement);
+            if ($shapes !== false && $shapes->length > 0) {
+                $shape = $shapes->item(0);
+                if ($shape instanceof DOMElement) {
+                    $style = $shape->getAttribute('style');
+                    $parts[] = $style; // Inclui width e height
+                    
+                    // Extrair rId da v:imagedata
+                    $imageData = $this->xpath->query('.//v:imagedata', $shape);
+                    if ($imageData !== false && $imageData->length > 0) {
+                        $imgNode = $imageData->item(0);
+                        if ($imgNode instanceof DOMElement) {
+                            $rId = $imgNode->getAttributeNS(
+                                'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+                                'id'
+                            );
+                            $parts[] = $rId;
+                        }
+                    }
+                }
+            }
+        }
+
         $serialized = implode('|', $parts);
         return substr(md5($serialized), 0, 8);
+    }
+
+    /**
+     * Localiza um Title element no DOM por depth e order
+     * 
+     * Busca Title elements usando o atributo w:pStyle que corresponde
+     * ao depth (0=Title, 1=Heading1, 2=Heading2, etc.). Este método
+     * usa Reflection para acessar a propriedade privada $depth do Title.
+     * 
+     * XPath Query Pattern:
+     * //w:body/w:p[w:pPr/w:pStyle[@w:val="Heading{depth}"]][not(ancestor::w:sdtContent)][1]
+     * 
+     * @param \PhpOffice\PhpWord\Element\Title $element O Title element a localizar
+     * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
+     * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
+     * @throws \ReflectionException Se a propriedade depth não puder ser acessada
+     * @since 0.1.0
+     */
+    private function findTitleByDepth(
+        \PhpOffice\PhpWord\Element\Title $element,
+        int $order
+    ): ?DOMElement {
+        if ($this->xpath === null) {
+            return null;
+        }
+
+        // Usar Reflection para acessar $depth privado
+        try {
+            $reflection = new \ReflectionClass($element);
+            $depthProperty = $reflection->getProperty('depth');
+            $depthProperty->setAccessible(true);
+            $depth = $depthProperty->getValue($element);
+            
+            // Garantir que depth seja inteiro
+            if (!is_int($depth)) {
+                throw new \RuntimeException('Title depth must be an integer');
+            }
+        } catch (\ReflectionException $e) {
+            // Fallback: tentar localizar por texto
+            return null;
+        }
+
+        // Mapear depth para nome de estilo
+        $styleName = $depth === 0 ? 'Title' : 'Heading' . $depth;
+
+        // Query XPath para localizar por estilo
+        $query = sprintf(
+            '//w:body/w:p[w:pPr/w:pStyle[@w:val="%s"]][not(ancestor::w:sdtContent)][1]',
+            $styleName
+        );
+
+        $nodes = $this->xpath->query($query);
+        if ($nodes === false || $nodes->length === 0) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+        return ($node instanceof DOMElement) ? $node : null;
+    }
+
+    /**
+     * Localiza um Image element no DOM por order
+     * 
+     * Busca Image elements localizando elementos w:pict dentro de w:r (run) nodes.
+     * Suporta imagens inline e floating. Imagens watermark não são suportadas e
+     * resultarão em exceção durante o processamento.
+     * 
+     * XPath Query Pattern:
+     * //w:body//w:r/w:pict[not(ancestor::w:sdtContent)][1]
+     * 
+     * Requer namespaces VML registrados:
+     * - v: urn:schemas-microsoft-com:vml
+     * - o: urn:schemas-microsoft-com:office:office
+     * 
+     * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
+     * @return DOMElement|null O elemento w:pict localizado, ou null se não encontrado
+     * @since 0.1.0
+     */
+    private function findImageByOrder(int $order): ?DOMElement
+    {
+        if ($this->xpath === null) {
+            return null;
+        }
+
+        // Query para localizar w:pict (VML images)
+        $query = '//w:body//w:r/w:pict[not(ancestor::w:sdtContent)][1]';
+
+        $nodes = $this->xpath->query($query);
+        if ($nodes === false || $nodes->length === 0) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+        if (!$node instanceof DOMElement) {
+            return null;
+        }
+
+        // Retornar o elemento <w:p> pai que contém a imagem
+        $parent = $node->parentNode;
+        while ($parent !== null && !($parent instanceof DOMElement && $parent->nodeName === 'w:p')) {
+            $parent = $parent->parentNode;
+        }
+
+        return ($parent instanceof DOMElement) ? $parent : null;
     }
 
     /**
@@ -326,7 +503,9 @@ final class ElementLocator
         $expectedNodeName = null;
 
         if ($phpWordElement instanceof \PhpOffice\PhpWord\Element\Text ||
-            $phpWordElement instanceof \PhpOffice\PhpWord\Element\TextRun) {
+            $phpWordElement instanceof \PhpOffice\PhpWord\Element\TextRun ||
+            $phpWordElement instanceof \PhpOffice\PhpWord\Element\Title ||
+            $phpWordElement instanceof \PhpOffice\PhpWord\Element\Image) {
             $expectedNodeName = 'w:p';
         } elseif ($phpWordElement instanceof \PhpOffice\PhpWord\Element\Table) {
             $expectedNodeName = 'w:tbl';

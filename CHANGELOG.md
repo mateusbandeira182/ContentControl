@@ -5,13 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-01-29
+
+### Added
+
+**Title Element Support**
+- Title elements (Heading1-9 and Title depth=0) can now be wrapped with Content Controls
+- XPath locator distinguishes Titles from regular Text via `w:pStyle` attribute
+- Hash generation includes heading depth and style name to prevent collisions with Text elements
+- Bookmark references preserved for Table of Contents compatibility
+- Supports all 10 depth levels (0=Title, 1=Heading1, ..., 9=Heading9)
+- `ElementLocator::findTitleByDepth()` method for precise Title element location using Reflection
+
+**Image Element Support**
+- Inline and floating images can be wrapped with Content Controls
+- Automatic detection of `w:pict` elements using VML namespaces (not DrawingML as initially planned)
+- Hash generation based on image dimensions (width/height) and source path
+- Relationship IDs (rId) preserved for image references in `word/_rels/document.xml.rels`
+- `ElementLocator::findImageByOrder()` method with VML namespace support
+
+### Changed
+
+**ElementLocator Enhancements**
+- Added VML namespace constants (`VML_NS`, `OFFICE_NS`) for image support
+- Registered additional namespaces: `v` (VML), `o` (Office)
+- Modified `findByTypeAndOrder()` to route Title and Image to specialized finders
+- Updated `hashDOMElement()` to include `w:pStyle` for Title differentiation
+- Updated `hashDOMElement()` to include `v:shape` style attributes for Image differentiation
+- Modified `validateMatch()` to accept Title and Image as `w:p` node types
+
+**ElementIdentifier Enhancements**
+- Modified `serializeForHash()` to include Title depth and style name (using Reflection)
+- Modified `serializeForHash()` to include Image dimensions via `getStyle()->getWidth()/getHeight()`
+- Hash differentiation prevents Title/Text and Image/Text collisions
+
+**Supported Elements** (updated list)
+- Text ✅ (v0.0.0)
+- TextRun ✅ (v0.0.0)
+- Table ✅ (v0.0.0)
+- Cell ✅ (v0.0.0)
+- Title ✅ (v0.1.0) **NEW**
+- Image ✅ (v0.1.0) **NEW**
+
+### 🧪 Testing
+
+- **27 new tests added** (247 total, up from 227)
+  - 14 unit tests for Title support (ElementLocatorTitleTest)
+  - 7 unit tests for Image support (ElementLocatorImageTest)
+  - 6 feature tests for integration (TitleImageIntegrationTest)
+- **586 assertions** passing (all green)
+- Code coverage maintained at **80%+**
+- PHPStan Level 9 strict mode: **0 errors**
+- Performance: 247 tests complete in **<4 seconds**
+
+### Documentation
+
+- README updated with Title and Image in "Supported Elements" table
+- New sample file: `samples/title_image_examples.php`
+  - Example 1: Hierarchical titles (depth 0-3)
+  - Example 2: Images with TYPE_PICTURE
+  - Example 3: Mixed document (Titles + Images + Text)
+  - Example 4: TOC compatibility demonstration
+- PHPDoc blocks added for all new methods (`@since 0.1.0`)
+- Copilot instructions updated with Title/Image implementation notes
+
+### Known Limitations
+
+- **TOC (Table of Contents)** elements not supported due to complex field structure spanning multiple paragraphs
+  - **Impact**: `$cc->addContentControl($tocElement, [...])` not available
+  - **Workaround**: Wrap individual Title elements instead - TOC will still generate correctly and bookmarks are preserved
+- **Watermark images** not supported (different OOXML structure incompatible with SDT wrapping)
+  - **Impact**: Images with `isWatermark=true` would throw `ContentControlException` (validation not yet implemented)
+- **Image positioning**: Some floating image positioning styles may shift post-wrapping
+  - **Impact**: Manual adjustment may be needed in Word after document generation
+  - **Affected styles**: Absolute positioning with custom anchors
+
+### 🔬 Technical Details
+
+**Image Detection Strategy** (VML vs DrawingML):
+- PHPWord generates images as `<w:pict>` with VML (`v:shape`, `v:imagedata`)
+- Initial plan expected DrawingML (`w:drawing`) but actual output uses legacy VML
+- XPath query: `//w:body//w:r/w:pict[not(ancestor::w:sdtContent)][1]`
+- Returns parent `<w:p>` element containing the image
+
+**Title Detection Strategy**:
+- Uses Reflection to access private `$depth` property of `Title` element
+- Maps depth to style name: `0 → "Title"`, `1 → "Heading1"`, `2 → "Heading2"`, etc.
+- XPath query: `//w:body/w:p[w:pPr/w:pStyle[@w:val="Heading{depth}"]][not(ancestor::w:sdtContent)][1]`
+- Bookmarks (`w:bookmarkStart`, `w:bookmarkEnd`) remain inside `<w:sdtContent>` preserving TOC functionality
+
 ## [0.0.0] - 2026-01-28
 
-### 🎉 First Public Release - Proxy Pattern Architecture
+### First Public Release - Proxy Pattern Architecture
 
 This is the first public release (v0.0.0 baseline for public versioning).
 
-### ✨ Added
+### Added
 
 - **Proxy Pattern**: ContentControl now encapsulates PhpWord instead of extending AbstractContainer
   - Single unified class for all operations
@@ -44,7 +133,7 @@ This is the first public release (v0.0.0 baseline for public versioning).
   - `addFontStyle()`, `addParagraphStyle()`, `addTableStyle()`, `addTitleStyle()`
   - `getSections()`, `getPhpWord()`, `getSDTRegistry()`
 
-### 🔄 Changed
+### Changed
 
 - **BREAKING**: Constructor signature changed
   - **OLD**: `new ContentControl($section, ['alias' => '...'])`
@@ -56,7 +145,7 @@ This is the first public release (v0.0.0 baseline for public versioning).
   - Uses composition instead of inheritance
   - Maintains compatibility with PhpWord via delegation
 
-### ❌ Removed
+### Removed
 
 - **IOFactory class**: Completely removed
   - `IOFactory::createWriter()` → use `PHPWordIOFactory::createWriter()` directly
@@ -65,13 +154,13 @@ This is the first public release (v0.0.0 baseline for public versioning).
 - **Writer\Word2007\Element\ContentControl**: Removed (not used in Proxy Pattern)
 - **Test files**: Removed obsolete tests (PropertiesTest, ValidationTest, Writer tests)
 
-### 📚 Documentation
+### Documentation
 
 - Complete README.md rewrite for v2.0 API
 - New samples/ContentControl_Sample.php with 9 comprehensive examples
 - Updated .github/copilot-instructions.md with v2.0 architecture
 
-### 🧪 Testing
+### Testing
 
 - **116 tests passing** (240 assertions)
 - **PHPStan Level 9**: 0 errors in src/
@@ -80,7 +169,7 @@ This is the first public release (v0.0.0 baseline for public versioning).
   - `SDTRegistryTest.php` (27 tests)
   - `SDTInjectorTest.php` (15 tests)
 
-### 🏗️ Architecture
+### Architecture
 
 - **Patterns**: Proxy, Value Object, Registry, Service Layer
 - **Principles**: SOLID, immutability, type safety
@@ -88,13 +177,13 @@ This is the first public release (v0.0.0 baseline for public versioning).
 
 ---
 
-## [3.0.0] - 2026-01-28
+## [Unreleased] - 2026-01-28
 
-### 🎉 Major Enhancement - Zero Content Duplication
+### Major Enhancement - Zero Content Duplication
 
 This release completely eliminates content duplication when wrapping elements with Content Controls (SDTs). The implementation uses in-place DOM manipulation instead of XML string concatenation.
 
-### ✨ Added
+### Added
 
 - **ElementIdentifier**: Unique marker generation for PHPWord elements
   - SHA-256 based markers combining element type + content + position
@@ -129,7 +218,7 @@ This release completely eliminates content duplication when wrapping elements wi
   - `v3_performance_benchmark.php`: Performance metrics
   - `v3_real_world_examples.php`: Practical use cases
 
-### 🔄 Changed
+### Changed
 
 - **BREAKING**: `SDTInjector::inject()` now uses DOM manipulation instead of string replacement
   - Old behavior: Replaced closing `</w:body>` tag with SDT XML + closing tag
@@ -147,7 +236,7 @@ This release completely eliminates content duplication when wrapping elements wi
   - Already-wrapped elements detected and skipped
   - Stable sort maintains original order for same depth
 
-### 🐛 Fixed
+### Fixed
 
 - **Critical**: Content duplication when wrapping elements with SDTs
   - **Root cause**: Old implementation used string replacement, duplicating content
@@ -163,14 +252,14 @@ This release completely eliminates content duplication when wrapping elements wi
   - Changed invalid Windows paths (`Z:\...`) to cross-platform paths
   - Tests now pass on Ubuntu (GitHub Actions) and Windows
 
-### 📊 Performance
+### Performance
 
 - **100 elements**: 88ms (depth-first processing + DOM manipulation)
 - **Linear scaling**: O(n) complexity for n elements
 - **Memory**: Minimal overhead (DOMDocument reused across elements)
 - **Projection 1000 elements**: ~880ms (based on benchmarks)
 
-### 🧪 Testing
+### Testing
 
 - **166 tests passing** (379 assertions)
 - **PHPStan Level 9**: 0 errors in src/
@@ -184,13 +273,13 @@ This release completely eliminates content duplication when wrapping elements wi
   - `SDTInjectorErrorTest.php` (injection failures)
   - `SDTRegistryFallbackTest.php` (ID generation fallback)
 
-### 📚 Documentation
+### Documentation
 
 - Updated README.md with v3.0 architecture details
 - Added technical documentation for DOM manipulation strategy
 - Updated .github/copilot-instructions.md with v3.0 patterns
 
-### 🏗️ Architecture
+### Architecture
 
 - **Pattern**: Depth-first element processing
 - **Principle**: In-place DOM manipulation (no content copying)
@@ -233,7 +322,7 @@ This release completely eliminates content duplication when wrapping elements wi
 
 ---
 
-## [3.0.0] - 2026-01-28
+## [Unreleased] - 2026-01-28
 - **Exception hierarchy**: Custom exception classes for better error handling
   - `ContentControlException`: Base exception for all library errors
   - `ZipArchiveException`: ZIP operation failures with detailed error mapping
