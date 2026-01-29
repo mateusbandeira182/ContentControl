@@ -161,7 +161,11 @@ final class SDTInjector
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput = false;
         
-        $success = $dom->loadXML($documentXml);
+        // Security: Prevent XXE attacks by disabling network access during XML parsing
+        $success = $dom->loadXML(
+            $documentXml,
+            \LIBXML_NONET
+        );
         
         if ($success === false) {
             $errors = libxml_get_errors();
