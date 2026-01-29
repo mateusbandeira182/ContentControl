@@ -130,11 +130,12 @@ final class ElementLocator
      * @param object $element Elemento PHPWord
      * @param string $contentHash Hash MD5 do conteúdo
      * @return DOMElement|null
+     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
     private function findByContentHash(object $element, string $contentHash): ?DOMElement
     {
         $query = $this->createXPathQuery($element);
-        if ($query === null || $this->xpath === null) {
+        if ($this->xpath === null) {
             return null;
         }
 

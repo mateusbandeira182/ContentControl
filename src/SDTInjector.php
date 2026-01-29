@@ -163,11 +163,10 @@ final class SDTInjector
         
         // Security: Disable external entity loading to prevent XXE attacks
         // LIBXML_NONET: Disable network access during document loading
-        // LIBXML_DTDLOAD: Disable loading of external DTDs
-        // LIBXML_DTDATTR: Do not default attributes from DTDs
+        // LIBXML_NOENT: Disable entity substitution to prevent XXE
         $success = $dom->loadXML(
             $documentXml,
-            \LIBXML_NONET | \LIBXML_DTDLOAD | \LIBXML_DTDATTR
+            \LIBXML_NONET | \LIBXML_NOENT
         );
         
         if ($success === false) {
