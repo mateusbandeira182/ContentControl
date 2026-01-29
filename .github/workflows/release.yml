@@ -92,36 +92,6 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Setup Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Create versioned changelog
-        run: |
-          MAJOR=${{ needs.validate.outputs.major }}
-          VERSION=${{ needs.validate.outputs.version }}
-          
-          # Create major version folder if not exists
-          mkdir -p docs/${MAJOR}.x
-          
-          # Copy main CHANGELOG.md to versioned file
-          cp CHANGELOG.md docs/${MAJOR}.x/CHANGELOG-v${VERSION}.md
-          
-          echo "✅ Created docs/${MAJOR}.x/CHANGELOG-v${VERSION}.md"
-      
-      - name: Commit documentation updates
-        run: |
-          git add docs/
-          
-          if git diff --staged --quiet; then
-            echo "No documentation changes to commit"
-          else
-            git commit -m "docs: Add changelog for v${{ needs.validate.outputs.version }}"
-            git push origin HEAD:main
-            echo "✅ Documentation committed and pushed"
-          fi
-      
       - name: Extract release notes from CHANGELOG
         id: release_notes
         run: |
@@ -155,7 +125,6 @@ jobs:
           echo "### 🎉 Release Created" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** v${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Major Series:** ${{ needs.validate.outputs.major }}.x" >> $GITHUB_STEP_SUMMARY
-          echo "- **Changelog:** docs/${{ needs.validate.outputs.major }}.x/CHANGELOG-v${{ needs.validate.outputs.version }}.md" >> $GITHUB_STEP_SUMMARY
 
   packagist:
     name: Notify Packagist
