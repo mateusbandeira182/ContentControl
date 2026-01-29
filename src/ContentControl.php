@@ -209,7 +209,16 @@ final class ContentControl
     /**
      * Adiciona Content Control envolvendo um elemento
      * 
-     * @param AbstractContainer | AbstractElement $element Elemento PHPWord (Section, Table, etc)
+     * Tipos de elementos suportados em v3.0:
+     * - Text: Elementos de texto simples
+     * - TextRun: Elementos de texto com formatação
+     * - Table: Tabelas completas
+     * - Cell: Células individuais de tabela
+     * 
+     * Nota: Section não é suportado em v3.0. Para envolver seções,
+     * envolva os elementos filhos da seção individualmente.
+     * 
+     * @param object $element Elemento PHPWord (Text, TextRun, Table, Cell)
      * @param array{
      *     id?: string,
      *     alias?: string,
@@ -217,15 +226,16 @@ final class ContentControl
      *     type?: string,
      *     lockType?: string
      * } $options Configurações do Content Control
-     * @return AbstractContainer | AbstractElement O mesmo elemento (para fluent API)
+     * @return object O mesmo elemento (para fluent API)
+     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      * 
      * @example
      * ```php
      * $cc = new ContentControl();
      * $section = $cc->addSection();
-     * $section->addText('Conteúdo protegido');
+     * $text = $section->addText('Conteúdo protegido');
      * 
-     * $cc->addContentControl($section, [
+     * $cc->addContentControl($text, [
      *     'alias' => 'Cliente',
      *     'tag' => 'customer-name',
      *     'type' => ContentControl::TYPE_RICH_TEXT,
@@ -235,7 +245,7 @@ final class ContentControl
      * $cc->save('documento.docx');
      * ```
      */
-    public function addContentControl(AbstractContainer | AbstractElement $element, array $options = []): AbstractContainer | AbstractElement
+    public function addContentControl(object $element, array $options = []): object
     {
         // Criar config a partir das opções
         $config = SDTConfig::fromArray($options);
@@ -300,10 +310,18 @@ final class ContentControl
     public function save(string $filename, string $format = 'Word2007'): void
     {
         // 1. Validar diretório
-        $dir = dirname($filename);
-        if (!is_dir($dir) || !is_writable($dir)) {
+        try {
+            $dir = dirname($filename);
+            
+            if (!is_dir($dir) || !is_writable($dir)) {
+                throw new \RuntimeException(
+                    'ContentControl: Target directory not writable: ' . $dir
+                );
+            }
+        } catch (\ValueError $e) {
+            // PHP 8.2+: dirname(), is_dir() ou is_writable() podem lançar ValueError para caminhos inválidos
             throw new \RuntimeException(
-                'ContentControl: Target directory not writable: ' . $dir
+                'ContentControl: Invalid file path: ' . $e->getMessage()
             );
         }
 

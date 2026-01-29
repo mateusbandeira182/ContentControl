@@ -140,9 +140,10 @@ describe('Element Serialization - Múltiplos Elementos', function () {
 test('lida com Content Control vazio', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
-    // Section vazio
+    // Adicionar Text vazio (v3.0 não suporta Section vazio)
+    $emptyText = $section->addText('');
     
-    $cc->addContentControl($section);
+    $cc->addContentControl($emptyText);
     
     $tempFile = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
     try {

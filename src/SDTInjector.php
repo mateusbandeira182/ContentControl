@@ -26,23 +26,70 @@ final class SDTInjector
     private const WORDML_NAMESPACE = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
     /**
-     * Injeta Content Controls em arquivo DOCX existente
+     * Registry de elementos já processados (evita re-wrapping)
+     * 
+     * @var array<string, true>
+     */
+    private array $processedElements = [];
+
+    /**
+     * Localizador de elementos no DOM
+     */
+    private ElementLocator $locator;
+
+    /**
+     * Cria nova instância do SDTInjector
+     */
+    public function __construct()
+    {
+        $this->locator = new ElementLocator();
+    }
+
+    /**
+     * Injeta Content Controls em arquivo DOCX existente (v3.0 - DOM manipulation)
+     * 
+     * Workflow v3.0:
+     * 1. Abre DOCX como ZIP e lê document.xml
+     * 2. Carrega XML em DOMDocument
+     * 3. Ordena elementos por profundidade (Cell antes de Table)
+     * 4. Para cada elemento:
+     *    a. Localiza no DOM usando ElementLocator
+     *    b. Envolve inline com wrapElementInline()
+     *    c. Marca como processado
+     * 5. Serializa DOM modificado de volta para document.xml
+     * 6. Atualiza ZIP e salva
      * 
      * @param string $docxPath Caminho do arquivo DOCX
      * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples Tuplas elemento→config
      * @return void
      * @throws ZipArchiveException Se falhar ao abrir/manipular ZIP
      * @throws DocumentNotFoundException Se word/document.xml não existir
+     * @throws \RuntimeException Se não conseguir localizar elemento no DOM
      */
     public function inject(string $docxPath, array $sdtTuples): void
     {
+        // 1. Abrir DOCX e ler document.xml
         $zip = $this->openDocxAsZip($docxPath);
 
         try {
             $documentXml = $this->readDocumentXml($zip, $docxPath);
-            $sdtsXml = $this->generateSDTsXml($sdtTuples);
-            $documentXml = $this->injectXmlBeforeBodyClose($documentXml, $sdtsXml);
-            $this->updateDocumentXml($zip, $documentXml);
+
+            // 2. Carregar em DOMDocument
+            $dom = $this->loadDocumentAsDom($documentXml);
+
+            // 3. Ordenar elementos por profundidade (depth-first)
+            $sortedTuples = $this->sortElementsByDepth($sdtTuples);
+
+            // 4. Processar cada elemento
+            foreach ($sortedTuples as $index => $tuple) {
+                $this->processElement($dom, $tuple['element'], $tuple['config'], $index);
+            }
+
+            // 5. Serializar DOM modificado
+            $modifiedXml = $this->serializeDocument($dom);
+
+            // 6. Atualizar document.xml no ZIP
+            $this->updateDocumentXml($zip, $modifiedXml);
         } finally {
             $zip->close();
         }
@@ -82,41 +129,9 @@ final class SDTInjector
         return $documentXml;
     }
 
-    /**
-     * Gera XML de todos os Content Controls
-     * 
-     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples Tuplas elemento→config
-     * @return string XML concatenado de todos os SDTs
-     */
-    private function generateSDTsXml(array $sdtTuples): string
-    {
-        $sdtsXml = '';
-        foreach ($sdtTuples as $tuple) {
-            $sdtsXml .= $this->createSDTElement($tuple['element'], $tuple['config']);
-        }
-        return $sdtsXml;
-    }
 
-    /**
-     * Injeta XML dos SDTs antes da tag de fechamento </w:body>
-     * 
-     * @param string $documentXml XML original do documento
-     * @param string $sdtsXml XML dos Content Controls a injetar
-     * @return string XML modificado com SDTs injetados
-     */
-    private function injectXmlBeforeBodyClose(string $documentXml, string $sdtsXml): string
-    {
-        $bodyClosePos = strpos($documentXml, '</w:body>');
-        if ($bodyClosePos !== false) {
-            $documentXml = substr_replace(
-                $documentXml,
-                $sdtsXml,
-                $bodyClosePos,
-                0
-            );
-        }
-        return $documentXml;
-    }
+
+
 
     /**
      * Atualiza word/document.xml no arquivo ZIP
@@ -132,11 +147,104 @@ final class SDTInjector
     }
 
     /**
+     * Carrega document.xml em DOMDocument (v3.0)
+     * 
+     * @param string $documentXml Conteúdo XML do documento
+     * @return \DOMDocument Documento DOM carregado
+     * @throws \RuntimeException Se falhar ao carregar XML
+     */
+    private function loadDocumentAsDom(string $documentXml): \DOMDocument
+    {
+        libxml_use_internal_errors(true);
+        
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
+        
+        // Security: Prevent XXE attacks by disabling network access during XML parsing
+        $success = $dom->loadXML(
+            $documentXml,
+            \LIBXML_NONET
+        );
+        
+        if ($success === false) {
+            $errors = libxml_get_errors();
+            libxml_clear_errors();
+            libxml_use_internal_errors(false);
+            
+            $errorMessages = array_map(fn($e) => trim($e->message), $errors);
+            throw new \RuntimeException(
+                'SDTInjector: Failed to load document.xml as DOM: ' . implode('; ', $errorMessages)
+            );
+        }
+        
+        libxml_use_internal_errors(false);
+        return $dom;
+    }
+
+    /**
+     * Processa um elemento: localiza no DOM e envolve com SDT (v3.0)
+     * 
+     * @param \DOMDocument $dom Documento DOM
+     * @param mixed $element Elemento PHPWord
+     * @param SDTConfig $config Configuração do Content Control
+     * @param int $elementIndex Índice do elemento na ordem de processamento (0-indexed)
+     * @return void
+     * @throws \RuntimeException Se não conseguir localizar elemento
+     */
+    private function processElement(\DOMDocument $dom, mixed $element, SDTConfig $config, int $elementIndex): void
+    {
+        // Validar que elemento é object
+        if (!is_object($element)) {
+            throw new \RuntimeException('SDTInjector: Element must be an object');
+        }
+        
+        // Localizar elemento no DOM
+        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex);
+        
+        if ($targetElement === null) {
+            throw new \RuntimeException(
+                'SDTInjector: Could not locate element in DOM tree'
+            );
+        }
+        
+        // Verificar se já foi processado (evitar re-wrapping)
+        if ($this->isElementProcessed($targetElement)) {
+            return; // Já foi envolvido em <w:sdt>, pular
+        }
+        
+        // Envolver elemento inline
+        $this->wrapElementInline($targetElement, $config);
+    }
+
+    /**
+     * Serializa DOMDocument de volta para string XML (v3.0)
+     * 
+     * @param \DOMDocument $dom Documento DOM modificado
+     * @return string XML serializado
+     * @throws \RuntimeException Se falhar ao serializar
+     */
+    private function serializeDocument(\DOMDocument $dom): string
+    {
+        $xml = $dom->saveXML();
+        
+        if ($xml === false) {
+            throw new \RuntimeException('SDTInjector: Failed to serialize DOM to XML');
+        }
+        
+        return $xml;
+    }
+
+    /**
      * Cria elemento XML <w:sdt> completo
+     * 
+     * NOTA: Método usado em testes unitários via ReflectionMethod (por isso marcado como @used)
      * 
      * @param mixed $element Elemento PHPWord
      * @param SDTConfig $config Configuração do SDT
      * @return string XML do Content Control
+     * 
+     * @phpstan-ignore-next-line
      */
     private function createSDTElement($element, SDTConfig $config): string
     {
@@ -229,34 +337,37 @@ final class SDTInjector
      */
     private function createSdtProperties(\DOMDocument $doc, SDTConfig $config): \DOMElement
     {
-        $sdtPr = $doc->createElement('w:sdtPr');
+        // Detectar namespace (usar o do documento ou padrão)
+        $nsUri = self::WORDML_NAMESPACE;
+        
+        $sdtPr = $doc->createElementNS($nsUri, 'w:sdtPr');
 
         // ID (obrigatório) - §17.5.2.14
-        $id = $doc->createElement('w:id');
+        $id = $doc->createElementNS($nsUri, 'w:id');
         $id->setAttribute('w:val', $config->id);
         $sdtPr->appendChild($id);
 
         // Alias (opcional) - §17.5.2.6
         if ($config->alias !== '') {
-            $alias = $doc->createElement('w:alias');
+            $alias = $doc->createElementNS($nsUri, 'w:alias');
             $alias->setAttribute('w:val', $config->alias);
             $sdtPr->appendChild($alias);
         }
 
         // Tag (opcional) - §17.5.2.33
         if ($config->tag !== '') {
-            $tag = $doc->createElement('w:tag');
+            $tag = $doc->createElementNS($nsUri, 'w:tag');
             $tag->setAttribute('w:val', $config->tag);
             $sdtPr->appendChild($tag);
         }
 
         // Tipo de Content Control (obrigatório)
-        $typeElement = $doc->createElement($this->getTypeElementName($config->type));
+        $typeElement = $doc->createElementNS($nsUri, $this->getTypeElementName($config->type));
         $sdtPr->appendChild($typeElement);
 
         // Lock (condicional) - §17.5.2.23
         if ($config->lockType !== ContentControl::LOCK_NONE) {
-            $lock = $doc->createElement('w:lock');
+            $lock = $doc->createElementNS($nsUri, 'w:lock');
             $lock->setAttribute('w:val', $config->lockType);
             $sdtPr->appendChild($lock);
         }
@@ -375,5 +486,161 @@ final class SDTInjector
             $element instanceof \PhpOffice\PhpWord\Element\Header ||
             $element instanceof \PhpOffice\PhpWord\Element\Footer
         );
+    }
+
+    /**
+     * Envolve elemento DOM inline com estrutura <w:sdt>
+     * 
+     * Workflow:
+     * 1. Criar <w:sdt><w:sdtPr>...</w:sdtPr><w:sdtContent></w:sdtContent></w:sdt>
+     * 2. Inserir SDT antes do elemento original no DOM tree
+     * 3. MOVER elemento para dentro de <w:sdtContent> (appendChild move o nó)
+     * 4. Marcar como processado
+     * 
+     * IMPORTANTE: appendChild() em nó existente = MOVE (não duplica)
+     * 
+     * @param \DOMElement $targetElement Elemento DOM a envolver
+     * @param SDTConfig $config Configuração do Content Control
+     * @return void
+     * @throws \RuntimeException Se elemento não tiver parent ou owner document
+     */
+    private function wrapElementInline(\DOMElement $targetElement, SDTConfig $config): void
+    {
+        // Validar pre-condições
+        $dom = $targetElement->ownerDocument;
+        if ($dom === null) {
+            throw new \RuntimeException('SDTInjector: Target element has no owner document');
+        }
+
+        $parent = $targetElement->parentNode;
+        if ($parent === null) {
+            throw new \RuntimeException('SDTInjector: Target element has no parent node');
+        }
+
+        // Detectar namespace do documento (normalmente está no elemento root ou parent)
+        $nsUri = $targetElement->namespaceURI;
+        if ($nsUri === null || $nsUri === '') {
+            $nsUri = self::WORDML_NAMESPACE;
+        }
+
+        // 1. Criar estrutura <w:sdt> COM namespace
+        $sdt = $dom->createElementNS($nsUri, 'w:sdt');
+        
+        // 2. Adicionar propriedades <w:sdtPr>
+        $sdtPr = $this->createSdtProperties($dom, $config);
+        $sdt->appendChild($sdtPr);
+        
+        // 3. Criar container <w:sdtContent> COM namespace
+        $sdtContent = $dom->createElementNS($nsUri, 'w:sdtContent');
+        
+        // 4. Inserir SDT ANTES do elemento original
+        $parent->insertBefore($sdt, $targetElement);
+        
+        // 5. MOVER elemento para dentro de <w:sdtContent>
+        // ⚠️ IMPORTANTE: appendChild() MOVE o nó (não duplica)
+        $sdtContent->appendChild($targetElement);
+        
+        // 6. Completar estrutura SDT
+        $sdt->appendChild($sdtContent);
+        
+        // 7. Marcar como processado
+        $this->markElementAsProcessed($targetElement);
+    }
+
+    /**
+     * Verifica se elemento já foi processado (evita re-wrapping)
+     * 
+     * @param \DOMElement $element Elemento DOM a verificar
+     * @return bool true se já processado
+     */
+    private function isElementProcessed(\DOMElement $element): bool
+    {
+        $path = $element->getNodePath();
+        return isset($this->processedElements[$path]);
+    }
+
+    /**
+     * Marca elemento como processado
+     * 
+     * Usa NodePath como chave única (ex: "/w:body[1]/w:sdt[1]/w:sdtContent[1]/w:p[1]")
+     * 
+     * @param \DOMElement $element Elemento DOM a marcar
+     * @return void
+     */
+    private function markElementAsProcessed(\DOMElement $element): void
+    {
+        $path = $element->getNodePath();
+        $this->processedElements[$path] = true;
+    }
+
+    /**
+     * Ordena elementos por profundidade decrescente (depth-first)
+     * 
+     * Elementos mais profundos (Cell) são processados antes de elementos
+     * mais rasos (Table), evitando re-wrapping de elementos já envolvidos.
+     * 
+     * Usa ordenação estável: quando profundidades iguais, mantém ordem original.
+     * 
+     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples
+     * @return array<int, array{element: mixed, config: SDTConfig}> Tuplas ordenadas
+     */
+    private function sortElementsByDepth(array $sdtTuples): array
+    {
+        // Adicionar índice original para ordenação estável
+        $withIndex = array_map(function ($tuple, $index) {
+            return ['tuple' => $tuple, 'originalIndex' => $index];
+        }, $sdtTuples, array_keys($sdtTuples));
+
+        usort($withIndex, function ($a, $b) {
+            $depthA = $this->getElementDepth($a['tuple']['element']);
+            $depthB = $this->getElementDepth($b['tuple']['element']);
+            
+            // Ordenar decrescente (mais profundo primeiro)
+            $depthComparison = $depthB <=> $depthA;
+            
+            // Se profundidades iguais, manter ordem original (estabilidade)
+            if ($depthComparison === 0) {
+                return $a['originalIndex'] <=> $b['originalIndex'];
+            }
+            
+            return $depthComparison;
+        });
+        
+        // Extrair tuplas ordenadas
+        return array_map(fn($item) => $item['tuple'], $withIndex);
+    }
+
+    /**
+     * Calcula profundidade do elemento na hierarquia PHPWord
+     * 
+     * Profundidades:
+     * - Cell: 3 (dentro de Row dentro de Table)
+     * - Table: 1
+     * - Section: 1
+     * - Text/TextRun: 1 (dentro de Section ou Cell)
+     * 
+     * @param mixed $element Elemento PHPWord
+     * @return int Profundidade (valores maiores = mais profundo)
+     */
+    private function getElementDepth($element): int
+    {
+        // Cell é o mais profundo (dentro de Row dentro de Table)
+        if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
+            return 3;
+        }
+
+        // Table
+        if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
+            return 1;
+        }
+
+        // Section
+        if ($element instanceof \PhpOffice\PhpWord\Element\Section) {
+            return 1;
+        }
+
+        // Text, TextRun, Image (dentro de container)
+        // Para simplicidade, considerar depth 1 (mesma prioridade que Section)
+        return 1;
     }
 }

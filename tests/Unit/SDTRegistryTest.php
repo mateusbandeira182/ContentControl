@@ -337,3 +337,61 @@ describe('SDTRegistry - Performance', function () {
         expect($registry->count())->toBe(1000);
     });
 });
+describe('SDTRegistry - Marcadores (v3.0)', function () {
+    test('register gera marcador automaticamente', function () {
+        $registry = new SDTRegistry();
+        $section = createSection();
+        $config = new SDTConfig(id: '12345678');
+
+        $registry->register($section, $config);
+
+        $marker = $registry->getMarkerForElement($section);
+
+        expect($marker)->not->toBeNull();
+        expect($marker)->toMatch('/^sdt-marker-\d+-[a-f0-9]{8}$/');
+    });
+
+    test('getAllMarkers retorna todos os marcadores', function () {
+        $registry = new SDTRegistry();
+        
+        $section1 = createSection();
+        $section2 = createSection();
+        
+        $registry->register($section1, new SDTConfig(id: '11111111'));
+        $registry->register($section2, new SDTConfig(id: '22222222'));
+
+        $markers = $registry->getAllMarkers();
+
+        expect(count($markers))->toBe(2);
+        
+        // Verificar estrutura
+        foreach ($markers as $objectId => $markerId) {
+            expect($objectId)->toBeInt();
+            expect($markerId)->toMatch('/^sdt-marker-\d+-[a-f0-9]{8}$/');
+        }
+    });
+
+    test('getMarkerForElement retorna null para elemento não registrado', function () {
+        $registry = new SDTRegistry();
+        $section = createSection();
+
+        $marker = $registry->getMarkerForElement($section);
+
+        expect($marker)->toBeNull();
+    });
+
+    test('marcadores são únicos para cada elemento', function () {
+        $registry = new SDTRegistry();
+        
+        $section1 = createSection();
+        $section2 = createSection();
+        
+        $registry->register($section1, new SDTConfig(id: '11111111'));
+        $registry->register($section2, new SDTConfig(id: '22222222'));
+
+        $marker1 = $registry->getMarkerForElement($section1);
+        $marker2 = $registry->getMarkerForElement($section2);
+
+        expect($marker1)->not->toBe($marker2);
+    });
+});
