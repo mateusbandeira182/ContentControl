@@ -275,10 +275,10 @@ final class ElementLocator
                                 $style = $shape->getAttribute('style');
                                 
                                 // Parsear width e height do style (formato: "width:100pt; height:100pt;")
-                                if (preg_match('/width:\s*([0-9.]+)pt/i', $style, $widthMatch)) {
+                                if (preg_match('/width:\s*([0-9.]+)pt/i', $style, $widthMatch) === 1) {
                                     $parts[] = "width:{$widthMatch[1]}";
                                 }
-                                if (preg_match('/height:\s*([0-9.]+)pt/i', $style, $heightMatch)) {
+                                if (preg_match('/height:\s*([0-9.]+)pt/i', $style, $heightMatch) === 1) {
                                     $parts[] = "height:{$heightMatch[1]}";
                                 }
                                 
