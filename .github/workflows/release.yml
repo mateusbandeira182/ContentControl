@@ -44,21 +44,6 @@ jobs:
           php-version: '8.3'
           tools: composer:v2
       
-      - name: Validate composer.json version
-        run: |
-          COMPOSER_VERSION=$(jq -r '.version // "0.0.0"' composer.json)
-          TAG_VERSION=${{ steps.version.outputs.VERSION }}
-          
-          echo "Composer version: $COMPOSER_VERSION"
-          echo "Tag version: $TAG_VERSION"
-          
-          if [ "$COMPOSER_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Version mismatch! composer.json ($COMPOSER_VERSION) != tag ($TAG_VERSION)"
-            exit 1
-          fi
-          
-          echo "✅ Version validation passed"
-      
       - name: Validate changelog exists
         run: |
           if [ ! -f "CHANGELOG.md" ]; then

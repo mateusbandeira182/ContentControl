@@ -49,12 +49,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Installation
 
 ```bash
-composer require mkgrow/content-control:0.0.0
+composer require mkgrow/content-control
 ```
 
 **Requirements:**
 - PHP >= 8.2
 - PHPOffice/PHPWord ^1.4
+
+**Note:** Version is managed via git tags, not composer.json (per Packagist best practices)
 
 ### Breaking Changes from Pre-Release
 
