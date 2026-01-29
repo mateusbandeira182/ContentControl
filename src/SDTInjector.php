@@ -161,7 +161,14 @@ final class SDTInjector
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput = false;
         
-        $success = $dom->loadXML($documentXml);
+        // Security: Disable external entity loading to prevent XXE attacks
+        // LIBXML_NONET: Disable network access during document loading
+        // LIBXML_DTDLOAD: Disable loading of external DTDs
+        // LIBXML_DTDATTR: Do not default attributes from DTDs
+        $success = $dom->loadXML(
+            $documentXml,
+            \LIBXML_NONET | \LIBXML_DTDLOAD | \LIBXML_DTDATTR
+        );
         
         if ($success === false) {
             $errors = libxml_get_errors();

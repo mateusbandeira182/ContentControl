@@ -69,13 +69,11 @@ final class ElementLocator
      * @param object $element Elemento PHPWord
      * @param int $order Ordem de registro (0-indexed)
      * @return DOMElement|null
+     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
     private function findByTypeAndOrder(object $element, int $order): ?DOMElement
     {
         $query = $this->createXPathQuery($element);
-        if ($query === null) {
-            return null;
-        }
 
         // Para células, buscar apenas células NÃO envolvidas em SDTs
         // Isso evita localizar células que já foram movidas para <w:sdtContent>
@@ -165,9 +163,10 @@ final class ElementLocator
      * Cria query XPath para tipo de elemento
      * 
      * @param object $element Elemento PHPWord
-     * @return string|null Query XPath ou null se tipo não suportado
+     * @return string Query XPath
+     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
-    private function createXPathQuery(object $element): ?string
+    private function createXPathQuery(object $element): string
     {
         // Text/TextRun: buscar <w:p> (paragraph)
         if ($element instanceof \PhpOffice\PhpWord\Element\Text ||
@@ -187,8 +186,24 @@ final class ElementLocator
 
         // Section: não localiza (não serializado como elemento único)
         // Containers são processados via seus elementos filhos
+        
+        // Elemento não suportado - lançar exceção descritiva
+        $supportedTypes = [
+            \PhpOffice\PhpWord\Element\Text::class,
+            \PhpOffice\PhpWord\Element\TextRun::class,
+            \PhpOffice\PhpWord\Element\Table::class,
+            \PhpOffice\PhpWord\Element\Cell::class,
+        ];
 
-        return null;
+        $elementClass = get_class($element);
+
+        throw new \InvalidArgumentException(
+            sprintf(
+                'Element type "%s" is not supported for Content Controls. Supported types: %s',
+                $elementClass,
+                implode(', ', $supportedTypes)
+            )
+        );
     }
 
     /**
