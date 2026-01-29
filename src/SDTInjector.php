@@ -68,28 +68,17 @@ final class SDTInjector
      */
     public function inject(string $docxPath, array $sdtTuples): void
     {
-        // 1. Abrir DOCX e ler document.xml
         $zip = $this->openDocxAsZip($docxPath);
 
         try {
-            $documentXml = $this->readDocumentXml($zip, $docxPath);
-
-            // 2. Carregar em DOMDocument
-            $dom = $this->loadDocumentAsDom($documentXml);
-
-            // 3. Ordenar elementos por profundidade (depth-first)
-            $sortedTuples = $this->sortElementsByDepth($sdtTuples);
-
-            // 4. Processar cada elemento
-            foreach ($sortedTuples as $index => $tuple) {
-                $this->processElement($dom, $tuple['element'], $tuple['config'], $index);
-            }
-
-            // 5. Serializar DOM modificado
-            $modifiedXml = $this->serializeDocument($dom);
-
-            // 6. Atualizar document.xml no ZIP
-            $this->updateDocumentXml($zip, $modifiedXml);
+            // Process document.xml (main body) - REQUIRED
+            $this->processXmlFile($zip, 'word/document.xml', $sdtTuples, $docxPath, required: true);
+            
+            // TODO FASE 2: Discover and process headers/footers
+            // $headerFooterFiles = $this->discoverHeaderFooterFiles($zip);
+            // foreach ($headerFooterFiles as $xmlPath) {
+            //     $this->processXmlFile($zip, $xmlPath, $sdtTuples, $docxPath, required: false);
+            // }
         } finally {
             $zip->close();
         }
@@ -113,37 +102,37 @@ final class SDTInjector
     }
 
     /**
-     * Lê conteúdo do word/document.xml
+     * Reads XML content from ZIP archive
      * 
-     * @param \ZipArchive $zip Arquivo ZIP aberto
-     * @param string $docxPath Caminho do arquivo (para mensagens de erro)
-     * @return string Conteúdo XML do documento
-     * @throws DocumentNotFoundException Se word/document.xml não existir
+     * Generic method to read any XML file from DOCX ZIP.
+     * Returns false if file does not exist (allows silent handling).
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @param string $xmlPath Path to XML file inside ZIP (e.g., 'word/document.xml')
+     * @return string|false XML content or false if file does not exist
      */
-    private function readDocumentXml(\ZipArchive $zip, string $docxPath): string
+    private function readXmlFromZip(\ZipArchive $zip, string $xmlPath): string|false
     {
-        $documentXml = $zip->getFromName('word/document.xml');
-        if ($documentXml === false) {
-            throw new DocumentNotFoundException('word/document.xml', $docxPath);
-        }
-        return $documentXml;
+        return $zip->getFromName($xmlPath);
     }
 
-
-
-
-
     /**
-     * Atualiza word/document.xml no arquivo ZIP
+     * Updates an XML file in the ZIP archive
      * 
-     * @param \ZipArchive $zip Arquivo ZIP aberto
-     * @param string $documentXml Novo conteúdo XML do documento
+     * Generic method to update any XML file in DOCX ZIP.
+     * Deletes old version (if exists) and adds new content.
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @param string $xmlPath Path to XML file inside ZIP (e.g., 'word/header1.xml')
+     * @param string $xmlContent New XML content to write
      * @return void
      */
-    private function updateDocumentXml(\ZipArchive $zip, string $documentXml): void
+    private function updateXmlInZip(\ZipArchive $zip, string $xmlPath, string $xmlContent): void
     {
-        $zip->deleteName('word/document.xml');
-        $zip->addFromString('word/document.xml', $documentXml);
+        // Delete old version (deleteName does not throw if file does not exist)
+        $zip->deleteName($xmlPath);
+        // Add new content
+        $zip->addFromString($xmlPath, $xmlContent);
     }
 
     /**
@@ -608,6 +597,67 @@ final class SDTInjector
         
         // Extrair tuplas ordenadas
         return array_map(fn($item) => $item['tuple'], $withIndex);
+    }
+
+    /**
+     * Processes a single XML file (document.xml, header*.xml, footer*.xml)
+     * 
+     * Generic workflow:
+     * 1. Read XML from ZIP (silently skip if not found, unless required)
+     * 2. Load XML as DOMDocument
+     * 3. Filter elements belonging to this XML file
+     * 4. Sort elements by depth (depth-first processing)
+     * 5. Process each element (locate in DOM and wrap with SDT)
+     * 6. Serialize modified DOM and update ZIP
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @param string $xmlPath Path to XML file (e.g., 'word/document.xml')
+     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples All SDT tuples
+     * @param string $docxPath DOCX path (for error messages)
+     * @param bool $required Whether this XML file is required (throws if not found)
+     * @return void
+     * @throws DocumentNotFoundException If required file is not found
+     * @throws \RuntimeException If XML loading or processing fails
+     */
+    private function processXmlFile(
+        \ZipArchive $zip,
+        string $xmlPath,
+        array $sdtTuples,
+        string $docxPath,
+        bool $required = false
+    ): void {
+        // 1. Read XML from ZIP
+        $xmlContent = $this->readXmlFromZip($zip, $xmlPath);
+        
+        // Handle missing file
+        if ($xmlContent === false) {
+            if ($required) {
+                throw new DocumentNotFoundException($xmlPath, $docxPath);
+            }
+            // Silently skip optional files (headers/footers)
+            return;
+        }
+        
+        // 2. Load XML as DOMDocument
+        $dom = $this->loadDocumentAsDom($xmlContent);
+        
+        // 3. Filter elements belonging to this XML file
+        // (For now, process all elements - will be enhanced in FASE 2)
+        $filteredTuples = $sdtTuples;
+        
+        // 4. Sort elements by depth (depth-first)
+        $sortedTuples = $this->sortElementsByDepth($filteredTuples);
+        
+        // 5. Process each element
+        foreach ($sortedTuples as $index => $tuple) {
+            $this->processElement($dom, $tuple['element'], $tuple['config'], $index);
+        }
+        
+        // 6. Serialize modified DOM
+        $modifiedXml = $this->serializeDocument($dom);
+        
+        // 7. Update XML in ZIP
+        $this->updateXmlInZip($zip, $xmlPath, $modifiedXml);
     }
 
     /**
