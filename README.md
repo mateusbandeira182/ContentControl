@@ -15,7 +15,7 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
-- 🔢 **Unique ID Generation** - Automatic 8-digit, collision-resistant identifiers with automatic collision handling
+- 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
 - ✅ **Production Ready** - 227 tests, PHPStan Level 9 strict mode, 80%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
