@@ -197,13 +197,20 @@ final class ElementLocator
             \PhpOffice\PhpWord\Element\Cell::class,
         ];
 
+        // Usar nomes de classe curtos para melhor legibilidade na mensagem de erro
+        $shortSupportedTypes = array_map(
+            fn(string $class) => substr($class, strrpos($class, '\\') + 1),
+            $supportedTypes
+        );
+
         $elementClass = get_class($element);
+        $elementClassShort = substr($elementClass, strrpos($elementClass, '\\') + 1);
 
         throw new \InvalidArgumentException(
             sprintf(
                 'Element type "%s" is not supported for Content Controls. Supported types: %s',
-                $elementClass,
-                implode(', ', $supportedTypes)
+                $elementClassShort,
+                implode(', ', $shortSupportedTypes)
             )
         );
     }

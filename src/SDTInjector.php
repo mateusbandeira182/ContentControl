@@ -161,9 +161,7 @@ final class SDTInjector
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput = false;
         
-        // Security: Disable network access to prevent XXE attacks
-        // LIBXML_NONET: Prevent loading of external entities via network
-        // This prevents XXE attacks that attempt to access remote resources
+        // Security: Prevent XXE attacks by disabling network access during XML parsing
         $success = $dom->loadXML(
             $documentXml,
             \LIBXML_NONET
