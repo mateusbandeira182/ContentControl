@@ -300,21 +300,15 @@ XML;
     $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
     $image = new Image($testImagePath, ['width' => 150, 'height' => 150]);
     
-    // Use reflection to directly test findByContentHash()
-    $reflection = new ReflectionClass($locator);
-    $method = $reflection->getMethod('findByContentHash');
-    $method->setAccessible(true);
-    
-    // Generate content hash for the image
+    // Generate content hash for the image to seed any internal cache
     $contentHash = ElementIdentifier::generateContentHash($image);
+    expect($contentHash)->not->toBeEmpty();
     
-    // Initialize XPath in locator by calling findElementInDOM first
-    $locator->findElementInDOM($dom, $image, 0);
+    // Call the public API with an out-of-range registration order so that
+    // the primary type+order lookup fails and the content-hash fallback is used
+    $found = $locator->findElementInDOM($dom, $image, 999);
     
-    // Now call findByContentHash directly
-    $found = $method->invoke($locator, $image, $contentHash);
-    
-    // Should find the image via content hash
+    // Should find the image via content-hash fallback
     expect($found)->not->toBeNull();
     expect($found->nodeName)->toBe('w:p');
     
