@@ -1,7 +1,7 @@
 <?php
 
 /**
- * ⚠️ DEPRECATED: This sample uses experimental API and will be updated in v0.1.0
+ * ⚠️ DEPRECATED: This sample uses experimental v3.x API and will be updated in v0.1.0
  * 
  * ContentControl - Sample de Uso Completo
  * 

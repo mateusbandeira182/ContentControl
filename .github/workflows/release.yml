@@ -128,8 +128,12 @@ jobs:
           VERSION=${{ needs.validate.outputs.version }}
           
           # Extract section for this version from CHANGELOG.md
-          # This is a simple extraction - adjust regex if needed
-          awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | head -n -1 > release_notes.md
+          # This uses explicit start/end conditions to avoid relying on head -n -1
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { in_section=1; header_nr=NR }
+            in_section && NR>header_nr && /^## \[/ { exit }
+            in_section { print }
+          ' CHANGELOG.md > release_notes.md
           
           if [ ! -s release_notes.md ]; then
             echo "⚠️ Could not extract release notes, using default message"

@@ -134,7 +134,7 @@ $cc->addContentControl($element, [
 
 ## Supported Elements
 
-ContentControl v3.0 supports wrapping the following PHPWord elements:
+ContentControl supports wrapping the following PHPWord elements:
 
 - ✅ **Text** - Simple text elements
 - ✅ **TextRun** - Formatted text with runs
