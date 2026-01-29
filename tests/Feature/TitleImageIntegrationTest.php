@@ -4,23 +4,13 @@ declare(strict_types=1);
 
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ElementIdentifier;
+use MkGrow\ContentControl\Tests\Helpers\TestImageHelper;
 
 beforeEach(function () {
     ElementIdentifier::clearCache();
     
-    // Create test image if needed
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
-    if (!file_exists($testImagePath)) {
-        $dir = dirname($testImagePath);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
-        }
-        $image = imagecreatetruecolor(1, 1);
-        $red = imagecolorallocate($image, 255, 0, 0);
-        imagefilledrectangle($image, 0, 0, 1, 1, $red);
-        imagepng($image, $testImagePath);
-        imagedestroy($image);
-    }
+    // Garantir que a imagem de teste existe
+    TestImageHelper::ensureTestImageExists();
 });
 
 afterEach(function () {
@@ -95,7 +85,7 @@ test('wraps Image elements with Content Controls in real DOCX', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     
     // Add images
     $section->addText('Image 1:');
@@ -159,7 +149,7 @@ test('mixed document with Titles, Images, and Text', function () {
     
     $section = $cc->addSection();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     
     // Build mixed content
     $title1 = $section->addTitle('Chapter 1: Overview', 1);
@@ -265,7 +255,7 @@ test('preserves relationIds for images', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     
-    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $testImagePath = TestImageHelper::getTestImagePath();
     
     $image = $section->addImage($testImagePath, ['width' => 100, 'height' => 100]);
     

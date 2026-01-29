@@ -116,6 +116,7 @@ final class ElementIdentifier
      * 
      * @param object $element Elemento PHPWord
      * @return string Representação serializada
+     * @throws \RuntimeException Se a propriedade depth do Title não for um inteiro válido
      */
     private static function serializeForHash(object $element): string
     {
@@ -156,7 +157,8 @@ final class ElementIdentifier
                 $parts[] = $styleName;
                 $parts[] = $text;
             } catch (\ReflectionException $e) {
-                // Fallback para tratamento como parágrafo
+                // Não foi possível acessar propriedades via Reflection.
+                // Fallback: adicionar apenas marcador 'title' sem texto adicional.
                 $parts[] = 'title';
             }
         }
