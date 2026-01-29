@@ -1,17 +1,17 @@
 <?php
 
 /**
- * ⚠️ DEPRECATED: This sample uses v1.x API and will be updated in v0.1.0
+ * ⚠️ DEPRECATED: This sample uses experimental API and will be updated in v0.1.0
  * 
- * ContentControl v2.0 - Sample de Uso Completo
+ * ContentControl - Sample de Uso Completo
  * 
- * Demonstra todas as funcionalidades da biblioteca ContentControl v2.0
+ * Demonstra todas as funcionalidades da biblioteca ContentControl
  * para criar Content Controls (Structured Document Tags) em documentos Word.
  * 
  * @package   MkGrow\ContentControl
  * @author    Mateus Bandeira
  * @license   MIT
- * @deprecated Will be updated with v3.0 API in v0.1.0
+ * @deprecated Will be updated with stable API in v0.1.0
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -19,7 +19,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use MkGrow\ContentControl\ContentControl;
 
 echo "\n╔═══════════════════════════════════════════════════════════╗\n";
-echo "║   ContentControl v2.0 - Demonstração Completa           ║\n";
+echo "║   ContentControl - Demonstração Completa                ║\n";
 echo "╚═══════════════════════════════════════════════════════════╝\n\n";
 
 // =====================================================================

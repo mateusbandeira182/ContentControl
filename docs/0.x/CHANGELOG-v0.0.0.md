@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.0] - 2026-01-28
 
+### First Public Release
+
+This is the first public release (v0.0.0 baseline for public versioning). References to "v3.0" in this changelog refer to the internal architecture iteration, not the package version.
+
 ### Added
 
 - **Proxy Pattern Architecture** - Unified API encapsulating PhpWord with automatic SDT management via `ContentControl` class
-- **SDT Injection System** - `SDTInjector` service layer for XML manipulation in DOCX files using DOM-based inline wrapping (v3.0)
+- **SDT Injection System** - `SDTInjector` service layer for XML manipulation in DOCX files using DOM-based inline wrapping
 - **Unique ID Generation** - `SDTRegistry` with automatic 8-digit ID generation and collision prevention (sequential fallback)
 - **Type-Safe Configuration** - `SDTConfig` immutable value object with readonly properties for Content Control settings
-- **Element Locator** - `ElementLocator` for DOM-based element identification using XPath queries (v3.0)
+- **Element Locator** - `ElementLocator` for DOM-based element identification using XPath queries
 - **Comprehensive Testing** - 227 Pest tests (80%+ coverage) split into Unit and Feature categories
 - **PHPStan Level 9** - Strict static analysis with Level 9 compliance and strict rules enabled
 - **Exception Hierarchy** - `ContentControlException` base with specialized exceptions for ZIP, document, and file errors
@@ -22,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supported Elements** - Text, TextRun, Table, Cell wrapping with automatic SDT injection
 - **Custom Pest Expectations** - `toBeValidXml()`, `toHaveXmlElement()`, `toHaveXmlAttribute()` helpers
 - **ID Validator** - `IDValidator` class for 8-digit ID validation and random generation
-- **Element Identifier** - `ElementIdentifier` for generating unique markers for PHPWord elements (v3.0)
+- **Element Identifier** - `ElementIdentifier` for generating unique markers for PHPWord elements
 - **Assert Helper** - `Assert` class with `notNull()` for PHPStan type narrowing (replaces native `assert()`)
 - **Sample Fixtures** - `SampleElements` class with reusable test data generators
 
@@ -30,10 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Architecture Highlights:**
 - **Proxy Pattern:** `ContentControl` encapsulates `PhpWord` + `SDTRegistry` for unified API
-- **DOM Manipulation (v3.0):** `SDTInjector` uses inline wrapping to eliminate content duplication
+- **DOM Manipulation:** `SDTInjector` uses inline wrapping to eliminate content duplication
 - **Depth-First Processing:** Elements sorted by depth (Cell before Table) to prevent re-wrapping
 - **Dual XML Strategy:** DOMDocument for SDT structure + PHPWord XMLWriter for content serialization
-- **Zero Duplication:** v3.0 eliminates content repetition by moving nodes instead of copying
+- **Zero Duplication:** Eliminates content repetition by moving nodes instead of copying
+
+**Note:** References to "v3.0" in this changelog refer to the internal DOM-based architecture iteration (3rd generation implementation), not the package version number.
 
 **Code Quality:**
 - PHPStan Level 9 with strict rules (`strictRules: true`)
@@ -60,7 +66,7 @@ composer require mkgrow/content-control
 
 ### Breaking Changes from Pre-Release
 
-This is the first public release. Internal v1.x and v2.x APIs are deprecated:
+This is the first public release. Internal architecture iterations (v1.x, v2.x, v3.x) are deprecated:
 - ❌ `IOFactory::saveWithContentControls()` (v1.x) - Use `ContentControl::save()` instead
 - ❌ Extending `AbstractContainer` (v1.x) - Use Proxy Pattern with `addContentControl()`
 - ❌ Manual ID management - IDs now auto-generated via `SDTRegistry`
