@@ -116,6 +116,7 @@ final class ElementIdentifier
      * 
      * @param object $element Elemento PHPWord
      * @return string Representação serializada
+     * @throws \RuntimeException Se a propriedade depth do Title não for um inteiro válido
      */
     private static function serializeForHash(object $element): string
     {
@@ -131,6 +132,56 @@ final class ElementIdentifier
         if ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
             $parts[] = 'paragraph';  // TextRun também vira w:p
             $parts[] = $element->getText();
+        }
+
+        // Title: incluir depth e texto
+        if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
+            try {
+                $reflection = new \ReflectionClass($element);
+                $depthProperty = $reflection->getProperty('depth');
+                $depthProperty->setAccessible(true);
+                $depth = $depthProperty->getValue($element);
+                
+                $textProperty = $reflection->getProperty('text');
+                $textProperty->setAccessible(true);
+                $text = $textProperty->getValue($element);
+                
+                // Garantir que depth seja inteiro
+                if (!is_int($depth)) {
+                    throw new \RuntimeException('Title depth must be an integer');
+                }
+                
+                $styleName = $depth === 0 ? 'Title' : 'Heading' . $depth;
+                
+                $parts[] = 'title';
+                $parts[] = $styleName;
+                $parts[] = $text;
+            } catch (\ReflectionException $e) {
+                // Não foi possível acessar propriedades via Reflection.
+                // Fallback: adicionar apenas marcador 'title' sem texto adicional.
+                $parts[] = 'title';
+            }
+        }
+
+        // Image: incluir dimensões e source
+        if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
+            $parts[] = 'image';
+            
+            // Extrair width e height via getStyle()
+            $style = $element->getStyle();
+            if ($style !== null) {
+                $width = $style->getWidth();
+                $parts[] = "width:{$width}";
+                
+                $height = $style->getHeight();
+                $parts[] = "height:{$height}";
+            }
+            
+            // Nota: Não incluímos basename($source) pois não é derivável do DOM
+            // de document.xml (requer resolução de relationships). Usar width+height
+            // pode causar colisões entre imagens distintas com mesmas dimensões, mas é
+            // suficiente para a maioria dos casos. Para identificação única garantida,
+            // seria necessário resolver relationships ou usar metadados adicionais.
         }
 
         // Table: incluir número de linhas e colunas
