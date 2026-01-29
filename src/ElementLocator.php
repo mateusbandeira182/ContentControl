@@ -373,7 +373,7 @@ final class ElementLocator
      * //w:body/w:p[w:pPr/w:pStyle[@w:val="Heading{depth}"]][not(ancestor::w:sdtContent)][1]
      * 
      * @param \PhpOffice\PhpWord\Element\Title $element O Title element a localizar
-     * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
+     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
      *                   Mantido por compatibilidade e possível suporte futuro a múltiplos títulos.
      * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
      * @throws \ReflectionException Se a propriedade depth não puder ser acessada
@@ -440,7 +440,7 @@ final class ElementLocator
      * - v: urn:schemas-microsoft-com:vml
      * - o: urn:schemas-microsoft-com:office:office
      * 
-     * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
+     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
      *                   Mantido por compatibilidade e possível suporte futuro a múltiplas imagens.
      * @return DOMElement|null O elemento w:p pai contendo w:pict, ou null se não encontrado
      * @since 0.1.0

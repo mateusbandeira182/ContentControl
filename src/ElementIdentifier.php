@@ -177,7 +177,9 @@ final class ElementIdentifier
             
             // Nota: Não incluímos basename($source) pois não é derivável do DOM
             // de document.xml (requer resolução de relationships). Usar width+height
-            // é suficiente para identificação única de imagens.
+            // pode causar colisões entre imagens distintas com mesmas dimensões, mas é
+            // suficiente para a maioria dos casos. Para identificação única garantida,
+            // seria necessário resolver relationships ou usar metadados adicionais.
         }
 
         // Table: incluir número de linhas e colunas

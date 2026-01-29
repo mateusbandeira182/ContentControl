@@ -306,7 +306,7 @@ XML;
     $method->setAccessible(true);
     
     // Generate content hash for the image
-    $contentHash = \MkGrow\ContentControl\ElementIdentifier::generateContentHash($image);
+    $contentHash = ElementIdentifier::generateContentHash($image);
     
     // Initialize XPath in locator by calling findElementInDOM first
     $locator->findElementInDOM($dom, $image, 0);
