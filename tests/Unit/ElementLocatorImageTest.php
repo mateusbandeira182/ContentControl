@@ -316,3 +316,36 @@ XML;
     expect($shape->item(0)->getAttribute('style'))->toContain('150pt');
 });
 
+test('hash collision occurs when images have identical dimensions', function () {
+    $testImagePath1 = TestImageHelper::getTestImagePath();
+    
+    // Create a second temporary image with different content but identical dimensions
+    $tempImagePath = sys_get_temp_dir() . '/test_image_2_' . uniqid() . '.png';
+    
+    // Create a different image (blue 1x1 instead of original red 1x1)
+    $image = imagecreatetruecolor(1, 1);
+    $blue = imagecolorallocate($image, 0, 0, 255);
+    imagefilledrectangle($image, 0, 0, 1, 1, $blue);
+    imagepng($image, $tempImagePath);
+    imagedestroy($image);
+    
+    try {
+        // Create two Image elements with identical dimensions but different source files
+        $image1 = new Image($testImagePath1, ['width' => 200, 'height' => 200]);
+        $hash1 = ElementIdentifier::generateContentHash($image1);
+        
+        $image2 = new Image($tempImagePath, ['width' => 200, 'height' => 200]);
+        $hash2 = ElementIdentifier::generateContentHash($image2);
+        
+        // Known limitation: Same dimensions = same hash (collision)
+        // This test documents that distinct image files with identical dimensions produce identical hashes
+        expect($hash1)->toBe($hash2)
+            ->and($hash1)->not->toBeEmpty();
+    } finally {
+        // Clean up temporary file
+        if (file_exists($tempImagePath)) {
+            unlink($tempImagePath);
+        }
+    }
+});
+

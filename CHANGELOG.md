@@ -79,6 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Image positioning**: Some floating image positioning styles may shift post-wrapping
   - **Impact**: Manual adjustment may be needed in Word after document generation
   - **Affected styles**: Absolute positioning with custom anchors
+- **Image hash collisions for images with identical dimensions**: Hashes are based on image width/height only
+  - **Impact**: Different images that share identical dimensions may produce the same hash and be treated as the same element during hash-based matching
+  - **Technical Detail**: The source path cannot be derived from the DOM (requires relationship resolution), so only width/height are used for hashing
+  - **Workaround**: Prefer order-based locators (images are processed sequentially in document order) or use unique dimensions when possible
 
 ### 🔬 Technical Details
 

@@ -297,6 +297,11 @@ $cc->save('document_with_toc.docx');
    - **Impact**: Manual adjustment may be needed in Word after document generation
    - **Affected styles**: Absolute positioning with custom anchors
 
+4. **Image Hash Collisions**: Different images with identical dimensions may be treated as the same image
+   - **Impact**: When multiple images share the same width and height, hash-based element matching may select the wrong image
+   - **Technical Detail**: Image hashes are based only on width/height (not image content or source path) because the source path cannot be derived from the DOM without resolving relationships
+   - **Recommendation**: Use unique dimensions when possible, or rely on sequential processing order (images are processed in document order)
+
 ## Testing
 
 ```bash
