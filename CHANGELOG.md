@@ -99,7 +99,7 @@ This release completely eliminates content duplication when wrapping elements wi
 - **ElementIdentifier**: Unique marker generation for PHPWord elements
   - SHA-256 based markers combining element type + content + position
   - Collision-resistant identification system
-  - Supports Section, Table, Cell, Text, TextRun, Image elements
+  - Supports Table, Cell, Text, TextRun, Image elements
 - **ElementLocator**: Dual-strategy element location in DOM tree
   - Primary strategy: Index-based element counting (fast, deterministic)
   - Fallback strategy: Marker-based XPath queries (robust)
