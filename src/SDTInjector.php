@@ -161,12 +161,12 @@ final class SDTInjector
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput = false;
         
-        // Security: Disable external entity loading to prevent XXE attacks
-        // LIBXML_NONET: Disable network access during document loading
-        // LIBXML_NOENT: Disable entity substitution to prevent XXE
+        // Security: Disable network access to prevent XXE attacks
+        // LIBXML_NONET: Prevent loading of external entities via network
+        // This prevents XXE attacks that attempt to access remote resources
         $success = $dom->loadXML(
             $documentXml,
-            \LIBXML_NONET | \LIBXML_NOENT
+            \LIBXML_NONET
         );
         
         if ($success === false) {

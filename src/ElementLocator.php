@@ -34,6 +34,7 @@ final class ElementLocator
      * @param object $element Elemento PHPWord a localizar
      * @param int $registrationOrder Ordem de registro do elemento (0-indexed)
      * @return DOMElement|null Elemento DOM ou null se não encontrado
+     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
     public function findElementInDOM(
         DOMDocument $dom,
