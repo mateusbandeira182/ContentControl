@@ -199,12 +199,16 @@ final class ElementLocator
 
         // Usar nomes de classe curtos para melhor legibilidade na mensagem de erro
         $shortSupportedTypes = array_map(
-            fn(string $class) => substr($class, strrpos($class, '\\') + 1),
+            function(string $class): string {
+                $lastBackslashPos = strrpos($class, '\\');
+                return $lastBackslashPos !== false ? substr($class, $lastBackslashPos + 1) : $class;
+            },
             $supportedTypes
         );
 
         $elementClass = get_class($element);
-        $elementClassShort = substr($elementClass, strrpos($elementClass, '\\') + 1);
+        $lastBackslashPos = strrpos($elementClass, '\\');
+        $elementClassShort = $lastBackslashPos !== false ? substr($elementClass, $lastBackslashPos + 1) : $elementClass;
 
         throw new \InvalidArgumentException(
             sprintf(

@@ -245,7 +245,7 @@ describe('ElementLocator', function () {
         expect($found->nodeName)->toBe('w:tc');
     });
 
-    test('createXPathQuery retorna null para tipo não suportado', function () {
+    test('createXPathQuery lança exceção para tipo não suportado', function () {
         $locator = new ElementLocator();
         $unsupportedElement = new stdClass();
 
@@ -253,9 +253,8 @@ describe('ElementLocator', function () {
         $method = $reflection->getMethod('createXPathQuery');
         $method->setAccessible(true);
 
-        $result = $method->invoke($locator, $unsupportedElement);
-
-        expect($result)->toBeNull();
+        expect(fn() => $method->invoke($locator, $unsupportedElement))
+            ->toThrow(\InvalidArgumentException::class, 'Element type "stdClass" is not supported for Content Controls');
     });
 
     test('findByContentHash retorna null se elemento não encontrado por hash', function () {
