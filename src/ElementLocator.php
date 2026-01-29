@@ -205,9 +205,9 @@ final class ElementLocator
             return '//w:body/w:p[w:pPr/w:pStyle]';
         }
 
-        // Image: buscar <w:r> com w:pict (tratado em findImageByOrder)
+        // Image: buscar <w:p> que contenha <w:r>/<w:pict> (tratado em findImageByOrder)
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
-            return '//w:body//w:r/w:pict';
+            return '//w:body//w:p[.//w:r/w:pict]';
         }
 
         // Section: não localiza (não serializado como elemento único)
@@ -258,8 +258,44 @@ final class ElementLocator
 
         // Paragraph: extrair todo texto
         if ($domElement->nodeName === 'w:p') {
-            // Verificar se é Title (tem w:pStyle)
+            // Verificar se é Image (contém w:pict)
             if ($this->xpath !== null) {
+                $pict = $this->xpath->query('.//w:r/w:pict', $domElement);
+                if ($pict !== false && $pict->length > 0) {
+                    $pictNode = $pict->item(0);
+                    if ($pictNode instanceof DOMElement) {
+                        // Processar como imagem
+                        $parts[] = 'image';
+                        
+                        // Extrair dimensões do atributo style do v:shape
+                        $shapes = $this->xpath->query('.//v:shape', $pictNode);
+                        if ($shapes !== false && $shapes->length > 0) {
+                            $shape = $shapes->item(0);
+                            if ($shape instanceof DOMElement) {
+                                $style = $shape->getAttribute('style');
+                                
+                                // Parsear width e height do style (formato: "width:100pt; height:100pt;")
+                                if (preg_match('/width:\s*([0-9.]+)pt/i', $style, $widthMatch)) {
+                                    $parts[] = "width:{$widthMatch[1]}";
+                                }
+                                if (preg_match('/height:\s*([0-9.]+)pt/i', $style, $heightMatch)) {
+                                    $parts[] = "height:{$heightMatch[1]}";
+                                }
+                                
+                                // Nota: Não incluímos o r:id (relationship id) no hash pois ele não
+                                // corresponde ao basename do arquivo usado pelo ElementIdentifier e
+                                // não pode ser resolvido para o nome do arquivo sem ler document.xml.rels.
+                                // Usar apenas width+height é suficiente para identificação única.
+                            }
+                        }
+                        
+                        // Retornar hash de imagem
+                        $serialized = implode('|', $parts);
+                        return substr(md5($serialized), 0, 8);
+                    }
+                }
+                
+                // Verificar se é Title (tem w:pStyle)
                 $pStyle = $this->xpath->query('.//w:pPr/w:pStyle', $domElement);
                 if ($pStyle !== false && $pStyle->length > 0) {
                     $styleNode = $pStyle->item(0);
@@ -322,34 +358,6 @@ final class ElementLocator
             }
         }
 
-        // Image: extrair dimensões e rId
-        if ($domElement->nodeName === 'w:pict' && $this->xpath !== null) {
-            $parts[] = 'image';
-            
-            // Extrair dimensões do atributo style do v:shape
-            $shapes = $this->xpath->query('.//v:shape', $domElement);
-            if ($shapes !== false && $shapes->length > 0) {
-                $shape = $shapes->item(0);
-                if ($shape instanceof DOMElement) {
-                    $style = $shape->getAttribute('style');
-                    $parts[] = $style; // Inclui width e height
-                    
-                    // Extrair rId da v:imagedata
-                    $imageData = $this->xpath->query('.//v:imagedata', $shape);
-                    if ($imageData !== false && $imageData->length > 0) {
-                        $imgNode = $imageData->item(0);
-                        if ($imgNode instanceof DOMElement) {
-                            $rId = $imgNode->getAttributeNS(
-                                'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-                                'id'
-                            );
-                            $parts[] = $rId;
-                        }
-                    }
-                }
-            }
-        }
-
         $serialized = implode('|', $parts);
         return substr(md5($serialized), 0, 8);
     }
@@ -365,7 +373,8 @@ final class ElementLocator
      * //w:body/w:p[w:pPr/w:pStyle[@w:val="Heading{depth}"]][not(ancestor::w:sdtContent)][1]
      * 
      * @param \PhpOffice\PhpWord\Element\Title $element O Title element a localizar
-     * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
+     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
+     *                   Mantido por compatibilidade e possível suporte futuro a múltiplos títulos.
      * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
      * @throws \ReflectionException Se a propriedade depth não puder ser acessada
      * @since 0.1.0
@@ -374,6 +383,11 @@ final class ElementLocator
         \PhpOffice\PhpWord\Element\Title $element,
         int $order
     ): ?DOMElement {
+        // NOTE: The $order parameter is intentionally unused.
+        // In v3.0, element de-duplication guarantees that only the first
+        // matching Title exists (order is always 1). We keep this parameter
+        // for interface compatibility with earlier versions and potential
+        // future use.
         if ($this->xpath === null) {
             return null;
         }
@@ -426,12 +440,18 @@ final class ElementLocator
      * - v: urn:schemas-microsoft-com:vml
      * - o: urn:schemas-microsoft-com:office:office
      * 
-     * @param int $order A ordem de ocorrência (sempre 1 devido ao no-duplication v3.0)
-     * @return DOMElement|null O elemento w:pict localizado, ou null se não encontrado
+     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
+     *                   Mantido por compatibilidade e possível suporte futuro a múltiplas imagens.
+     * @return DOMElement|null O elemento w:p pai contendo w:pict, ou null se não encontrado
      * @since 0.1.0
      */
     private function findImageByOrder(int $order): ?DOMElement
     {
+        // NOTE: The $order parameter is intentionally unused.
+        // In v3.0, element de-duplication guarantees that only the first
+        // matching Image exists (order is always 1). We keep this parameter
+        // for interface compatibility with earlier versions and potential
+        // future use.
         if ($this->xpath === null) {
             return null;
         }
@@ -497,6 +517,8 @@ final class ElementLocator
         if ($this->xpath === null && $domElement->ownerDocument !== null) {
             $this->xpath = new DOMXPath($domElement->ownerDocument);
             $this->xpath->registerNamespace('w', self::WORDML_NS);
+            $this->xpath->registerNamespace('v', self::VML_NS);
+            $this->xpath->registerNamespace('o', self::OFFICE_NS);
         }
 
         // Validar tipo

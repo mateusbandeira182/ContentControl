@@ -271,3 +271,58 @@ XML;
     );
     expect($rId)->toBe('rId7');
 });
+
+test('finds image via content-hash fallback using reflection', function () {
+    $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:v="urn:schemas-microsoft-com:vml"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <w:body>
+        <w:p>
+            <w:r>
+                <w:pict>
+                    <v:shape style="width:150pt; height:150pt;">
+                        <v:imagedata r:id="rId10"/>
+                    </v:shape>
+                </w:pict>
+            </w:r>
+        </w:p>
+    </w:body>
+</w:document>
+XML;
+
+    $dom = new DOMDocument();
+    $dom->loadXML($xml);
+
+    $locator = new ElementLocator();
+
+    $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+    $image = new Image($testImagePath, ['width' => 150, 'height' => 150]);
+    
+    // Generate content hash for the image to seed any internal cache
+    $contentHash = ElementIdentifier::generateContentHash($image);
+    expect($contentHash)->not->toBeEmpty();
+    
+    // Call the public API with an out-of-range registration order so that
+    // the primary type+order lookup fails and the content-hash fallback is used
+    $found = $locator->findElementInDOM($dom, $image, 999);
+    
+    // Should find the image via content-hash fallback
+    expect($found)->not->toBeNull();
+    expect($found->nodeName)->toBe('w:p');
+    
+    // Verify it contains the correct w:pict
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+    $xpath->registerNamespace('v', 'urn:schemas-microsoft-com:vml');
+    
+    $pict = $xpath->query('.//w:pict', $found);
+    expect($pict->length)->toBe(1);
+    
+    // Verify style matches (150pt x 150pt)
+    $shape = $xpath->query('.//v:shape', $found);
+    expect($shape->length)->toBe(1);
+    expect($shape->item(0)->getAttribute('style'))->toContain('150pt');
+});
+
