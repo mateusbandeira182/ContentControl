@@ -1,6 +1,8 @@
 <?php
 
 /**
+ * ⚠️ DEPRECATED: This sample uses v1.x API and will be updated in v0.1.0
+ * 
  * ContentControl v2.0 - Sample de Uso Completo
  * 
  * Demonstra todas as funcionalidades da biblioteca ContentControl v2.0
@@ -9,6 +11,7 @@
  * @package   MkGrow\ContentControl
  * @author    Mateus Bandeira
  * @license   MIT
+ * @deprecated Will be updated with v3.0 API in v0.1.0
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';

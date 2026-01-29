@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * ⚠️ DEPRECATED: This sample uses experimental v3.x API and will be updated in v0.1.0
+ * 
+ * @deprecated Will be updated with stable API in v0.1.0
+ */
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';

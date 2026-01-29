@@ -1,0 +1,193 @@
+name: Release Automation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      major: ${{ steps.major.outputs.MAJOR }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 Release version: v$VERSION"
+      
+      - name: Extract major version
+        id: major
+        run: |
+          MAJOR=$(echo ${{ steps.version.outputs.VERSION }} | cut -d. -f1)
+          echo "MAJOR=$MAJOR" >> $GITHUB_OUTPUT
+          echo "📊 Major version: $MAJOR.x"
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+      
+      - name: Validate composer.json version
+        run: |
+          COMPOSER_VERSION=$(jq -r '.version // "0.0.0"' composer.json)
+          TAG_VERSION=${{ steps.version.outputs.VERSION }}
+          
+          echo "Composer version: $COMPOSER_VERSION"
+          echo "Tag version: $TAG_VERSION"
+          
+          if [ "$COMPOSER_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch! composer.json ($COMPOSER_VERSION) != tag ($TAG_VERSION)"
+            exit 1
+          fi
+          
+          echo "✅ Version validation passed"
+      
+      - name: Validate changelog exists
+        run: |
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "::error::CHANGELOG.md not found"
+            exit 1
+          fi
+          
+          # Check if version is mentioned in changelog
+          if ! grep -q "\[${{ steps.version.outputs.VERSION }}\]" CHANGELOG.md; then
+            echo "::warning::Version ${{ steps.version.outputs.VERSION }} not found in CHANGELOG.md"
+          fi
+
+  test:
+    name: Run Tests Before Release
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: dom, zip, mbstring
+          coverage: xdebug
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+      
+      - name: Run PHPStan
+        run: composer run analyse
+      
+      - name: Run tests with coverage
+        run: composer run test:coverage
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create versioned changelog
+        run: |
+          MAJOR=${{ needs.validate.outputs.major }}
+          VERSION=${{ needs.validate.outputs.version }}
+          
+          # Create major version folder if not exists
+          mkdir -p docs/${MAJOR}.x
+          
+          # Copy main CHANGELOG.md to versioned file
+          cp CHANGELOG.md docs/${MAJOR}.x/CHANGELOG-v${VERSION}.md
+          
+          echo "✅ Created docs/${MAJOR}.x/CHANGELOG-v${VERSION}.md"
+      
+      - name: Commit documentation updates
+        run: |
+          git add docs/
+          
+          if git diff --staged --quiet; then
+            echo "No documentation changes to commit"
+          else
+            git commit -m "docs: Add changelog for v${{ needs.validate.outputs.version }}"
+            git push origin HEAD:main
+            echo "✅ Documentation committed and pushed"
+          fi
+      
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+          
+          # Extract section for this version from CHANGELOG.md
+          # This is a simple extraction - adjust regex if needed
+          awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | head -n -1 > release_notes.md
+          
+          if [ ! -s release_notes.md ]; then
+            echo "⚠️ Could not extract release notes, using default message"
+            echo "Release v$VERSION" > release_notes.md
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Display release info
+        run: |
+          echo "### 🎉 Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** v${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Major Series:** ${{ needs.validate.outputs.major }}.x" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changelog:** docs/${{ needs.validate.outputs.major }}.x/CHANGELOG-v${{ needs.validate.outputs.version }}.md" >> $GITHUB_STEP_SUMMARY
+
+  packagist:
+    name: Notify Packagist
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+    if: github.repository == 'mateusbandeira182/ContentControl'
+    
+    steps:
+      - name: Trigger Packagist update
+        run: |
+          if [ -n "${{ secrets.PACKAGIST_TOKEN }}" ]; then
+            curl -XPOST -H "Content-Type: application/json" \
+              -d '{"repository":{"url":"https://github.com/${{ github.repository }}"}}' \
+              "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_TOKEN }}"
+            echo "✅ Packagist notified"
+          else
+            echo "⚠️ PACKAGIST_TOKEN not configured, skipping..."
+          fi
+      
+      - name: Display Packagist info
+        run: |
+          echo "### 📦 Packagist" >> $GITHUB_STEP_SUMMARY
+          echo "Package URL: https://packagist.org/packages/mkgrow/content-control" >> $GITHUB_STEP_SUMMARY
+          echo "Version: v${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
