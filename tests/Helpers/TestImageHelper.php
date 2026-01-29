@@ -20,30 +20,24 @@ final class TestImageHelper
     }
     
     /**
-     * Garante que a imagem de teste existe no disco
+     * Garante que a imagem de teste fixture existe no disco
      * 
-     * Este método é idempotente - pode ser chamado múltiplas vezes
-     * sem recriação desnecessária do arquivo.
+     * Este método valida que a fixture commitada existe. Se o arquivo
+     * estiver ausente, lança uma exceção para falhar rapidamente e
+     * garantir comportamento determinístico dos testes.
      * 
      * @return void
+     * @throws \RuntimeException Se a fixture não existir
      */
     public static function ensureTestImageExists(): void
     {
         $testImagePath = self::getTestImagePath();
         
-        if (file_exists($testImagePath)) {
-            return;
+        if (!file_exists($testImagePath)) {
+            throw new \RuntimeException(sprintf(
+                'Test image fixture not found at %s. The committed fixture file is required for deterministic test behavior.',
+                $testImagePath
+            ));
         }
-        
-        $dir = dirname($testImagePath);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
-        }
-        
-        $image = imagecreatetruecolor(1, 1);
-        $red = imagecolorallocate($image, 255, 0, 0);
-        imagefilledrectangle($image, 0, 0, 1, 1, $red);
-        imagepng($image, $testImagePath);
-        imagedestroy($image);
     }
 }

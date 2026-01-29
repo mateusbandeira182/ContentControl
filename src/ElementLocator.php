@@ -378,7 +378,6 @@ final class ElementLocator
      * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
      *                   Mantido por compatibilidade e possível suporte futuro a múltiplos títulos.
      * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
-     * @throws \ReflectionException Se a propriedade depth não puder ser acessada
      * @throws \RuntimeException Se a propriedade depth não for um inteiro válido
      * @since 0.1.0
      */
