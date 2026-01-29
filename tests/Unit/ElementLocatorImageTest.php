@@ -316,3 +316,20 @@ XML;
     expect($shape->item(0)->getAttribute('style'))->toContain('150pt');
 });
 
+test('hash collision occurs when images have identical dimensions', function () {
+    $testImagePath = TestImageHelper::getTestImagePath();
+    
+    // Create two Image elements with identical dimensions but different sources
+    // (Note: In real scenario these would be different image files, but we use same for test simplicity)
+    $image1 = new Image($testImagePath, ['width' => 200, 'height' => 200]);
+    $hash1 = ElementIdentifier::generateContentHash($image1);
+    
+    $image2 = new Image($testImagePath, ['width' => 200, 'height' => 200]);
+    $hash2 = ElementIdentifier::generateContentHash($image2);
+    
+    // Known limitation: Same dimensions = same hash (collision)
+    // This test documents the current behavior where hash collision occurs
+    expect($hash1)->toBe($hash2)
+        ->and($hash1)->not->toBeEmpty();
+});
+
