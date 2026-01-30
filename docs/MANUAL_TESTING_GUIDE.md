@@ -1,7 +1,7 @@
-# Manual Testing Guide - TableBuilder v0.4.0
+# Manual Testing Guide - TableBuilder v0.3.0
 
 **Data:** 30/01/2026  
-**Versão:** 0.4.0  
+**Versão:** 0.3.0  
 **Testador:** _____________________  
 **Ambiente:** Microsoft Word Desktop (Windows)
 

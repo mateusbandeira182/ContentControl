@@ -38,8 +38,10 @@ use MkGrow\ContentControl\Bridge\TableBuilder;
 // Create table from configuration
 $builder = new TableBuilder();
 $table = $builder->createTable([
-    'borderSize' => 6,
-    'borderColor' => '000000',
+    'style' => [
+        'borderSize' => 6,
+        'borderColor' => '000000',
+    ],
     'rows' => [
         [
             'height' => 500,
@@ -990,7 +992,7 @@ try {
 - **v0.3.0** (2026-01-30) - ContentProcessor Complete Implementation
   - All advanced methods implemented: `setValue()`, `appendContent()`, `removeContent()`, `removeAllControlContents()`
   - Full template processing capabilities
-  - 323 tests, 857 assertions, 85%+ coverage
+  - 500 tests, 1174 assertions, 80.2% coverage
   - Windows compatibility improvements (Unix permission test properly skipped)
   - Production ready with PHPStan Level 9 compliance
   
