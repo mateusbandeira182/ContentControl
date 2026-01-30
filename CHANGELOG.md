@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+**ContentProcessor Class (In Progress)**
+- New `ContentProcessor` class for manipulating existing DOCX files with Content Controls
+- Open and modify pre-existing DOCX documents programmatically
+- Locate Content Controls (SDTs) by tag attribute
+- Replace SDT content with strings or PHPWord elements (Text, TextRun, Table)
+- Save modified documents in-place or to new file
+- Automatic namespace handling and XML validation
+- Lazy loading of document.xml, headers, and footers for performance
+- Support for special characters in tag names (XPath escaping)
+- Complete test suite with 19 passing tests (42 assertions)
+- Example: `samples/content_processor_example.php`
+
+**New Methods (ContentProcessor)**
+- `__construct(string $documentPath)` - Open existing DOCX file
+- `replaceContent(string $tag, string|AbstractElement $value): bool` - Replace SDT content
+- `save(string $outputPath = ''): void` - Save modified document
+
+**Implementation Status**
+- ✅ Phase 1: Foundation and class structure (100%)
+- ✅ Phase 2: Core content manipulation (100%)
+- ⏳ Phase 3: Advanced methods (appendContent, removeContent, setValue) - Planned
+- ⏳ Phase 4: Multi-file support enhancements - Planned
+- ⏳ Phase 5: Documentation and 100% coverage - Planned
+
+### Technical Details
+
+**Internal Methods**
+- `findSdtByTag()` - Locate SDT across document.xml, headers, footers
+- `searchSdtInFile()` - XPath-based SDT search in specific XML file
+- `getOrLoadDom()` - Lazy loading with DOM caching
+- `escapeXPathValue()` - Safe XPath query building with special character handling
+- `insertTextContent()` - Create proper WordML structure for text
+- `insertElementContent()` - Serialize PHPWord elements using Writers
+- `serializePhpWordElement()` - Reflection-based element serialization
+- `updateXmlInZip()` - Safe ZIP archive manipulation
+- `discoverHeaderFooterFiles()` - Auto-discover header/footer XML files
+
+**Test Files**
+- `tests/Unit/ContentProcessorConstructorTest.php` - Constructor validation (6 tests)
+- `tests/Unit/ContentProcessorFindSdtTest.php` - SDT location (5 tests)
+- `tests/Unit/ContentProcessorReplaceTest.php` - Content replacement (9 tests)
+- `tests/Helpers/ContentProcessorTestHelper.php` - Shared fixture creation
+
+**Code Quality**
+- PHPStan Level 9: ✅ 0 errors
+- Test Coverage: ~80% (constructor, findSdtByTag, replaceContent, save)
+- All public methods fully documented with PHPDoc
+- Follows existing ContentControl architectural patterns
+
 ## [0.2.0] - 2026-01-29
 
 ### Added

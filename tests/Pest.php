@@ -9,6 +9,7 @@ use MkGrow\ContentControl\ContentControl;
 
 // Autoload for test fixtures
 require_once __DIR__ . '/Fixtures/SampleElements.php';
+require_once __DIR__ . '/Helpers/ContentProcessorTestHelper.php';
 
 /*
 |--------------------------------------------------------------------------

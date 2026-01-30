@@ -15,10 +15,11 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
+- � **Template Processing** - NEW: Open and modify existing DOCX files with `ContentProcessor` class
 - 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
 - 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 293 tests, PHPStan Level 9 strict mode, 82.3% code coverage
+- ✅ **Production Ready** - 312 tests (19 for ContentProcessor), PHPStan Level 9 strict mode, 82%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
 
 ## Installation
@@ -101,6 +102,43 @@ $cc->addContentControl($priceText, [
 $cc->save('protected-invoice.docx');
 ```
 
+## Template Processing (NEW)
+
+The `ContentProcessor` class allows you to open existing DOCX files and modify Content Controls programmatically:
+
+```php
+<?php
+use MkGrow\ContentControl\ContentProcessor;
+use PhpOffice\PhpWord\PhpWord;
+
+// Open existing template
+$processor = new ContentProcessor('template.docx');
+
+// Replace text in Content Controls by tag
+$processor->replaceContent('customer-name', 'Acme Corporation');
+$processor->replaceContent('invoice-date', '2026-01-30');
+
+// Replace with PHPWord elements (tables, formatted text, etc.)
+$phpWord = new PhpWord();
+$section = $phpWord->addSection();
+$table = $section->addTable();
+$table->addRow();
+$table->addCell(3000)->addText('Product A');
+$table->addCell(2000)->addText('$100.00');
+
+$processor->replaceContent('invoice-items', $table);
+
+// Save (in-place or to new file)
+$processor->save('output.docx');
+```
+
+**Requirements for Template:**
+- DOCX file must contain Content Controls with `tag` attributes
+- Tags are case-sensitive and must match exactly
+- Supports: Text, TextRun, Table, Image elements
+
+**See:** `samples/content_processor_example.php` for complete example
+
 ## API Reference
 
 ### Content Control Types
@@ -147,6 +185,90 @@ ContentControl can wrap the following PHPWord elements with Structured Document 
 | **Image** | `\PhpOffice\PhpWord\Element\Image` | `<w:p><w:pict>` | `TYPE_PICTURE` | ✅ v0.1.0 |
 | TOC | `\PhpOffice\PhpWord\Element\TOC` | `<w:fldChar>` (multi-paragraph) | - | ❌ Not supported |
 | Section | `\PhpOffice\PhpWord\Element\Section` | `<w:sectPr>` | - | ❌ Not wrappable |
+
+---
+
+## ContentProcessor API (Template Processing)
+
+### Opening Documents
+
+```php
+use MkGrow\ContentControl\ContentProcessor;
+
+// Open existing DOCX file
+$processor = new ContentProcessor('path/to/template.docx');
+```
+
+**Exceptions:**
+- `InvalidArgumentException` - File does not exist or is not readable
+- `ZipArchiveException` - Not a valid ZIP/DOCX file
+- `DocumentNotFoundException` - Missing word/document.xml
+- `RuntimeException` - Malformed XML
+
+### Replacing Content
+
+```php
+// Replace with string
+$processor->replaceContent('tag-name', 'New text content');
+
+// Replace with PHPWord element
+$phpWord = new PhpWord();
+$section = $phpWord->addSection();
+$table = $section->addTable();
+// ... build table ...
+$processor->replaceContent('table-tag', $table);
+
+// Returns bool (true if tag found, false otherwise)
+```
+
+**Supported Elements:**
+- `string` - Converted to `<w:p><w:r><w:t>text</w:t></w:r></w:p>`
+- `Text` - Single text run with formatting
+- `TextRun` - Multiple formatted text runs
+- `Table` - Complete table structure
+
+### Saving Documents
+
+```php
+// Save in-place (modifies original file)
+$processor->save();
+
+// Save to new file
+$processor->save('output/final.docx');
+```
+
+**Important:** `ContentProcessor` is single-use. Cannot modify after `save()`.
+
+### Working with Headers/Footers
+
+Content Controls in headers and footers are automatically detected:
+
+```php
+// Template has SDT in header with tag="header-title"
+$processor = new ContentProcessor('template.docx');
+$processor->replaceContent('header-title', 'New Header Text');
+$processor->save();
+```
+
+Search order: `document.xml` → `header*.xml` → `footer*.xml`
+
+### Coming Soon (Phase 3+)
+
+```php
+// Append content to existing SDT (preserving current content)
+$processor->appendContent('tag', $element);
+
+// Remove all content from SDT
+$processor->removeContent('tag');
+
+// Replace text while preserving formatting
+$processor->setValue('tag', 'text');
+
+// Remove all SDTs from document (convert to static content)
+$count = $processor->removeAllControlContents($lockDocument = false);
+```
+
+---
 
 ## Headers and Footers
 
