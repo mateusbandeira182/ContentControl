@@ -84,11 +84,11 @@ final class SDTInjector
             // Process document.xml (main body) - REQUIRED
             $this->processXmlFile($zip, 'word/document.xml', $sdtTuples, $docxPath, required: true);
             
-            // TODO FASE 2: Discover and process headers/footers
-            // $headerFooterFiles = $this->discoverHeaderFooterFiles($zip);
-            // foreach ($headerFooterFiles as $xmlPath) {
-            //     $this->processXmlFile($zip, $xmlPath, $sdtTuples, $docxPath, required: false);
-            // }
+            // Process headers and footers (v0.2.0)
+            $headerFooterFiles = $this->discoverHeaderFooterFiles($zip);
+            foreach ($headerFooterFiles as $xmlPath) {
+                $this->processXmlFile($zip, $xmlPath, $sdtTuples, $docxPath, required: false);
+            }
         } finally {
             $zip->close();
         }
@@ -188,18 +188,24 @@ final class SDTInjector
      * @param mixed $element Elemento PHPWord
      * @param SDTConfig $config Configuração do Content Control
      * @param int $elementIndex Índice do elemento na ordem de processamento (0-indexed)
+     * @param string $rootElement Root element context (w:body, w:hdr, or w:ftr)
      * @return void
      * @throws \RuntimeException Se não conseguir localizar elemento
      */
-    private function processElement(\DOMDocument $dom, mixed $element, SDTConfig $config, int $elementIndex): void
-    {
+    private function processElement(
+        \DOMDocument $dom,
+        mixed $element,
+        SDTConfig $config,
+        int $elementIndex,
+        string $rootElement = 'w:body'
+    ): void {
         // Validar que elemento é object
         if (!is_object($element)) {
             throw new \RuntimeException('SDTInjector: Element must be an object');
         }
         
-        // Localizar elemento no DOM
-        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex);
+        // Localizar elemento no DOM usando contexto de raiz específico
+        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex, $rootElement);
         
         if ($targetElement === null) {
             throw new \RuntimeException(
@@ -651,6 +657,9 @@ final class SDTInjector
         // 2. Load XML as DOMDocument
         $dom = $this->loadDocumentAsDom($xmlContent);
         
+        // 2.5. Detect root element type (w:body, w:hdr, or w:ftr)
+        $rootElement = $this->locator->detectRootElement($dom);
+        
         // 3. Filter elements belonging to this XML file
         $filteredTuples = $this->filterElementsByXmlFile($sdtTuples, $xmlPath);
         
@@ -662,9 +671,9 @@ final class SDTInjector
         // 4. Sort elements by depth (depth-first)
         $sortedTuples = $this->sortElementsByDepth($filteredTuples);
         
-        // 5. Process each element
+        // 5. Process each element with appropriate root context
         foreach ($sortedTuples as $index => $tuple) {
-            $this->processElement($dom, $tuple['element'], $tuple['config'], $index);
+            $this->processElement($dom, $tuple['element'], $tuple['config'], $index, $rootElement);
         }
         
         // 6. Serialize modified DOM

@@ -91,12 +91,6 @@ parameters:
             message: '#Cannot access property .* on mixed#'
             path: tests/Unit/SDTInjectorHeaderFooterTest.php
         
-        # FASE 2: Methods used via Reflection in tests and will be used in FASE 4
-        -
-            message: '#Method .*SDTInjector::discoverHeaderFooterFiles\(\) is unused#'
-        -
-            message: '#Method .*SDTInjector::getHeaderFooterXmlPath\(\) is unused#'
-        
         # Test-specific: substr_count pode receber false do ZipArchive::getFromName
         -
             message: '#Parameter .* of function substr_count expects string, string\|false given#'

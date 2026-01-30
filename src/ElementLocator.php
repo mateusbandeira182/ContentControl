@@ -45,13 +45,13 @@ final class ElementLocator
         int $registrationOrder = 0,
         string $rootElement = 'w:body'
     ): ?DOMElement {
-        // Inicializar XPath se necessário
-        if ($this->xpath === null) {
-            $this->xpath = new DOMXPath($dom);
-            $this->xpath->registerNamespace('w', self::WORDML_NS);
-            $this->xpath->registerNamespace('v', self::VML_NS);
-            $this->xpath->registerNamespace('o', self::OFFICE_NS);
-        }
+        // Always (re)initialize XPath for the current DOM document
+        // This is necessary because we process multiple XML files (document.xml, header*.xml, footer*.xml)
+        // and each has its own DOMDocument instance
+        $this->xpath = new DOMXPath($dom);
+        $this->xpath->registerNamespace('w', self::WORDML_NS);
+        $this->xpath->registerNamespace('v', self::VML_NS);
+        $this->xpath->registerNamespace('o', self::OFFICE_NS);
 
         // Estratégia 1: Por tipo + ordem
         $found = $this->findByTypeAndOrder($element, $registrationOrder, $rootElement);
