@@ -49,62 +49,6 @@ describe('SDTInjector - Header/Footer Discovery', function () {
         }
     });
     
-    test('getHeaderFooterXmlPath maps Headers sequentially', function () {
-        $cc = new ContentControl();
-        $section = $cc->addSection();
-        
-        $header1 = $section->addHeader('default');
-        $header2 = $section->addHeader('first');
-        
-        $injector = new SDTInjector();
-        $reflection = new ReflectionClass($injector);
-        $method = $reflection->getMethod('getHeaderFooterXmlPath');
-        $method->setAccessible(true);
-        
-        $path1 = $method->invoke($injector, $header1);
-        $path2 = $method->invoke($injector, $header2);
-        
-        expect($path1)->toBe('word/header1.xml');
-        expect($path2)->toBe('word/header2.xml');
-    });
-    
-    test('getHeaderFooterXmlPath maps Footers sequentially', function () {
-        $cc = new ContentControl();
-        $section = $cc->addSection();
-        
-        $footer1 = $section->addFooter('default');
-        $footer2 = $section->addFooter('first');
-        
-        $injector = new SDTInjector();
-        $reflection = new ReflectionClass($injector);
-        $method = $reflection->getMethod('getHeaderFooterXmlPath');
-        $method->setAccessible(true);
-        
-        $path1 = $method->invoke($injector, $footer1);
-        $path2 = $method->invoke($injector, $footer2);
-        
-        expect($path1)->toBe('word/footer1.xml');
-        expect($path2)->toBe('word/footer2.xml');
-    });
-    
-    test('getHeaderFooterXmlPath caches results', function () {
-        $cc = new ContentControl();
-        $section = $cc->addSection();
-        $header = $section->addHeader('default');
-        
-        $injector = new SDTInjector();
-        $reflection = new ReflectionClass($injector);
-        $method = $reflection->getMethod('getHeaderFooterXmlPath');
-        $method->setAccessible(true);
-        
-        $path1 = $method->invoke($injector, $header);
-        $path2 = $method->invoke($injector, $header); // Same object
-        
-        expect($path1)->toBe('word/header1.xml');
-        expect($path2)->toBe('word/header1.xml');
-        expect($path1)->toBe($path2);
-    });
-    
     test('getXmlFileForElement detects element in Header', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();

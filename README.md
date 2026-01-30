@@ -15,7 +15,7 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
-- � **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
+- 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
 - 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
 - ✅ **Production Ready** - 293 tests, PHPStan Level 9 strict mode, 82.3% code coverage

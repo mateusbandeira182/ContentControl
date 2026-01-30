@@ -750,55 +750,6 @@ final class SDTInjector
     }
 
     /**
-     * Maps Header/Footer object to its XML file path
-     * 
-     * Uses sequential numbering based on first access:
-     * - First Header → word/header1.xml
-     * - Second Header → word/header2.xml
-     * - First Footer → word/footer1.xml
-     * 
-     * Results are cached in $headerFooterTracker property.
-     * 
-     * @param object $headerOrFooter Header or Footer instance from PHPWord
-     * @return string XML path (e.g., 'word/header1.xml')
-     */
-    private function getHeaderFooterXmlPath(object $headerOrFooter): string
-    {
-        $objectId = spl_object_id($headerOrFooter);
-
-        // Check cache
-        if (isset($this->headerFooterTracker[$objectId])) {
-            return $this->headerFooterTracker[$objectId];
-        }
-
-        // Determine type (Header or Footer)
-        $className = get_class($headerOrFooter);
-        $isHeader = str_contains($className, 'Header');
-
-        // Count existing mappings of same type
-        $existingCount = 0;
-        foreach ($this->headerFooterTracker as $existingObjectId => $xmlPath) {
-            // Check if this path belongs to same type
-            if ($isHeader && str_starts_with(basename($xmlPath), 'header')) {
-                $existingCount++;
-            } elseif (!$isHeader && str_starts_with(basename($xmlPath), 'footer')) {
-                $existingCount++;
-            }
-        }
-
-        // Generate path (1-indexed)
-        $fileNumber = $existingCount + 1;
-        $xmlPath = $isHeader 
-            ? "word/header{$fileNumber}.xml"
-            : "word/footer{$fileNumber}.xml";
-
-        // Cache and return
-        $this->headerFooterTracker[$objectId] = $xmlPath;
-
-        return $xmlPath;
-    }
-
-    /**
      * Determines which XML file an element belongs to
      * 
      * Uses PHPWord's internal docPart property to determine location:
