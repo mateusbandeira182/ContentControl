@@ -70,20 +70,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `ContentProcessorReplaceTest.php` - Content replacement
     - `ContentProcessorAdvancedTest.php` - Phase 3 methods (setValue, append, remove)
   - **TableBuilder Unit Tests**:
-    - `TableBuilderConstructorTest.php` - Constructor and DI
-    - `TableBuilderCreateTableTest.php` - Table creation logic
     - `TableBuilderValidationTest.php` - Configuration validation
-    - `TableBuilderHashTest.php` - Hash generation for table matching
-    - `TableBuilderElementHashTest.php` - Element-level hashing
-    - `TableBuilderExtractTableTest.php` - XML extraction from temp files
-    - `TableBuilderInjectTableTest.php` - SDT replacement logic
+    - `TableBuilderCreationTest.php` - Table creation logic
+    - `TableBuilderInjectionTest.php` - SDT replacement and injection logic
+    - `TableBuilderExtractionTest.php` - XML extraction from temp files
+    - `TableBuilderPrivateMethodsTest.php` - Internal methods via reflection
+    - `TableBuilderEdgeCasesTest.php` - Edge cases and error scenarios
+    - `TableBuilderCellSDTTest.php` - Cell-level SDT handling
+    - `TableBuilderRowStyleTest.php` - Row styling configuration
+  - **Feature Tests**:
     - `TableBuilderIntegrationTest.php` - End-to-end workflows
-    - `TableBuilderErrorHandlingTest.php` - Exception scenarios
-  - **Feature Tests (4 files)**:
-    - `TableBuilderBasicTest.php` - Simple table creation and validation
-    - `TableBuilderStyledTableTest.php` - Multi-level styling verification
-    - `TableBuilderInjectionTest.php` - Template injection workflow
-    - `TableBuilderMultipleTablesTest.php` - Multiple tables in one document
 - ✅ **PHPStan Level 9** - 0 errors in source code (189 warnings in tests, ignored via phpstan.neon)
 - ✅ **Performance Validated** - 50 rows x 5 cells table: creation < 10ms, injection < 200ms
 
