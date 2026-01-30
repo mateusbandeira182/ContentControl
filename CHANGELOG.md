@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-01-30
+
+### Added
+
+**TableBuilder Bridge - Complete Implementation**
+- ✅ **`TableBuilder` Class** (`MkGrow\ContentControl\Bridge\TableBuilder`) - Create and inject PHPWord tables with automatic SDT wrapping
+  - **`createTable(array $config): Table`** - Declarative table creation from array configuration
+    - Multi-level styling: table → row → cell
+    - Custom widths, heights, alignment, colors, borders
+    - Automatic Content Control wrapping for template workflows
+  - **`injectTable(string $path, string $tag, Table $table): void`** - Replace SDT placeholders in templates
+    - Hash-based table matching (MD5 of dimensions)
+    - Extracts table XML from temporary document
+    - Locates target SDT and replaces content
+    - Saves modified template in-place
+  - **`getContentControl(): ContentControl`** - Access underlying ContentControl instance
+- ✅ **Configuration Schema** - Comprehensive table configuration with PHPStan types
+  - Table styles: `borderSize`, `borderColor`, `cellMargin`, `layout`
+  - Row configuration: `height`, `cells` array
+  - Cell configuration: `text`, `width`, `style` (alignment, valign, bgColor, bold, italic, size, color)
+- ✅ **Template Workflow** - Complete injection pipeline for DOCX templates
+  - Create template with SDT placeholders
+  - Generate dynamic tables from data
+  - Inject tables into existing documents
+  - Multiple tables per document support
+
+**Documentation**
+- New `docs/TableBuilder.md` - Complete API reference with examples
+  - Quick Start, API Reference, Configuration Schema
+  - Use Cases: Invoice templates, financial reports, multi-section tables
+  - Known Limitations: Cell-level SDTs, hash collisions, custom elements
+  - Advanced Topics: Temporary files, XML namespaces, performance, error handling
+- Updated `README.md` - Added TableBuilder section with 150+ lines of documentation
+  - Quick Start examples
+  - API reference with full config structure
+  - Multi-level styling examples
+  - Template injection workflow
+  - Known limitations
+- New Examples:
+  - `samples/table_builder_basic.php` - Simple table creation, widths, borders, dynamic data
+  - `samples/table_builder_advanced.php` - Styled headers, alternating colors, financial reports, multi-section tables
+  - `samples/table_builder_injection.php` - Invoice template workflow, multiple tables injection
+
+**Testing**
+- ✅ **407 Tests Passing** (3 skipped on Windows - Unix permissions)
+- ✅ **1026 Assertions** (190+ new assertions for TableBuilder)
+- ✅ **13 New Test Files**:
+  - **Unit Tests (9 files)**:
+    - `TableBuilderConstructorTest.php` - Constructor and DI
+    - `TableBuilderCreateTableTest.php` - Table creation logic
+    - `TableBuilderValidationTest.php` - Configuration validation
+    - `TableBuilderHashTest.php` - Hash generation for table matching
+    - `TableBuilderElementHashTest.php` - Element-level hashing
+    - `TableBuilderExtractTableTest.php` - XML extraction from temp files
+    - `TableBuilderInjectTableTest.php` - SDT replacement logic
+    - `TableBuilderIntegrationTest.php` - End-to-end workflows
+    - `TableBuilderErrorHandlingTest.php` - Exception scenarios
+  - **Feature Tests (4 files)**:
+    - `TableBuilderBasicTest.php` - Simple table creation and validation
+    - `TableBuilderStyledTableTest.php` - Multi-level styling verification
+    - `TableBuilderInjectionTest.php` - Template injection workflow
+    - `TableBuilderMultipleTablesTest.php` - Multiple tables in one document
+- ✅ **PHPStan Level 9** - 0 errors in source code (189 warnings in tests, ignored via phpstan.neon)
+- ✅ **Performance Validated** - 50 rows x 5 cells table: creation < 10ms, injection < 200ms
+
+**Bug Fixes**
+- Fixed hash collision handling in `generateTableHash()` - Added dimensions to hash for better uniqueness
+- Fixed namespace redundancy in extracted XML - Removed duplicate xmlns declarations
+- Fixed cell validation - Require either `text` or `element` in cell config
+- Fixed temporary file cleanup on Windows - Used atomic copy instead of rename
+- Fixed XPath element location - Handle missing elements gracefully with clear error messages
+
+### Changed
+- ContentProcessor now requires PHP 8.2+ (readonly properties in SDTConfig)
+- Improved error messages for TableBuilder - More descriptive validation errors
+
+### Performance
+- Table creation: < 10ms for 50 rows x 5 cells
+- Table injection: < 200ms for 50 rows x 5 cells (target met)
+- Temporary file cleanup: Automatic via destructor
+
+### Known Limitations
+- **Cell-Level SDTs**: Individual cell Content Controls not supported in v0.4.0 (planned for v0.5.0)
+- **Hash Collisions**: Tables with same dimensions (rows x cells) may collide (mitigated by clear error messages)
+- **Custom Elements**: Only text content supported in cells (no images, shapes, etc. in v0.4.0)
+
 ## [0.3.0] - 2026-01-30
 
 ### Added

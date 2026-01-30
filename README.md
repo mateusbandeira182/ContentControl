@@ -15,6 +15,7 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
+- � **TableBuilder** - Create and inject tables into templates with automatic SDT wrapping (v0.4.0)
 - 📝 **Template Processing** - Open and modify existing DOCX files with `ContentProcessor` class
   - `replaceContent()` - Replace entire Content Control content
   - `setValue()` - Replace text while preserving formatting (bold, color, size, etc.)
@@ -24,7 +25,7 @@
 - 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
 - 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 323 tests, PHPStan Level 9 strict mode, 85%+ code coverage
+- ✅ **Production Ready** - 407 tests, PHPStan Level 9 strict mode, 85%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
 
 ## Installation
@@ -746,6 +747,171 @@ composer test:coverage
 - [Changelog](CHANGELOG.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [ISO/IEC 29500-1:2016 Specification](https://www.iso.org/standard/71691.html)
+
+---
+
+## TableBuilder API (v0.4.0)
+
+**NEW in v0.4.0:** Create and inject PHPWord tables with automatic Content Control wrapping for template-based workflows.
+
+### Quick Start
+
+```php
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+$builder = new TableBuilder();
+
+// Create a table
+$table = $builder->createTable([
+    'rows' => [
+        ['cells' => [
+            ['text' => 'Product', 'width' => 3000],
+            ['text' => 'Quantity', 'width' => 2000],
+            ['text' => 'Price', 'width' => 2000],
+        ]],
+        ['cells' => [
+            ['text' => 'Widget A', 'width' => 3000],
+            ['text' => '5', 'width' => 2000],
+            ['text' => '$100.00', 'width' => 2000],
+        ]],
+    ],
+]);
+
+// Inject into template
+$builder->injectTable('template.docx', 'invoice-items', $table);
+```
+
+### Creating Tables
+
+#### `createTable(array $config): Table`
+
+Creates a PHPWord table with automatic SDT wrapping support.
+
+**Configuration Structure:**
+
+```php
+$config = [
+    'rows' => [                    // Required: array of row configurations
+        [
+            'height' => 500,       // Optional: row height in twips
+            'cells' => [           // Required: array of cell configurations
+                [
+                    'text' => 'Cell Content',    // Required: cell text content
+                    'width' => 2000,             // Optional: cell width in twips
+                    'style' => [                 // Optional: cell-level styles
+                        'alignment' => 'center',
+                        'valign' => 'center',
+                        'bgColor' => 'EEEEEE',
+                    ],
+                ],
+            ],
+        ],
+    ],
+    'style' => [                   // Optional: table-level styles
+        'borderSize' => 6,
+        'borderColor' => '000000',
+        'cellMargin' => 100,
+    ],
+];
+```
+
+**Multi-Level Styling:**
+
+```php
+$table = $builder->createTable([
+    'style' => [                    // Table-level: applies to entire table
+        'borderSize' => 12,
+        'borderColor' => '1F4788',
+    ],
+    'rows' => [
+        [
+            'height' => 800,        // Row-level: applies to this row
+            'cells' => [
+                [
+                    'text' => 'Header',
+                    'style' => [    // Cell-level: most specific, overrides table/row
+                        'bgColor' => 'FFCC00',
+                        'bold' => true,
+                    ],
+                ],
+            ],
+        ],
+    ],
+]);
+```
+
+### Template Injection
+
+#### `injectTable(string $templatePath, string $targetSdtTag, Table $table): void`
+
+Injects a PHPWord table into an existing DOCX template, replacing the content of a Content Control.
+
+**Workflow:**
+
+1. **Create Template** in Word with a Content Control (SDT)
+2. **Tag the SDT** (Developer Tab → Properties → Tag: "invoice-items")
+3. **Inject Table** using `injectTable()`
+
+**Example:**
+
+```php
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+// 1. Create template with placeholder
+$template = new ContentControl();
+$section = $template->addSection();
+$placeholder = $section->addText('Items will be inserted here');
+$template->addContentControl($placeholder, ['tag' => 'invoice-items']);
+$template->save('invoice-template.docx');
+
+// 2. Create table
+$builder = new TableBuilder();
+$table = $builder->createTable([
+    'rows' => [
+        ['cells' => [['text' => 'Item 1'], ['text' => '$10']]],
+        ['cells' => [['text' => 'Item 2'], ['text' => '$20']]],
+    ],
+]);
+
+// 3. Inject table into template
+$builder->injectTable('invoice-template.docx', 'invoice-items', $table);
+
+// Result: Template now has table where placeholder was
+```
+
+### Advanced: Multiple Tables
+
+```php
+$builder = new TableBuilder();
+
+// Create multiple tables
+$invoiceItems = $builder->createTable([/* config */]);
+$taxBreakdown = $builder->createTable([/* config */]);
+
+// Inject into different SDTs in same template
+$builder->injectTable('template.docx', 'invoice-items', $invoiceItems);
+$builder->injectTable('template.docx', 'tax-breakdown', $taxBreakdown);
+```
+
+### Known Limitations (v0.4.0)
+
+1. **Cell SDTs Not Supported:** Cannot apply Content Controls to individual table cells
+   - **Workaround:** Use table-level SDTs (wrap entire table)
+   - **Roadmap:** Planned for v0.5.0
+   
+2. **Hash-Based Matching:** Tables identified by dimensions (rows x cells)
+   - **Impact:** Tables with same dimensions may collide
+   - **Mitigation:** Clear error messages if table not found
+   - **Roadmap:** Content-based hashing in v0.5.0
+
+3. **Custom Elements:** `'element' => $customObject` not supported in cells
+   - **Impact:** Only text content allowed in `createTable()`
+   - **Roadmap:** Planned for v0.5.0
+
+**Full Documentation:** See [docs/TableBuilder.md](docs/TableBuilder.md) for detailed API reference and examples.
+
+---
 
 ## Architecture
 
