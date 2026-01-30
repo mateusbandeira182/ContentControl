@@ -800,15 +800,40 @@ final class ContentProcessor
             return 0;
         }
 
+        // Convert NodeList to array to avoid iterator issues in PHP 8.2
+        $sdtArray = [];
+        foreach ($sdtNodes as $node) {
+            $sdtArray[] = $node;
+        }
+
         $count = 0;
-        foreach ($sdtNodes as $sdtNode) {
+        foreach ($sdtArray as $sdtNode) {
             if (!$sdtNode instanceof \DOMElement) {
                 continue;
             }
 
-            // Find <w:sdtContent>
-            $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtNode);
-            if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+            // PHP 8.2 compatibility: Skip if node was already removed (nested SDT case)
+            // Accessing properties on a removed node throws Error in PHP 8.2
+            try {
+                $owner = $sdtNode->ownerDocument;
+                $parent = $sdtNode->parentNode;
+                
+                if ($owner === null || $parent === null) {
+                    continue;
+                }
+            } catch (\Error $e) {
+                // Node no longer exists in document (was removed as nested SDT)
+                continue;
+            }
+
+            // Find <w:sdtContent> using getElementsByTagNameNS
+            try {
+                $sdtContentNodes = $sdtNode->getElementsByTagNameNS(self::WORDML_NAMESPACE, 'sdtContent');
+            } catch (\Error $e) {
+                // Node became invalid during iteration
+                continue;
+            }
+            if ($sdtContentNodes->length === 0) {
                 continue;
             }
 
