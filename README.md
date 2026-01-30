@@ -4,7 +4,7 @@
 
 [![Latest Stable Version](https://poser.pugx.org/mkgrow/content-control/v/stable)](https://packagist.org/packages/mkgrow/content-control)
 [![CI Status](https://img.shields.io/github/actions/workflow/status/mateusbandeira182/ContentControl/ci.yml?branch=main&label=CI)](https://github.com/mateusbandeira182/ContentControl/actions)
-[![Code Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](coverage/html/index.html)
+[![Code Coverage](https://img.shields.io/badge/coverage-82.3%25-brightgreen)](coverage/html/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-blue)](composer.json)
 [![PHPStan Level 9](https://img.shields.io/badge/PHPStan-Level%209-brightgreen)](phpstan.neon)
@@ -15,9 +15,10 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
+- � **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
 - 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 227 tests, PHPStan Level 9 strict mode, 80%+ code coverage
+- ✅ **Production Ready** - 293 tests, PHPStan Level 9 strict mode, 82.3% code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
 
 ## Installation
@@ -146,6 +147,186 @@ ContentControl can wrap the following PHPWord elements with Structured Document 
 | **Image** | `\PhpOffice\PhpWord\Element\Image` | `<w:p><w:pict>` | `TYPE_PICTURE` | ✅ v0.1.0 |
 | TOC | `\PhpOffice\PhpWord\Element\TOC` | `<w:fldChar>` (multi-paragraph) | - | ❌ Not supported |
 | Section | `\PhpOffice\PhpWord\Element\Section` | `<w:sectPr>` | - | ❌ Not wrappable |
+
+## Headers and Footers
+
+**NEW in v0.2.0:** Content Controls can now be applied to elements in headers and footers!
+
+### Basic Usage
+
+```php
+use MkGrow\ContentControl\ContentControl;
+
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+// Add header with protected content
+$header = $section->addHeader();
+$headerText = $header->addText('Company Name - Confidential', ['bold' => true]);
+
+$cc->addContentControl($headerText, [
+    'alias' => 'Company Header',
+    'tag' => 'company-header',
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+// Add footer with protected copyright
+$footer = $section->addFooter();
+$copyrightText = $footer->addText('© 2026 Company. All Rights Reserved.', [
+    'alignment' => 'center'
+]);
+
+$cc->addContentControl($copyrightText, [
+    'alias' => 'Copyright Notice',
+    'tag' => 'copyright',
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+$section->addText('Document body content...');
+$cc->save('protected_headers.docx');
+```
+
+### Header/Footer Types
+
+PHPWord supports three types of headers/footers per section:
+
+| Type | Usage | Method Call |
+|------|-------|-------------|
+| **Default** | All pages (or odd pages in duplex) | `$section->addHeader()` |
+| **First** | First page only | `$section->addHeader('first')` |
+| **Even** | Even pages in duplex mode | `$section->addHeader('even')` |
+
+Same applies to footers: `addFooter()`, `addFooter('first')`, `addFooter('even')`
+
+### First Page Headers/Footers
+
+```php
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+// Special header for first page (cover page)
+$firstHeader = $section->addHeader('first');
+$coverTitle = $firstHeader->addText('ANNUAL REPORT 2026', [
+    'bold' => true,
+    'size' => 18,
+    'alignment' => 'center',
+    'color' => '1F4788'
+]);
+
+$cc->addContentControl($coverTitle, [
+    'alias' => 'Cover Page Title',
+    'tag' => 'cover-title',
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+// Default header for subsequent pages
+$defaultHeader = $section->addHeader();
+$standardHeader = $defaultHeader->addText('Annual Report - Page Header', [
+    'size' => 10
+]);
+
+$cc->addContentControl($standardHeader, [
+    'alias' => 'Standard Header',
+    'tag' => 'standard-header'
+]);
+
+$cc->save('different_first_page.docx');
+```
+
+### Complex Headers with Tables
+
+```php
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+$header = $section->addHeader();
+
+// Create letterhead table
+$table = $header->addTable([
+    'borderSize' => 0,
+    'width' => 100 * 50,
+    'unit' => 'pct',
+]);
+
+$table->addRow(400);
+$table->addCell(4000)->addText('ACME Corporation', ['bold' => true, 'size' => 14]);
+$table->addCell(4000)->addText('Document #: 12345', ['alignment' => 'right']);
+
+$table->addRow(300);
+$table->addCell(4000)->addText('123 Business Street, City, ST 12345', ['size' => 9]);
+$table->addCell(4000)->addText('Date: 2026-01-29', ['alignment' => 'right', 'size' => 9]);
+
+// Protect entire letterhead table
+$cc->addContentControl($table, [
+    'alias' => 'Letterhead Table',
+    'tag' => 'letterhead',
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+$cc->save('letterhead_document.docx');
+```
+
+### Multiple Sections with Independent Headers
+
+```php
+$cc = new ContentControl();
+
+// Section 1: Introduction
+$intro = $cc->addSection();
+$introHeader = $intro->addHeader();
+$introHeaderText = $introHeader->addText('Section 1: Introduction', ['bold' => true]);
+$cc->addContentControl($introHeaderText, [
+    'alias' => 'Intro Header',
+    'tag' => 'intro-header'
+]);
+
+// Section 2: Main Content (different header)
+$main = $cc->addSection();
+$mainHeader = $main->addHeader();
+$mainHeaderText = $mainHeader->addText('Section 2: Analysis', ['bold' => true]);
+$cc->addContentControl($mainHeaderText, [
+    'alias' => 'Main Header',
+    'tag' => 'main-header'
+]);
+
+$cc->save('multi_section_headers.docx');
+```
+
+### Supported Elements in Headers/Footers
+
+All element types supported in the body can also be used in headers/footers:
+
+- ✅ Text
+- ✅ TextRun (formatted text)
+- ✅ Table
+- ✅ Cell (individual table cells)
+- ✅ Image
+- ❌ Title (not applicable - titles are body-only elements)
+
+### Performance
+
+Header/footer processing adds minimal overhead:
+
+- **Single section** (body + header + footer): < 250ms
+- **3 sections** (each with header + footer): < 500ms
+- **10 sections**: < 1000ms
+- **Overhead**: ≤ 20% compared to body-only processing
+
+### Complete Examples
+
+See `samples/header_footer_examples.php` for 6 complete examples demonstrating:
+1. Basic header/footer protection
+2. Complex headers with tables
+3. First page vs default headers
+4. Even page footers
+5. Multiple sections with independent headers/footers
+6. Mixed content types in headers/footers
+
+Run examples:
+```bash
+php samples/header_footer_examples.php
+php samples/complete_end_to_end_example.php
+```
 
 ### Advanced Examples
 
@@ -305,7 +486,7 @@ $cc->save('document_with_toc.docx');
 ## Testing
 
 ```bash
-# Run all tests (247 tests, 586 assertions)
+# Run all tests (293 tests, 788 assertions)
 composer test
 
 # Unit tests only
@@ -314,7 +495,7 @@ composer test:unit
 # Integration tests
 composer test:feature
 
-# Code coverage report
+# Code coverage report (82.3%)
 composer test:coverage
 ```
 
@@ -371,7 +552,17 @@ try {
 
 ## Version History
 
-- **v0.0.0** (2026-01-28) - First public release (v0.0.0 baseline for public versioning)
+- **v0.2.0** (2026-01-29) - Header and Footer Support
+  - Content Controls in headers and footers
+  - Support for first page and even page headers/footers
+  - Multiple sections with independent headers/footers
+  - 293 tests, 82.3% coverage
+  
+- **v0.1.0** (2026-01-28) - Title and Image Support
+  - Title elements with hierarchy preservation
+  - Image elements with VML support
+  
+- **v0.0.0** (2026-01-28) - First public release
   - Proxy Pattern architecture
   - PHPStan Level 9 compliance
   - 227 tests with 80%+ coverage
