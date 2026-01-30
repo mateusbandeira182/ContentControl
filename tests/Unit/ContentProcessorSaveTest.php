@@ -63,7 +63,7 @@ describe('ContentProcessor Save Operations', function () {
         $processor = new ContentProcessor($this->tempFile);
         $processor->replaceContent('test-tag', 'New content');
         
-        $invalidPath = 'D:\\NonExistentDirectory\\output.docx';
+        $invalidPath = DIRECTORY_SEPARATOR . 'NonExistentDirectory' . DIRECTORY_SEPARATOR . 'output.docx';
         
         expect(fn() => $processor->save($invalidPath))
             ->toThrow(InvalidArgumentException::class, 'Output directory does not exist');
