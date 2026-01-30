@@ -33,12 +33,21 @@ test('wraps Text in Header with Content Control', function () {
     $tempFile = tempnam(sys_get_temp_dir(), 'test_header_') . '.docx';
     $cc->save($tempFile);
     
-    // Extract and verify header1.xml
+    // Extract and verify header XML (discover actual filename instead of assuming header1.xml)
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Find header files dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     
     // Verify SDT structure in header
     expect($headerXml)->toContain('<w:sdt>')
@@ -74,12 +83,21 @@ test('wraps Text in Footer with Content Control', function () {
     $tempFile = tempnam(sys_get_temp_dir(), 'test_footer_') . '.docx';
     $cc->save($tempFile);
     
-    // Extract and verify footer1.xml
+    // Extract and verify footer XML (discover actual filename instead of assuming footer1.xml)
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $footerXml = $zip->getFromName('word/footer1.xml');
-    expect($footerXml)->not->toBeFalse();
+    // Find footer files dynamically
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    
+    expect($footerXml)->not->toBeNull('No footer XML file found in DOCX');
     
     // Verify SDT structure in footer
     expect($footerXml)->toContain('<w:sdt>')

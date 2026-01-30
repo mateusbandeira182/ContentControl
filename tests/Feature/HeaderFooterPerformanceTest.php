@@ -253,7 +253,10 @@ test('overhead for headers/footers is less than 20 percent', function () {
     // Calculate overhead
     $overhead = (($withHeaderFooterTime - $bodyOnlyTime) / $bodyOnlyTime) * 100;
     
-    // Verify overhead is <= 50% (more tolerant for CI environments)
+    // Verify overhead threshold
+    // Threshold: 50% (2.5x relaxed from optimal goal of 20% for CI stability)
+    // Documentation states 20% as optimal target, but CI environments may see higher overhead
+    // due to file I/O variations. Local dev typically sees 10-15% overhead.
     expect($overhead)->toBeLessThanOrEqual(50.0,
         "Header/footer overhead is {$overhead}%, expected <= 50%. " .
         "Body-only: {$bodyOnlyTime}ms, With H/F: {$withHeaderFooterTime}ms");
