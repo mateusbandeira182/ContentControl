@@ -138,8 +138,16 @@ test('wraps complex Table in Header with Content Control', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     assert(is_string($headerXml)); // PHPStan type guard
     
     // Verify SDT wraps table
@@ -205,8 +213,16 @@ test('wraps Image in Footer with Content Control', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $footerXml = $zip->getFromName('word/footer1.xml');
-    expect($footerXml)->not->toBeFalse();
+    // Discover footer file dynamically
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($footerXml)->not->toBeNull('No footer XML file found in DOCX');
     
     // Verify SDT wraps image paragraph with VML
     expect($footerXml)->toContain('<w:sdt>')
@@ -349,8 +365,16 @@ test('wraps TextRun with formatting in Header', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     
     // Verify SDT wraps TextRun paragraph with all formatting
     expect($headerXml)->toContain('<w:sdt>')
@@ -395,8 +419,16 @@ test('processes mixed element types in same header', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     
     // Verify all SDTs are present
     expect($headerXml)->toContain('<w:alias w:val="HeaderTitle"/>')
@@ -442,8 +474,16 @@ test('validates OOXML structure after SDT injection in complex headers', functio
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     
     // Load as DOM to validate structure
     $dom = new DOMDocument();
@@ -494,11 +534,28 @@ test('does not wrap elements when no Content Control registered', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    $footerXml = $zip->getFromName('word/footer1.xml');
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
     
-    expect($headerXml)->not->toBeFalse();
-    expect($footerXml)->not->toBeFalse();
+    // Discover footer file dynamically
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    
+    expect($headerXml)->not->toBeNull('Header file should exist');
+    expect($footerXml)->not->toBeNull('Footer file should exist');
     
     // Verify NO SDT tags
     expect($headerXml)->not->toContain('<w:sdt>')
