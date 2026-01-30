@@ -19,3 +19,4 @@ phpstan-baseline.neon
 # Relatórios
 *.cache
 *.log
+samples/output/*.docx
