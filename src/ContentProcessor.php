@@ -821,16 +821,12 @@ final class ContentProcessor
                 if ($owner === null || $parent === null) {
                     continue;
                 }
-            } catch (\Error $e) {
-                // Node no longer exists in document (was removed as nested SDT)
-                continue;
-            }
-
-            // Find <w:sdtContent> using getElementsByTagNameNS
-            try {
+                
+                // Find <w:sdtContent> using getElementsByTagNameNS
+                // @phpstan-ignore-next-line catch.neverThrown (Error is thrown in PHP 8.2 for removed nodes)
                 $sdtContentNodes = $sdtNode->getElementsByTagNameNS(self::WORDML_NAMESPACE, 'sdtContent');
             } catch (\Error $e) {
-                // Node became invalid during iteration
+                // Node no longer exists in document (was removed as nested SDT)
                 continue;
             }
             if ($sdtContentNodes->length === 0) {
