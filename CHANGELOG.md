@@ -9,7 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-**ContentProcessor Class (In Progress)**
+**ContentProcessor Class - Phase 3 Advanced Methods (Completed)**
+- ✅ **`appendContent(string $tag, AbstractElement $element): bool`** - Add content to end of existing SDT content
+  - Useful for building lists, adding items to tables, accumulating notes
+  - Preserves existing content while adding new elements
+  - Returns false if tag not found
+- ✅ **`removeContent(string $tag): bool`** - Clear all content from specific Content Control
+  - Leaves SDT structure intact (can be refilled later)
+  - Use cases: template reset, clearing optional fields
+  - Returns false if tag not found
+- ✅ **`setValue(string $tag, string $value): bool`** - Replace text while preserving formatting
+  - Maintains bold, italic, color, font size, and other run properties
+  - Consolidates multiple text nodes into first (removes fragmentation)
+  - Fallback to `replaceContent()` behavior if no text nodes exist
+  - Returns false if tag not found
+- ✅ **`removeAllControlContents(bool $block = false): int`** - Clear all SDTs and optionally block editing
+  - Processes document.xml, headers, and footers
+  - Returns count of processed SDTs
+  - If `$block = true`: Creates `word/settings.xml` with `<w:documentProtection w:edit="readOnly"/>`
+  - Use cases: template finalization, document archiving, compliance workflows
+
+**ContentProcessor Class - Phases 1-2 (Foundation)**
 - New `ContentProcessor` class for manipulating existing DOCX files with Content Controls
 - Open and modify pre-existing DOCX documents programmatically
 - Locate Content Controls (SDTs) by tag attribute
@@ -18,22 +38,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic namespace handling and XML validation
 - Lazy loading of document.xml, headers, and footers for performance
 - Support for special characters in tag names (XPath escaping)
-- Complete test suite with 19 passing tests (42 assertions)
-- Example: `samples/content_processor_example.php`
 
-**New Methods (ContentProcessor)**
-- `__construct(string $documentPath)` - Open existing DOCX file
-- `replaceContent(string $tag, string|AbstractElement $value): bool` - Replace SDT content
-- `save(string $outputPath = ''): void` - Save modified document
+**Examples**
+- `samples/content_processor_example.php` - Basic usage (replaceContent, save)
+- `samples/advanced_methods_example.php` - All Phase 3 methods with real-world scenarios
 
 **Implementation Status**
 - ✅ Phase 1: Foundation and class structure (100%)
 - ✅ Phase 2: Core content manipulation (100%)
-- ⏳ Phase 3: Advanced methods (appendContent, removeContent, setValue) - Planned
-- ⏳ Phase 4: Multi-file support enhancements - Planned
-- ⏳ Phase 5: Documentation and 100% coverage - Planned
+- ✅ Phase 3: Advanced methods (appendContent, removeContent, setValue, removeAllControlContents) (100%)
+- ⏳ Phase 4: Multi-file support enhancements - Partial (basic header/footer support works)
+- ⏳ Phase 5: Documentation and 100% coverage - In Progress
 
 ### Technical Details
+
+**Public Methods (ContentProcessor)**
+- `__construct(string $documentPath)` - Open existing DOCX file with validation
+- `replaceContent(string $tag, string|AbstractElement $value): bool` - Replace entire SDT content
+- `appendContent(string $tag, AbstractElement $element): bool` - Add to end of SDT content
+- `removeContent(string $tag): bool` - Clear specific SDT content
+- `setValue(string $tag, string $value): bool` - Replace text preserving formatting
+- `removeAllControlContents(bool $block = false): int` - Clear all SDTs, optionally protect document
+- `save(string $outputPath = ''): void` - Save modifications (in-place or new file)
 
 **Internal Methods**
 - `findSdtByTag()` - Locate SDT across document.xml, headers, footers
@@ -43,11 +69,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `insertTextContent()` - Create proper WordML structure for text
 - `insertElementContent()` - Serialize PHPWord elements using Writers
 - `serializePhpWordElement()` - Reflection-based element serialization
-- `updateXmlInZip()` - Safe ZIP archive manipulation
+- `updateXmlInZip()` - Safe ZIP archive manipulation with file existence check
 - `discoverHeaderFooterFiles()` - Auto-discover header/footer XML files
+- `removeAllSdtsInFile()` - Clear all SDTs in specific XML file
+- `addDocumentProtection()` - Add/modify word/settings.xml for read-only protection
 
-**Test Files**
+**Test Suite**
 - `tests/Unit/ContentProcessorConstructorTest.php` - Constructor validation (6 tests)
+- `tests/Unit/ContentProcessorFindSdtTest.php` - SDT location and XPath escaping (5 tests)
+- `tests/Unit/ContentProcessorReplaceTest.php` - Content replacement (9 tests)
+- `tests/Unit/ContentProcessorAdvancedTest.php` - Phase 3 methods (13 tests)
+- Total: 33 tests, 74 assertions, 85%+ code coverage
 - `tests/Unit/ContentProcessorFindSdtTest.php` - SDT location (5 tests)
 - `tests/Unit/ContentProcessorReplaceTest.php` - Content replacement (9 tests)
 - `tests/Helpers/ContentProcessorTestHelper.php` - Shared fixture creation

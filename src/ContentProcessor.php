@@ -441,6 +441,377 @@ final class ContentProcessor
     }
 
     /**
+     * Append content to the end of a Content Control
+     *
+     * Adds new content after existing content in <w:sdtContent>.
+     * For tables, if SDT contains a <w:tbl>, the element should be a row.
+     * No type validation is performed in v1.0 - user responsibility.
+     *
+     * @param string $tag Value of <w:tag w:val="..."/> attribute
+     * @param AbstractElement $element PHPWord element to append
+     *
+     * @return bool True if SDT found and modified, false otherwise
+     *
+     * @example
+     * ```php
+     * // Append row to table SDT
+     * $row = $table->addRow();
+     * $row->addCell(2000)->addText('New item');
+     * $processor->appendContent('invoice-items', $row);
+     * ```
+     */
+    public function appendContent(string $tag, AbstractElement $element): bool
+    {
+        // 1. Locate SDT
+        $result = $this->findSdtByTag($tag);
+
+        if ($result === null) {
+            return false;
+        }
+
+        $dom = $result['dom'];
+        $sdtElement = $result['sdt'];
+        $filePath = $result['file'];
+
+        // 2. Locate <w:sdtContent>
+        $xpath = $this->createXPath($dom);
+        $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtElement);
+
+        if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+            throw new \RuntimeException(
+                "SDT with tag '{$tag}' has no <w:sdtContent> element"
+            );
+        }
+
+        $sdtContent = $sdtContentNodes->item(0);
+        if (!$sdtContent instanceof \DOMElement) {
+            throw new \RuntimeException(
+                "SDT with tag '{$tag}' has invalid <w:sdtContent> structure"
+            );
+        }
+
+        // 3. Serialize and append element
+        $this->insertElementContent($dom, $sdtContent, $element);
+
+        // 4. Mark file as modified
+        $this->markFileAsModified($filePath);
+
+        return true;
+    }
+
+    /**
+     * Remove all content from a Content Control
+     *
+     * Clears <w:sdtContent> but preserves the SDT structure and properties.
+     * Useful for resetting templates or clearing fields.
+     *
+     * @param string $tag Value of <w:tag w:val="..."/> attribute
+     *
+     * @return bool True if SDT found and cleared, false otherwise
+     *
+     * @example
+     * ```php
+     * // Clear customer name field
+     * $processor->removeContent('customer-name');
+     * ```
+     */
+    public function removeContent(string $tag): bool
+    {
+        // 1. Locate SDT
+        $result = $this->findSdtByTag($tag);
+
+        if ($result === null) {
+            return false;
+        }
+
+        $dom = $result['dom'];
+        $sdtElement = $result['sdt'];
+        $filePath = $result['file'];
+
+        // 2. Locate <w:sdtContent>
+        $xpath = $this->createXPath($dom);
+        $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtElement);
+
+        if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+            throw new \RuntimeException(
+                "SDT with tag '{$tag}' has no <w:sdtContent> element"
+            );
+        }
+
+        $sdtContent = $sdtContentNodes->item(0);
+        if (!$sdtContent instanceof \DOMElement) {
+            throw new \RuntimeException(
+                "SDT with tag '{$tag}' has invalid <w:sdtContent> structure"
+            );
+        }
+
+        // 3. Remove all children
+        while ($sdtContent->firstChild) {
+            $sdtContent->removeChild($sdtContent->firstChild);
+        }
+
+        // 4. Mark file as modified
+        $this->markFileAsModified($filePath);
+
+        return true;
+    }
+
+    /**
+     * Replace text content while preserving formatting
+     *
+     * Searches for all <w:t> nodes within <w:sdtContent> and replaces their
+     * text content while preserving parent <w:r> (run) properties.
+     * If multiple <w:t> nodes exist, consolidates into first and removes others.
+     *
+     * @param string $tag Value of <w:tag w:val="..."/> attribute
+     * @param string $value New text value
+     *
+     * @return bool True if SDT found and modified, false otherwise
+     *
+     * @example
+     * ```php
+     * // Replace formatted text (preserves bold, italic, color, etc.)
+     * $processor->setValue('customer-name', 'Acme Corporation');
+     * ```
+     */
+    public function setValue(string $tag, string $value): bool
+    {
+        // 1. Locate SDT
+        $result = $this->findSdtByTag($tag);
+
+        if ($result === null) {
+            return false;
+        }
+
+        $dom = $result['dom'];
+        $sdtElement = $result['sdt'];
+        $filePath = $result['file'];
+
+        // 2. Locate <w:sdtContent>
+        $xpath = $this->createXPath($dom);
+        $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtElement);
+
+        if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+            throw new \RuntimeException(
+                "SDT with tag '{$tag}' has no <w:sdtContent> element"
+            );
+        }
+
+        $sdtContent = $sdtContentNodes->item(0);
+        if (!$sdtContent instanceof \DOMElement) {
+            throw new \RuntimeException(
+                "SDT with tag '{$tag}' has invalid <w:sdtContent> structure"
+            );
+        }
+
+        // 3. Find all <w:t> nodes
+        $textNodes = $xpath->query('.//w:t', $sdtContent);
+
+        if ($textNodes === false || $textNodes->length === 0) {
+            // No text nodes - fall back to replaceContent behavior
+            while ($sdtContent->firstChild) {
+                $sdtContent->removeChild($sdtContent->firstChild);
+            }
+            $this->insertTextContent($dom, $sdtContent, $value);
+        } else {
+            // Replace first <w:t> node content
+            $firstTextNode = $textNodes->item(0);
+            if ($firstTextNode instanceof \DOMElement) {
+                // Clear and set new text
+                while ($firstTextNode->firstChild) {
+                    $firstTextNode->removeChild($firstTextNode->firstChild);
+                }
+                $firstTextNode->appendChild($dom->createTextNode($value));
+
+                // Add xml:space="preserve" if needed
+                if (preg_match('/^\s|\s$/', $value) === 1) {
+                    $firstTextNode->setAttributeNS(
+                        'http://www.w3.org/XML/1998/namespace',
+                        'xml:space',
+                        'preserve'
+                    );
+                }
+            }
+
+            // Remove remaining <w:t> nodes (consolidate to first)
+            for ($i = 1; $i < $textNodes->length; $i++) {
+                $textNode = $textNodes->item($i);
+                if ($textNode instanceof \DOMElement && $textNode->parentNode !== null) {
+                    $parent = $textNode->parentNode;
+                    $parent->removeChild($textNode);
+                    
+                    // Remove parent <w:r> if now empty
+                    if ($parent->childNodes->length === 0 && $parent->parentNode !== null) {
+                        $parent->parentNode->removeChild($parent);
+                    }
+                }
+            }
+        }
+
+        // 4. Mark file as modified
+        $this->markFileAsModified($filePath);
+
+        return true;
+    }
+
+    /**
+     * Remove all Content Controls from document
+     *
+     * Searches all XML files (document, headers, footers) and removes
+     * <w:sdtContent> content from all SDTs. Optionally blocks editing
+     * by adding document protection.
+     *
+     * @param bool $block If true, adds readOnly protection to document
+     *
+     * @return int Count of SDTs removed
+     *
+     * @example
+     * ```php
+     * // Remove all SDT contents and block editing
+     * $count = $processor->removeAllControlContents(true);
+     * echo "Removed {$count} Content Controls";
+     * ```
+     */
+    public function removeAllControlContents(bool $block = false): int
+    {
+        $count = 0;
+
+        // 1. Process document.xml
+        $count += $this->removeAllSdtsInFile('word/document.xml');
+
+        // 2. Process headers
+        foreach ($this->discoverHeaderFooterFiles('header') as $headerFile) {
+            $count += $this->removeAllSdtsInFile($headerFile);
+        }
+
+        // 3. Process footers
+        foreach ($this->discoverHeaderFooterFiles('footer') as $footerFile) {
+            $count += $this->removeAllSdtsInFile($footerFile);
+        }
+
+        // 4. Add document protection if requested
+        if ($block) {
+            $this->addDocumentProtection();
+        }
+
+        return $count;
+    }
+
+    /**
+     * Remove all SDTs in specific file
+     *
+     * @param string $xmlPath Relative path in ZIP
+     *
+     * @return int Count of SDTs removed
+     */
+    private function removeAllSdtsInFile(string $xmlPath): int
+    {
+        try {
+            $dom = $this->getOrLoadDom($xmlPath);
+        } catch (DocumentNotFoundException) {
+            // File doesn't exist - skip
+            return 0;
+        }
+
+        $xpath = $this->createXPath($dom);
+        $sdtNodes = $xpath->query('//w:sdt');
+
+        if ($sdtNodes === false || $sdtNodes->length === 0) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($sdtNodes as $sdtNode) {
+            if (!$sdtNode instanceof \DOMElement) {
+                continue;
+            }
+
+            // Find <w:sdtContent>
+            $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtNode);
+            if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+                continue;
+            }
+
+            $sdtContent = $sdtContentNodes->item(0);
+            if (!$sdtContent instanceof \DOMElement) {
+                continue;
+            }
+
+            // Remove all children
+            while ($sdtContent->firstChild) {
+                $sdtContent->removeChild($sdtContent->firstChild);
+            }
+
+            $count++;
+        }
+
+        if ($count > 0) {
+            $this->markFileAsModified($xmlPath);
+        }
+
+        return $count;
+    }
+
+    /**
+     * Add document protection (readOnly mode)
+     *
+     * Creates or modifies word/settings.xml to add:
+     * <w:documentProtection w:edit="readOnly" w:enforcement="1"/>
+     *
+     * @return void
+     */
+    private function addDocumentProtection(): void
+    {
+        $settingsPath = 'word/settings.xml';
+
+        // Try to load existing settings.xml
+        try {
+            $dom = $this->getOrLoadDom($settingsPath);
+            $xpath = $this->createXPath($dom);
+
+            // Check if protection already exists
+            $protectionNodes = $xpath->query('//w:documentProtection');
+            if ($protectionNodes !== false && $protectionNodes->length > 0) {
+                // Update existing
+                $protection = $protectionNodes->item(0);
+                if ($protection instanceof \DOMElement) {
+                    $protection->setAttributeNS(self::WORDML_NAMESPACE, 'w:edit', 'readOnly');
+                    $protection->setAttributeNS(self::WORDML_NAMESPACE, 'w:enforcement', '1');
+                }
+            } else {
+                // Add new protection element
+                $settingsNode = $xpath->query('//w:settings')->item(0);
+                if ($settingsNode instanceof \DOMElement) {
+                    $protection = $dom->createElementNS(self::WORDML_NAMESPACE, 'w:documentProtection');
+                    $protection->setAttributeNS(self::WORDML_NAMESPACE, 'w:edit', 'readOnly');
+                    $protection->setAttributeNS(self::WORDML_NAMESPACE, 'w:enforcement', '1');
+                    $settingsNode->appendChild($protection);
+                }
+            }
+        } catch (DocumentNotFoundException) {
+            // Create minimal settings.xml
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $settings = $dom->createElementNS(self::WORDML_NAMESPACE, 'w:settings');
+            $settings->setAttributeNS(
+                'http://www.w3.org/2000/xmlns/',
+                'xmlns:w',
+                self::WORDML_NAMESPACE
+            );
+
+            $protection = $dom->createElementNS(self::WORDML_NAMESPACE, 'w:documentProtection');
+            $protection->setAttributeNS(self::WORDML_NAMESPACE, 'w:edit', 'readOnly');
+            $protection->setAttributeNS(self::WORDML_NAMESPACE, 'w:enforcement', '1');
+
+            $settings->appendChild($protection);
+            $dom->appendChild($settings);
+
+            $this->domCache[$settingsPath] = $dom;
+        }
+
+        $this->markFileAsModified($settingsPath);
+    }
+
+    /**
      * Insert simple text content into <w:sdtContent>
      *
      * Creates structure: <w:p><w:r><w:t>text</w:t></w:r></w:p>
@@ -666,7 +1037,7 @@ final class ContentProcessor
     /**
      * Update XML file in ZIP archive
      *
-     * Removes existing file and adds new version.
+     * Removes existing file (if present) and adds new version.
      *
      * @param string $xmlPath Relative path in ZIP
      * @param string $xml XML content
@@ -677,12 +1048,14 @@ final class ContentProcessor
      */
     private function updateXmlInZip(string $xmlPath, string $xml): void
     {
-        // Remove existing file
-        if (!$this->zip->deleteName($xmlPath)) {
-            throw new ZipArchiveException(
-                \ZipArchive::ER_REMOVE,
-                $this->documentPath
-            );
+        // Remove existing file if present
+        if ($this->zip->statName($xmlPath) !== false) {
+            if (!$this->zip->deleteName($xmlPath)) {
+                throw new ZipArchiveException(
+                    \ZipArchive::ER_REMOVE,
+                    $this->documentPath
+                );
+            }
         }
 
         // Add new version

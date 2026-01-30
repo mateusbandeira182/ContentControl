@@ -15,11 +15,16 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
-- � **Template Processing** - NEW: Open and modify existing DOCX files with `ContentProcessor` class
+- 📝 **Template Processing** - Open and modify existing DOCX files with `ContentProcessor` class
+  - `replaceContent()` - Replace entire Content Control content
+  - `setValue()` - Replace text while preserving formatting (bold, color, size, etc.)
+  - `appendContent()` - Add content to existing SDT content
+  - `removeContent()` - Clear specific Content Control
+  - `removeAllControlContents()` - Clear all SDTs and optionally block editing
 - 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
 - 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 312 tests (19 for ContentProcessor), PHPStan Level 9 strict mode, 82%+ code coverage
+- ✅ **Production Ready** - 323 tests, PHPStan Level 9 strict mode, 85%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
 
 ## Installation
@@ -198,6 +203,120 @@ use MkGrow\ContentControl\ContentProcessor;
 // Open existing DOCX file
 $processor = new ContentProcessor('path/to/template.docx');
 ```
+
+### Replacing Content
+
+#### `replaceContent(string $tag, string|AbstractElement $value): bool`
+
+Replace ALL content of a Content Control. Removes existing content and inserts new.
+
+```php
+// Replace with simple text
+$processor->replaceContent('customer-name', 'Acme Corporation');
+
+// Replace with PHPWord element (preserves formatting)
+$phpWord = new PhpOffice\PhpWord\PhpWord();
+$section = $phpWord->addSection();
+$table = $section->addTable();
+// ... configure table
+$processor->replaceContent('invoice-items', $table);
+
+// Returns true if SDT found, false otherwise
+$success = $processor->replaceContent('non-existent-tag', 'value'); // false
+```
+
+### Preserving Formatting: setValue()
+
+#### `setValue(string $tag, string $value): bool`
+
+Replace text while preserving formatting (bold, italic, color, size, etc.).
+
+```php
+// Template has bold, 14pt customer name
+$processor->setValue('customer-name', 'New Company Name');
+// Result: "New Company Name" is ALSO bold and 14pt
+
+// Multiple text nodes are consolidated into first
+$processor->setValue('address', 'Single consolidated text');
+```
+
+**How it works:**
+- Finds all `<w:t>` (text) nodes within SDT
+- Replaces content of FIRST `<w:t>` node
+- Removes remaining `<w:t>` nodes (consolidation)
+- Preserves parent `<w:r>` (run) properties: bold, italic, color, font size, etc.
+
+**Difference from `replaceContent()`:**
+| Method | Formatting | Structure | Use Case |
+|--------|-----------|-----------|----------|
+| `setValue()` | ✅ Preserved | Text only | Formatted fields |
+| `replaceContent()` | ❌ Reset | Any element | Complex structures |
+
+### Appending Content
+
+#### `appendContent(string $tag, AbstractElement $element): bool`
+
+Add content to the END of existing Content Control content.
+
+```php
+$phpWord = new PhpOffice\PhpWord\PhpWord();
+$section = $phpWord->addSection();
+
+// Append multiple paragraphs to list
+$processor->appendContent('notes', $section->addText('First note'));
+$processor->appendContent('notes', $section->addText('Second note'));
+$processor->appendContent('notes', $section->addText('Third note'));
+
+// Useful for building lists, adding rows to tables, etc.
+```
+
+**Note:** No type validation in v1.0 - you are responsible for matching content types (e.g., don't append text to table SDT).
+
+### Clearing Content
+
+#### `removeContent(string $tag): bool`
+
+Remove all content from a Content Control (leaves SDT structure intact).
+
+```php
+// Clear customer name field
+$processor->removeContent('customer-name');
+
+// SDT remains, content is empty - can be refilled later
+$processor->replaceContent('customer-name', 'New Name');
+```
+
+**Use cases:**
+- Resetting templates for reuse
+- Clearing optional fields
+- Pre-processing before final content insertion
+
+### Finalizing Documents
+
+#### `removeAllControlContents(bool $block = false): int`
+
+Remove content from ALL Content Controls in document. Optionally add document protection.
+
+```php
+// Clear all SDTs, keep document editable
+$count = $processor->removeAllControlContents();
+echo "Cleared {$count} Content Controls";
+
+// Clear all SDTs AND block editing (read-only)
+$count = $processor->removeAllControlContents(true);
+// Document is now protected - only tracked changes allowed
+```
+
+**What happens:**
+1. Searches all XML files (document.xml, headers, footers)
+2. Finds all `<w:sdt>` elements
+3. Clears `<w:sdtContent>` (preserves SDT structure)
+4. If `$block = true`: Creates/modifies `word/settings.xml` to add `<w:documentProtection w:edit="readOnly"/>`
+
+**Use cases:**
+- Template finalization (remove placeholder values)
+- Document archiving (make read-only after completion)
+- Compliance workflows (prevent further editing)
 
 **Exceptions:**
 - `InvalidArgumentException` - File does not exist or is not readable
