@@ -274,8 +274,10 @@ test('handles multiple sections with independent headers and footers', function 
     } else {
         // PHPWord reused the same header - both elements should be in header1.xml
         // This can happen if sections don't have explicit header type (first/default/even)
-        $hasHeader1 = str_contains($header1Xml, '<w:alias w:val="Header1"/>');
-        $hasHeader2 = str_contains($header1Xml, '<w:alias w:val="Header2"/>');
+        expect($header1Xml)->toBeString();
+        $header1XmlStr = (string) $header1Xml; // Cast for PHPStan
+        $hasHeader1 = str_contains($header1XmlStr, '<w:alias w:val="Header1"/>');
+        $hasHeader2 = str_contains($header1XmlStr, '<w:alias w:val="Header2"/>');
         
         expect($hasHeader1 || $hasHeader2)->toBeTrue(
             'Expected header1.xml to contain at least one of the header aliases when headers are shared'
@@ -376,8 +378,9 @@ test('validates OOXML structure after SDT injection in headers', function () {
     expect($headerXml)->toMatch('/<w:sdtContent>.*Validated Header.*<\/w:sdtContent>/s');
     
     // Verify valid XML
+    expect($headerXml)->toBeString();
     $dom = new DOMDocument();
-    $loaded = @$dom->loadXML($headerXml);
+    $loaded = @$dom->loadXML((string) $headerXml); // Cast for PHPStan
     expect($loaded)->toBeTrue();
     
     $zip->close();
@@ -451,4 +454,4 @@ test('performance: processes 100 elements across body, header, and footer effici
     expect($elapsed)->toBeLessThan(500);
     
     unlink($tempFile);
-})->group('performance');
+});

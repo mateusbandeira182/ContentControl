@@ -49,6 +49,12 @@ parameters:
             message: '#Argument of an invalid type .*\|false supplied for foreach#'
             path: tests/
         
+        # SDTInjector: getHeaderFooterXmlPath() reserved for future mapping feature
+        # Currently using discoverHeaderFooterFiles() for direct ZIP discovery (simpler approach)
+        -
+            message: '#Method .*SDTInjector::getHeaderFooterXmlPath\(\) is unused#'
+            path: src/SDTInjector.php
+        
         # Test-specific: normalizeXml retorno
         -
             message: '#Function normalizeXml\(\) should return string but returns string\|false#'
