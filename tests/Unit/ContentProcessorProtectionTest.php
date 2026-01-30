@@ -317,11 +317,6 @@ describe('ContentProcessor serializePhpWordElement', function () {
     });
 
     test('serializePhpWordElement throws for unsupported element type', function () {
-        // Create a mock element that doesn't have a writer
-        $element = new class extends \PhpOffice\PhpWord\Element\AbstractElement {
-            // Empty custom element
-        };
-        
         $cc = new ContentControl();
         $section = $cc->addSection();
         $text = $section->addText('Dummy');
@@ -330,11 +325,14 @@ describe('ContentProcessor serializePhpWordElement', function () {
         
         $processor = new ContentProcessor($this->tempFile);
         
+        // Use a Section element which doesn't have a serializable Writer
+        $unsupportedElement = new \PhpOffice\PhpWord\Element\Section(1);
+        
         $reflection = new ReflectionClass($processor);
         $method = $reflection->getMethod('serializePhpWordElement');
         $method->setAccessible(true);
         
-        expect(fn() => $method->invoke($processor, $element))
+        expect(fn() => $method->invoke($processor, $unsupportedElement))
             ->toThrow(RuntimeException::class);
     });
 });
