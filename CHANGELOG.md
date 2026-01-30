@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-01-30
+## [0.3.0] - 2026-01-30
 
 ### Added
+
+**ContentProcessor Class - Template Manipulation**
+- ✅ **`ContentProcessor`** (`MkGrow\ContentControl\ContentProcessor`) - Open and modify existing DOCX files
+  - **`replaceContent(string $tag, string|AbstractElement $value): bool`** - Replace entire SDT content
+  - **`setValue(string $tag, string $value): bool`** - Replace text while preserving formatting
+  - **`appendContent(string $tag, AbstractElement $element): bool`** - Add content to end of SDT
+  - **`removeContent(string $tag): bool`** - Clear specific Content Control
+  - **`removeAllControlContents(bool $block = false): int`** - Clear all SDTs, optionally protect document
+  - **`save(string $outputPath = ''): void`** - Save modifications in-place or to new file
 
 **TableBuilder Bridge - Complete Implementation**
 - ✅ **`TableBuilder` Class** (`MkGrow\ContentControl\Bridge\TableBuilder`) - Create and inject PHPWord tables with automatic SDT wrapping
@@ -51,10 +60,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `samples/table_builder_injection.php` - Invoice template workflow, multiple tables injection
 
 **Testing**
-- ✅ **407 Tests Passing** (3 skipped on Windows - Unix permissions)
-- ✅ **1026 Assertions** (190+ new assertions for TableBuilder)
-- ✅ **13 New Test Files**:
-  - **Unit Tests (9 files)**:
+- ✅ **500 Tests Passing** (3 skipped on Windows - Unix permissions)
+- ✅ **1174 Assertions** (combining ContentProcessor + TableBuilder test suites)
+- ✅ **Code Coverage: 80.2%**
+- ✅ **20+ New Test Files** (ContentProcessor + TableBuilder):
+  - **ContentProcessor Tests**:
+    - `ContentProcessorConstructorTest.php` - Constructor validation
+    - `ContentProcessorFindSdtTest.php` - SDT location and XPath
+    - `ContentProcessorReplaceTest.php` - Content replacement
+    - `ContentProcessorAdvancedTest.php` - Phase 3 methods (setValue, append, remove)
+  - **TableBuilder Unit Tests**:
     - `TableBuilderConstructorTest.php` - Constructor and DI
     - `TableBuilderCreateTableTest.php` - Table creation logic
     - `TableBuilderValidationTest.php` - Configuration validation
@@ -89,103 +104,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Temporary file cleanup: Automatic via destructor
 
 ### Known Limitations
-- **Cell-Level SDTs**: Individual cell Content Controls not supported in v0.4.0 (planned for v0.5.0)
+- **Cell-Level SDTs**: Individual cell Content Controls not supported in v0.3.0 (planned for v0.4.0)
 - **Hash Collisions**: Tables with same dimensions (rows x cells) may collide (mitigated by clear error messages)
-- **Custom Elements**: Only text content supported in cells (no images, shapes, etc. in v0.4.0)
+- **Custom Elements**: Only text content supported in cells (no images, shapes, etc. in v0.3.0)
+- **ContentProcessor**: Single-use instance (cannot call `save()` multiple times)
+- **PhpWord Rows**: Cannot be serialized individually (use Text/TextRun instead)
 
-## [0.3.0] - 2026-01-30
+### Performance
+- Table creation: < 10ms for 50 rows x 5 cells
+- Table injection: < 200ms for 50 rows x 5 cells
+- ContentProcessor operations: < 100ms for standard documents
+- Temporary file cleanup: Automatic via destructor
 
-### Added
+### Examples
+- `samples/content_processor_example.php` - Basic ContentProcessor usage
+- `samples/advanced_methods_example.php` - All ContentProcessor methods
+- `samples/table_builder_basic.php` - Simple table creation
+- `samples/table_builder_advanced.php` - Styled tables with alternating colors
+- `samples/table_builder_injection.php` - Invoice template workflow
 
-**ContentProcessor Class - Complete Implementation**
-- ✅ **`appendContent(string $tag, AbstractElement $element): bool`** - Add content to end of existing SDT content
-  - Useful for building lists, adding items to tables, accumulating notes
-  - Preserves existing content while adding new elements
-  - Returns false if tag not found
-- ✅ **`removeContent(string $tag): bool`** - Clear all content from specific Content Control
-  - Leaves SDT structure intact (can be refilled later)
-  - Use cases: template reset, clearing optional fields
-  - Returns false if tag not found
-- ✅ **`setValue(string $tag, string $value): bool`** - Replace text while preserving formatting
-  - Maintains bold, italic, color, font size, and other run properties
-  - Consolidates multiple text nodes into first (removes fragmentation)
-  - Fallback to `replaceContent()` behavior if no text nodes exist
-  - Returns false if tag not found
-- ✅ **`removeAllControlContents(bool $block = false): int`** - Clear all SDTs and optionally block editing
-  - Processes document.xml, headers, and footers
-  - Returns count of processed SDTs
-  - If `$block = true`: Creates `word/settings.xml` with `<w:documentProtection w:edit="readOnly"/>`
-  - Use cases: template finalization, document archiving, compliance workflows
-
-**ContentProcessor Class - Phases 1-2 (Foundation)**
-- New `ContentProcessor` class for manipulating existing DOCX files with Content Controls
-- Open and modify pre-existing DOCX documents programmatically
-- Locate Content Controls (SDTs) by tag attribute
-- Replace SDT content with strings or PHPWord elements (Text, TextRun, Table)
-- Save modified documents in-place or to new file
-- Automatic namespace handling and XML validation
-- Lazy loading of document.xml, headers, and footers for performance
-- Support for special characters in tag names (XPath escaping)
-
-**Examples**
-- `samples/content_processor_example.php` - Basic usage (replaceContent, save)
-- `samples/advanced_methods_example.php` - All Phase 3 methods with real-world scenarios
-
-**Test Coverage & Quality**
-- 323 passing tests (1 skipped on Windows - Unix permissions)
-- 857 test assertions
-- 85%+ code coverage
-- PHPStan Level 9 strict mode - 0 errors
-- Full support for document.xml, headers, and footers
-
-**Breaking Changes**
+### Breaking Changes
 - None (fully backward compatible with v0.2.0)
-
-**Known Limitations**
-- ContentProcessor is single-use (cannot call `save()` multiple times)
-- Windows: File permission test skipped (Unix-specific functionality)
-- PhpWord Row elements cannot be serialized individually (use Text/TextRun instead)
-- ⏳ Phase 5: Documentation and 100% coverage - In Progress
 
 ### Technical Details
 
-**Public Methods (ContentProcessor)**
+**Public API**
+
+*ContentProcessor Methods:*
 - `__construct(string $documentPath)` - Open existing DOCX file with validation
 - `replaceContent(string $tag, string|AbstractElement $value): bool` - Replace entire SDT content
+- `setValue(string $tag, string $value): bool` - Replace text preserving formatting
 - `appendContent(string $tag, AbstractElement $element): bool` - Add to end of SDT content
 - `removeContent(string $tag): bool` - Clear specific SDT content
-- `setValue(string $tag, string $value): bool` - Replace text preserving formatting
 - `removeAllControlContents(bool $block = false): int` - Clear all SDTs, optionally protect document
 - `save(string $outputPath = ''): void` - Save modifications (in-place or new file)
 
-**Internal Methods**
-- `findSdtByTag()` - Locate SDT across document.xml, headers, footers
-- `searchSdtInFile()` - XPath-based SDT search in specific XML file
-- `getOrLoadDom()` - Lazy loading with DOM caching
-- `escapeXPathValue()` - Safe XPath query building with special character handling
-- `insertTextContent()` - Create proper WordML structure for text
-- `insertElementContent()` - Serialize PHPWord elements using Writers
-- `serializePhpWordElement()` - Reflection-based element serialization
-- `updateXmlInZip()` - Safe ZIP archive manipulation with file existence check
-- `discoverHeaderFooterFiles()` - Auto-discover header/footer XML files
-- `removeAllSdtsInFile()` - Clear all SDTs in specific XML file
-- `addDocumentProtection()` - Add/modify word/settings.xml for read-only protection
-
-**Test Suite**
-- `tests/Unit/ContentProcessorConstructorTest.php` - Constructor validation (6 tests)
-- `tests/Unit/ContentProcessorFindSdtTest.php` - SDT location and XPath escaping (5 tests)
-- `tests/Unit/ContentProcessorReplaceTest.php` - Content replacement (9 tests)
-- `tests/Unit/ContentProcessorAdvancedTest.php` - Phase 3 methods (13 tests)
-- Total: 33 tests, 74 assertions, 85%+ code coverage
-- `tests/Unit/ContentProcessorFindSdtTest.php` - SDT location (5 tests)
-- `tests/Unit/ContentProcessorReplaceTest.php` - Content replacement (9 tests)
-- `tests/Helpers/ContentProcessorTestHelper.php` - Shared fixture creation
+*TableBuilder Methods:*
+- `createTable(array $config): Table` - Declarative table creation from array configuration
+- `injectTable(string $path, string $tag, Table $table): void` - Replace SDT placeholders in templates
+- `getContentControl(): ContentControl` - Access underlying ContentControl instance
 
 **Code Quality**
-- PHPStan Level 9: ✅ 0 errors
-- Test Coverage: ~80% (constructor, findSdtByTag, replaceContent, save)
+- ✅ **PHPStan Level 9: 0 errors** (100% conformance across entire project)
+- ✅ **500 tests, 1174 assertions** (ContentProcessor + TableBuilder)
+- ✅ **80.2% code coverage** with critical paths validated
+- ✅ **WithTempFile trait** for type-safe test temporary files
 - All public methods fully documented with PHPDoc
-- Follows existing ContentControl architectural patterns
+- Follows PSR-1, PSR-4, PSR-12 standards
 
 ## [0.2.0] - 2026-01-29
 

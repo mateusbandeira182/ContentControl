@@ -15,8 +15,8 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
-- � **TableBuilder** - Create and inject tables into templates with automatic SDT wrapping (v0.4.0)
-- 📝 **Template Processing** - Open and modify existing DOCX files with `ContentProcessor` class
+- 🔧 **TableBuilder** - Create and inject tables into templates with automatic SDT wrapping (v0.3.0)
+- 📝 **ContentProcessor** - Open and modify existing DOCX files with powerful manipulation methods (v0.3.0)
   - `replaceContent()` - Replace entire Content Control content
   - `setValue()` - Replace text while preserving formatting (bold, color, size, etc.)
   - `appendContent()` - Add content to existing SDT content
@@ -25,8 +25,43 @@
 - 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
 - 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 407 tests, PHPStan Level 9 strict mode, 85%+ code coverage
+- ✅ **Production Ready** - 500 tests, PHPStan Level 9 (0 errors), 80%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
+
+## TableBuilder - Dynamic Table Creation (v0.3.0)
+
+The `TableBuilder` class provides a declarative API for creating and injecting tables into templates:
+
+```php
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+// Create table from configuration
+$builder = new TableBuilder();
+$table = $builder->createTable([
+    'borderSize' => 6,
+    'borderColor' => '000000',
+    'rows' => [
+        [
+            'height' => 500,
+            'cells' => [
+                ['text' => 'Header 1', 'width' => 3000, 'style' => ['bold' => true]],
+                ['text' => 'Header 2', 'width' => 3000, 'style' => ['bold' => true]],
+            ]
+        ],
+        [
+            'cells' => [
+                ['text' => 'Data 1', 'width' => 3000],
+                ['text' => 'Data 2', 'width' => 3000],
+            ]
+        ]
+    ]
+]);
+
+// Inject into template with SDT placeholder
+$builder->injectTable('template.docx', 'invoice-table', $table);
+```
+
+**See:** `docs/TableBuilder.md` for complete API reference and examples
 
 ## Installation
 
@@ -108,7 +143,7 @@ $cc->addContentControl($priceText, [
 $cc->save('protected-invoice.docx');
 ```
 
-## Template Processing (NEW)
+## ContentProcessor - Template Processing (v0.3.0)
 
 The `ContentProcessor` class allows you to open existing DOCX files and modify Content Controls programmatically:
 

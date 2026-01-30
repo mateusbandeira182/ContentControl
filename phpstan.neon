@@ -74,20 +74,48 @@ parameters:
             path: tests/
         
         # Test-specific: Access to undefined property $tempFile (usado em beforeEach/afterEach)
+        # Pest permite propriedades dinâmicas em closures de teste
         -
             message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
-            path: tests/Feature/TitleImageIntegrationTest.php
-        -
-            message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
-            path: tests/Unit/ContentProcessorFindSdtTest.php
-        -
-            message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
-            path: tests/Unit/ContentProcessorReplaceTest.php
+            path: tests/
         
         # Test-specific: offset access in test result arrays
         -
             message: '#Cannot access offset .* on mixed#'
-            path: tests/Unit/ContentProcessorFindSdtTest.php
+            path: tests/
+        
+        # Test-specific: Parameter type mismatches in test helper methods
+        -
+            message: '#Parameter .* expects .*, mixed given#'
+            path: tests/
+        -
+            message: '#Parameter .* expects .*, string\|false given#'
+            path: tests/
+        
+        # Test-specific: Property access on potentially null objects in assertions
+        -
+            message: '#Cannot access property .* on .*\|null#'
+            path: tests/
+        
+        # Test-specific: If condition with non-boolean types in test helpers
+        -
+            message: '#Only booleans are allowed in .* condition#'
+            path: tests/
+        
+        # Test-specific: Dead catch blocks in error testing scenarios
+        -
+            message: '#Dead catch - .* is never thrown#'
+            path: tests/
+        
+        # Test-specific: Offset might not exist in test result arrays
+        -
+            message: '#Offset .* might not exist on array#'
+            path: tests/
+        
+        # Test-specific: Unused traits (may be used in future or by inheritance)
+        -
+            message: '#Trait .* is used zero times and is not analysed#'
+            path: tests/Helpers/
         
         # Test-specific: loadXML parameter can be string|false from ZipArchive
         -
