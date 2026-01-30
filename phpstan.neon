@@ -77,6 +77,26 @@ parameters:
             message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
             path: tests/Feature/TitleImageIntegrationTest.php
         
+        # Test-specific: Reflection->invoke returns mixed type in header/footer discovery tests
+        # These ignores are necessary for unit tests that use Reflection to test private methods.
+        # Limited to specific error types and counts to avoid masking legitimate issues.
+        -
+            message: '#Argument of an invalid type mixed supplied for foreach#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+            count: 2
+        -
+            message: '#Parameter \#1 \$value of function count expects array\|Countable, mixed given#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+            count: 2
+        -
+            message: '#Cannot access offset .* on mixed#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+            count: 10
+        -
+            message: '#Cannot access property .* on mixed#'
+            path: tests/Unit/SDTInjectorHeaderFooterTest.php
+            count: 3
+        
         # Test-specific: substr_count pode receber false do ZipArchive::getFromName
         -
             message: '#Parameter .* of function substr_count expects string, string\|false given#'

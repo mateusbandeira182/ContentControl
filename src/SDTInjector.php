@@ -68,28 +68,17 @@ final class SDTInjector
      */
     public function inject(string $docxPath, array $sdtTuples): void
     {
-        // 1. Abrir DOCX e ler document.xml
         $zip = $this->openDocxAsZip($docxPath);
 
         try {
-            $documentXml = $this->readDocumentXml($zip, $docxPath);
-
-            // 2. Carregar em DOMDocument
-            $dom = $this->loadDocumentAsDom($documentXml);
-
-            // 3. Ordenar elementos por profundidade (depth-first)
-            $sortedTuples = $this->sortElementsByDepth($sdtTuples);
-
-            // 4. Processar cada elemento
-            foreach ($sortedTuples as $index => $tuple) {
-                $this->processElement($dom, $tuple['element'], $tuple['config'], $index);
+            // Process document.xml (main body) - REQUIRED
+            $this->processXmlFile($zip, 'word/document.xml', $sdtTuples, $docxPath, required: true);
+            
+            // Process headers and footers (v0.2.0)
+            $headerFooterFiles = $this->discoverHeaderFooterFiles($zip);
+            foreach ($headerFooterFiles as $xmlPath) {
+                $this->processXmlFile($zip, $xmlPath, $sdtTuples, $docxPath, required: false);
             }
-
-            // 5. Serializar DOM modificado
-            $modifiedXml = $this->serializeDocument($dom);
-
-            // 6. Atualizar document.xml no ZIP
-            $this->updateDocumentXml($zip, $modifiedXml);
         } finally {
             $zip->close();
         }
@@ -113,37 +102,37 @@ final class SDTInjector
     }
 
     /**
-     * Lê conteúdo do word/document.xml
+     * Reads XML content from ZIP archive
      * 
-     * @param \ZipArchive $zip Arquivo ZIP aberto
-     * @param string $docxPath Caminho do arquivo (para mensagens de erro)
-     * @return string Conteúdo XML do documento
-     * @throws DocumentNotFoundException Se word/document.xml não existir
+     * Generic method to read any XML file from DOCX ZIP.
+     * Returns false if file does not exist (allows silent handling).
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @param string $xmlPath Path to XML file inside ZIP (e.g., 'word/document.xml')
+     * @return string|false XML content or false if file does not exist
      */
-    private function readDocumentXml(\ZipArchive $zip, string $docxPath): string
+    private function readXmlFromZip(\ZipArchive $zip, string $xmlPath): string|false
     {
-        $documentXml = $zip->getFromName('word/document.xml');
-        if ($documentXml === false) {
-            throw new DocumentNotFoundException('word/document.xml', $docxPath);
-        }
-        return $documentXml;
+        return $zip->getFromName($xmlPath);
     }
 
-
-
-
-
     /**
-     * Atualiza word/document.xml no arquivo ZIP
+     * Updates an XML file in the ZIP archive
      * 
-     * @param \ZipArchive $zip Arquivo ZIP aberto
-     * @param string $documentXml Novo conteúdo XML do documento
+     * Generic method to update any XML file in DOCX ZIP.
+     * Deletes old version (if exists) and adds new content.
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @param string $xmlPath Path to XML file inside ZIP (e.g., 'word/header1.xml')
+     * @param string $xmlContent New XML content to write
      * @return void
      */
-    private function updateDocumentXml(\ZipArchive $zip, string $documentXml): void
+    private function updateXmlInZip(\ZipArchive $zip, string $xmlPath, string $xmlContent): void
     {
-        $zip->deleteName('word/document.xml');
-        $zip->addFromString('word/document.xml', $documentXml);
+        // Delete old version (deleteName does not throw if file does not exist)
+        $zip->deleteName($xmlPath);
+        // Add new content
+        $zip->addFromString($xmlPath, $xmlContent);
     }
 
     /**
@@ -189,18 +178,24 @@ final class SDTInjector
      * @param mixed $element Elemento PHPWord
      * @param SDTConfig $config Configuração do Content Control
      * @param int $elementIndex Índice do elemento na ordem de processamento (0-indexed)
+     * @param string $rootElement Root element context (w:body, w:hdr, or w:ftr)
      * @return void
      * @throws \RuntimeException Se não conseguir localizar elemento
      */
-    private function processElement(\DOMDocument $dom, mixed $element, SDTConfig $config, int $elementIndex): void
-    {
+    private function processElement(
+        \DOMDocument $dom,
+        mixed $element,
+        SDTConfig $config,
+        int $elementIndex,
+        string $rootElement = 'w:body'
+    ): void {
         // Validar que elemento é object
         if (!is_object($element)) {
             throw new \RuntimeException('SDTInjector: Element must be an object');
         }
         
-        // Localizar elemento no DOM
-        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex);
+        // Localizar elemento no DOM usando contexto de raiz específico
+        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex, $rootElement);
         
         if ($targetElement === null) {
             throw new \RuntimeException(
@@ -611,6 +606,74 @@ final class SDTInjector
     }
 
     /**
+     * Processes a single XML file (document.xml, header*.xml, footer*.xml)
+     * 
+     * Generic workflow:
+     * 1. Read XML from ZIP (silently skip if not found, unless required)
+     * 2. Load XML as DOMDocument
+     * 3. Filter elements belonging to this XML file
+     * 4. Sort elements by depth (depth-first processing)
+     * 5. Process each element (locate in DOM and wrap with SDT)
+     * 6. Serialize modified DOM and update ZIP
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @param string $xmlPath Path to XML file (e.g., 'word/document.xml')
+     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples All SDT tuples
+     * @param string $docxPath DOCX path (for error messages)
+     * @param bool $required Whether this XML file is required (throws if not found)
+     * @return void
+     * @throws DocumentNotFoundException If required file is not found
+     * @throws \RuntimeException If XML loading or processing fails
+     */
+    private function processXmlFile(
+        \ZipArchive $zip,
+        string $xmlPath,
+        array $sdtTuples,
+        string $docxPath,
+        bool $required = false
+    ): void {
+        // 1. Read XML from ZIP
+        $xmlContent = $this->readXmlFromZip($zip, $xmlPath);
+        
+        // Handle missing file
+        if ($xmlContent === false) {
+            if ($required) {
+                throw new DocumentNotFoundException($xmlPath, $docxPath);
+            }
+            // Silently skip optional files (headers/footers)
+            return;
+        }
+        
+        // 2. Load XML as DOMDocument
+        $dom = $this->loadDocumentAsDom($xmlContent);
+        
+        // 2.5. Detect root element type (w:body, w:hdr, or w:ftr)
+        $rootElement = $this->locator->detectRootElement($dom);
+        
+        // 3. Filter elements belonging to this XML file
+        $filteredTuples = $this->filterElementsByXmlFile($sdtTuples, $xmlPath);
+        
+        // Skip processing if no elements belong to this file
+        if (count($filteredTuples) === 0) {
+            return;
+        }
+        
+        // 4. Sort elements by depth (depth-first)
+        $sortedTuples = $this->sortElementsByDepth($filteredTuples);
+        
+        // 5. Process each element with appropriate root context
+        foreach ($sortedTuples as $index => $tuple) {
+            $this->processElement($dom, $tuple['element'], $tuple['config'], $index, $rootElement);
+        }
+        
+        // 6. Serialize modified DOM
+        $modifiedXml = $this->serializeDocument($dom);
+        
+        // 7. Update XML in ZIP
+        $this->updateXmlInZip($zip, $xmlPath, $modifiedXml);
+    }
+
+    /**
      * Calcula profundidade do elemento na hierarquia PHPWord
      * 
      * Profundidades:
@@ -642,5 +705,121 @@ final class SDTInjector
         // Text, TextRun, Image (dentro de container)
         // Para simplicidade, considerar depth 1 (mesma prioridade que Section)
         return 1;
+    }
+
+    /**
+     * Discovers header*.xml and footer*.xml files in DOCX ZIP
+     * 
+     * Returns sorted list of XML file paths found in the archive.
+     * Files are sorted alphabetically for predictable processing order.
+     * 
+     * @param \ZipArchive $zip Opened ZIP archive
+     * @return array<int, string> List of header/footer XML paths (e.g., ['word/footer1.xml', 'word/header1.xml'])
+     */
+    private function discoverHeaderFooterFiles(\ZipArchive $zip): array
+    {
+        $files = [];
+        $numFiles = $zip->numFiles;
+
+        for ($i = 0; $i < $numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+            if (!is_string($filename)) {
+                continue;
+            }
+
+            // Match word/header*.xml or word/footer*.xml
+            if (preg_match('#^word/(header|footer)\d+\.xml$#', $filename) === 1) {
+                $files[] = $filename;
+            }
+        }
+
+        // Sort alphabetically for predictable order
+        sort($files);
+
+        return $files;
+    }
+
+    /**
+     * Determines which XML file an element belongs to
+     * 
+     * Uses PHPWord's internal docPart property to determine location:
+     * - docPart='Header' → word/header*.xml
+     * - docPart='Footer' → word/footer*.xml
+     * - docPart='Section' or other → word/document.xml
+     * 
+     * Also uses docPartId to map to specific header/footer number.
+     * 
+     * @param object $element PHPWord element instance
+     * @return string XML path where element should be processed
+     */
+    private function getXmlFileForElement(object $element): string
+    {
+        try {
+            $reflection = new \ReflectionClass($element);
+
+            // Try to get docPart property (available in most PHPWord elements)
+            if ($reflection->hasProperty('docPart')) {
+                $docPartProp = $reflection->getProperty('docPart');
+                $docPartProp->setAccessible(true);
+                $docPart = $docPartProp->getValue($element);
+
+                // Validate that docPart is actually a string
+                if (!is_string($docPart)) {
+                    return 'word/document.xml';
+                }
+
+                // Get docPartId if available
+                $docPartId = 1; // Default
+                if ($reflection->hasProperty('docPartId')) {
+                    $docPartIdProp = $reflection->getProperty('docPartId');
+                    $docPartIdProp->setAccessible(true);
+                    $docPartIdValue = $docPartIdProp->getValue($element);
+                    if (is_int($docPartIdValue)) {
+                        $docPartId = $docPartIdValue;
+                    }
+                }
+
+                // Map docPart to XML file (only accept expected values)
+                if ($docPart === 'Header') {
+                    return 'word/header' . $docPartId . '.xml';
+                } elseif ($docPart === 'Footer') {
+                    return 'word/footer' . $docPartId . '.xml';
+                }
+            }
+        } catch (\ReflectionException $e) {
+            // Reflection failed, assume body
+        }
+
+        // Default to document.xml (main body)
+        return 'word/document.xml';
+    }
+
+    /**
+     * Filters SDT tuples to only include elements from specific XML file
+     * 
+     * Uses getXmlFileForElement() to determine each element's location.
+     * 
+     * @param array<int, array{element: mixed, config: SDTConfig}> $sdtTuples All SDT tuples
+     * @param string $xmlPath Target XML file path (e.g., 'word/header1.xml')
+     * @return array<int, array{element: mixed, config: SDTConfig}> Filtered tuples
+     */
+    private function filterElementsByXmlFile(array $sdtTuples, string $xmlPath): array
+    {
+        $filtered = [];
+
+        foreach ($sdtTuples as $tuple) {
+            // Skip if element is not an object
+            if (!is_object($tuple['element'])) {
+                continue;
+            }
+            
+            $elementXmlPath = $this->getXmlFileForElement($tuple['element']);
+
+            if ($elementXmlPath === $xmlPath) {
+                $filtered[] = $tuple;
+            }
+        }
+
+        return $filtered;
     }
 }

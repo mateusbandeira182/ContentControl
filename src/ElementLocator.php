@@ -35,31 +35,33 @@ final class ElementLocator
      * @param DOMDocument $dom Documento DOM carregado
      * @param object $element Elemento PHPWord a localizar
      * @param int $registrationOrder Ordem de registro do elemento (0-indexed)
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return DOMElement|null Elemento DOM ou null se não encontrado
      * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
     public function findElementInDOM(
         DOMDocument $dom,
         object $element,
-        int $registrationOrder = 0
+        int $registrationOrder = 0,
+        string $rootElement = 'w:body'
     ): ?DOMElement {
-        // Inicializar XPath se necessário
-        if ($this->xpath === null) {
-            $this->xpath = new DOMXPath($dom);
-            $this->xpath->registerNamespace('w', self::WORDML_NS);
-            $this->xpath->registerNamespace('v', self::VML_NS);
-            $this->xpath->registerNamespace('o', self::OFFICE_NS);
-        }
+        // Always (re)initialize XPath for the current DOM document
+        // This is necessary because we process multiple XML files (document.xml, header*.xml, footer*.xml)
+        // and each has its own DOMDocument instance
+        $this->xpath = new DOMXPath($dom);
+        $this->xpath->registerNamespace('w', self::WORDML_NS);
+        $this->xpath->registerNamespace('v', self::VML_NS);
+        $this->xpath->registerNamespace('o', self::OFFICE_NS);
 
         // Estratégia 1: Por tipo + ordem
-        $found = $this->findByTypeAndOrder($element, $registrationOrder);
+        $found = $this->findByTypeAndOrder($element, $registrationOrder, $rootElement);
         if ($found !== null) {
             return $found;
         }
 
         // Estratégia 2: Por hash de conteúdo
         $contentHash = ElementIdentifier::generateContentHash($element);
-        $found = $this->findByContentHash($element, $contentHash);
+        $found = $this->findByContentHash($element, $contentHash, $rootElement);
         if ($found !== null) {
             return $found;
         }
@@ -73,28 +75,32 @@ final class ElementLocator
      * 
      * @param object $element Elemento PHPWord
      * @param int $order Ordem de registro (0-indexed)
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return DOMElement|null
      * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
-    private function findByTypeAndOrder(object $element, int $order): ?DOMElement
+    private function findByTypeAndOrder(object $element, int $order, string $rootElement): ?DOMElement
     {
-        // Title: usar método especializado
+        // Title: only supported in w:body (headers/footers cannot contain titles)
         if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
+            if ($rootElement !== 'w:body') {
+                return null;
+            }
             return $this->findTitleByDepth($element, $order);
         }
 
         // Image: usar método especializado
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
-            return $this->findImageByOrder($order);
+            return $this->findImageByOrder($order, $rootElement);
         }
 
-        $query = $this->createXPathQuery($element);
+        $query = $this->createXPathQuery($element, $rootElement);
 
         // Para células, buscar apenas células NÃO envolvidas em SDTs
         // Isso evita localizar células que já foram movidas para <w:sdtContent>
         // Sempre busca [1] pois células são removidas do resultado após wrapping
         if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
-            $query = '//w:body//w:tc[not(ancestor::w:sdtContent)][1]';
+            $query = '//' . $rootElement . '//w:tc[not(ancestor::w:sdtContent)][1]';
             
             $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
             if ($nodes === null || $nodes === false || $nodes->length === 0) {
@@ -144,12 +150,18 @@ final class ElementLocator
      * 
      * @param object $element Elemento PHPWord
      * @param string $contentHash Hash MD5 do conteúdo
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return DOMElement|null
      * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
-    private function findByContentHash(object $element, string $contentHash): ?DOMElement
+    private function findByContentHash(object $element, string $contentHash, string $rootElement): ?DOMElement
     {
-        $query = $this->createXPathQuery($element);
+        // Title: only supported in w:body (headers/footers cannot contain titles)
+        if ($element instanceof \PhpOffice\PhpWord\Element\Title && $rootElement !== 'w:body') {
+            return null;
+        }
+
+        $query = $this->createXPathQuery($element, $rootElement);
         if ($this->xpath === null) {
             return null;
         }
@@ -179,35 +191,36 @@ final class ElementLocator
      * Cria query XPath para tipo de elemento
      * 
      * @param object $element Elemento PHPWord
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return string Query XPath
      * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      */
-    private function createXPathQuery(object $element): string
+    private function createXPathQuery(object $element, string $rootElement = 'w:body'): string
     {
         // Text/TextRun: buscar <w:p> (paragraph)
         if ($element instanceof \PhpOffice\PhpWord\Element\Text ||
             $element instanceof \PhpOffice\PhpWord\Element\TextRun) {
-            return '//w:body/w:p';
+            return '//' . $rootElement . '/w:p';
         }
 
         // Table: buscar <w:tbl>
         if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
-            return '//w:body/w:tbl';
+            return '//' . $rootElement . '/w:tbl';
         }
 
         // Cell: buscar <w:tc> (table cell)
         if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
-            return '//w:body//w:tc';
+            return '//' . $rootElement . '//w:tc';
         }
 
         // Title: buscar <w:p> com w:pStyle (tratado em findTitleByDepth)
         if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
-            return '//w:body/w:p[w:pPr/w:pStyle]';
+            return '//' . $rootElement . '/w:p[w:pPr/w:pStyle]';
         }
 
         // Image: buscar <w:p> que contenha <w:r>/<w:pict> (tratado em findImageByOrder)
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
-            return '//w:body//w:p[.//w:r/w:pict]';
+            return '//' . $rootElement . '//w:p[.//w:r/w:pict]';
         }
 
         // Section: não localiza (não serializado como elemento único)
@@ -451,7 +464,7 @@ final class ElementLocator
      * resultarão em exceção durante o processamento.
      * 
      * XPath Query Pattern:
-     * //w:body//w:r/w:pict[not(ancestor::w:sdtContent)][1]
+     * //{rootElement}//w:r/w:pict[not(ancestor::w:sdtContent)][1]
      * 
      * Requer namespaces VML registrados:
      * - v: urn:schemas-microsoft-com:vml
@@ -459,10 +472,11 @@ final class ElementLocator
      * 
      * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
      *                   Mantido por compatibilidade e possível suporte futuro a múltiplas imagens.
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return DOMElement|null O elemento w:p pai contendo w:pict, ou null se não encontrado
      * @since 0.1.0
      */
-    private function findImageByOrder(int $order): ?DOMElement
+    private function findImageByOrder(int $order, string $rootElement = 'w:body'): ?DOMElement
     {
         // NOTE: The $order parameter is intentionally unused.
         // In v3.0, element de-duplication guarantees that only the first
@@ -474,7 +488,7 @@ final class ElementLocator
         }
 
         // Query para localizar w:pict (VML images)
-        $query = '//w:body//w:r/w:pict[not(ancestor::w:sdtContent)][1]';
+        $query = '//' . $rootElement . '//w:r/w:pict[not(ancestor::w:sdtContent)][1]';
 
         $nodes = $this->xpath->query($query);
         if ($nodes === false || $nodes->length === 0) {
@@ -559,5 +573,30 @@ final class ElementLocator
         $domHash = $this->hashDOMElement($domElement, $phpWordElement);
 
         return $phpWordHash === $domHash;
+    }
+
+    /**
+     * Detects the root element of a Word XML document
+     * 
+     * Identifies whether the document is a header (w:hdr), footer (w:ftr),
+     * or main document (w:body) based on the root element name.
+     * 
+     * @param DOMDocument $dom The DOM document to analyze
+     * @return string The root element name (w:hdr, w:ftr, or w:body)
+     * @since 0.2.0
+     */
+    public function detectRootElement(DOMDocument $dom): string
+    {
+        $root = $dom->documentElement;
+        
+        if ($root === null) {
+            return 'w:body';
+        }
+
+        return match ($root->localName) {
+            'hdr' => 'w:hdr',
+            'ftr' => 'w:ftr',
+            default => 'w:body',
+        };
     }
 }
