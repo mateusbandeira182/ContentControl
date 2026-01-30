@@ -2,9 +2,9 @@
 
 > Create and inject PHPWord tables with automatic Content Control wrapping
 
-**Version:** 0.4.0  
+**Version:** 0.3.0  
 **Namespace:** `MkGrow\ContentControl\Bridge\TableBuilder`  
-**Since:** v0.4.0
+**Since:** v0.3.0
 
 ---
 
@@ -49,10 +49,10 @@ TableBuilder
 
 ### Installation
 
-TableBuilder is included with ContentControl v0.4.0+:
+TableBuilder is included with ContentControl v0.3.0+:
 
 ```bash
-composer require mkgrow/content-control ^0.4
+composer require mkgrow/content-control ^0.3
 ```
 
 ### Basic Example

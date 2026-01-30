@@ -209,7 +209,7 @@ php samples/table_builder_advanced.php
 - **Microsoft Word:** _____________________
 - **Windows:** _____________________
 - **PHP:** _____________________
-- **ContentControl:** 0.4.0
+- **ContentControl:** 0.3.0
 
 ### Arquivos de Log (se aplicável)
 - Anexar screenshots de problemas encontrados

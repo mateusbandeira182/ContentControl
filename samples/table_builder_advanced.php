@@ -5,7 +5,7 @@
  * Demonstrates advanced styling with multi-level configuration.
  *
  * @package MkGrow\ContentControl
- * @version 0.4.0
+ * @version 0.3.0
  */
 
 declare(strict_types=1);
