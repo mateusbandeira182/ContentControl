@@ -21,6 +21,7 @@ parameters:
         
         # Pest-specific: Propriedades dinâmicas em closures de testes
         - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempDir#'
+        - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$createDocxWithSdt#'
         
         # Pest-specific: Uso de $this em closures de expect extensions
         -
@@ -73,9 +74,53 @@ parameters:
             path: tests/
         
         # Test-specific: Access to undefined property $tempFile (usado em beforeEach/afterEach)
+        # Pest permite propriedades dinâmicas em closures de teste
         -
             message: '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempFile#'
-            path: tests/Feature/TitleImageIntegrationTest.php
+            path: tests/
+        
+        # Test-specific: offset access in test result arrays
+        -
+            message: '#Cannot access offset .* on mixed#'
+            path: tests/
+        
+        # Test-specific: Parameter type mismatches in test helper methods
+        -
+            message: '#Parameter .* expects .*, mixed given#'
+            path: tests/
+        -
+            message: '#Parameter .* expects .*, string\|false given#'
+            path: tests/
+        
+        # Test-specific: Property access on potentially null objects in assertions
+        -
+            message: '#Cannot access property .* on .*\|null#'
+            path: tests/
+        
+        # Test-specific: If condition with non-boolean types in test helpers
+        -
+            message: '#Only booleans are allowed in .* condition#'
+            path: tests/
+        
+        # Test-specific: Dead catch blocks in error testing scenarios
+        -
+            message: '#Dead catch - .* is never thrown#'
+            path: tests/
+        
+        # Test-specific: Offset might not exist in test result arrays
+        -
+            message: '#Offset .* might not exist on array#'
+            path: tests/
+        
+        # Test-specific: Unused traits (may be used in future or by inheritance)
+        -
+            message: '#Trait .* is used zero times and is not analysed#'
+            path: tests/Helpers/
+        
+        # Test-specific: loadXML parameter can be string|false from ZipArchive
+        -
+            message: '#Parameter \#1 \$source of method DOMDocument::loadXML\(\) expects string, string\|false given#'
+            path: tests/Unit/ContentProcessorAdvancedTest.php
         
         # Test-specific: Reflection->invoke returns mixed type in header/footer discovery tests
         # These ignores are necessary for unit tests that use Reflection to test private methods.

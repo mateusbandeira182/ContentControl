@@ -36,5 +36,6 @@
     
     <php>
         <env name="APP_ENV" value="testing"/>
+        <ini name="memory_limit" value="512M"/>
     </php>
 </phpunit>

@@ -8,6 +8,8 @@ composer.lock
 .github/prompts
 .github/copilot-instructions.md
 .review
+.prompts
+.backlog
 # Cobertura de testes
 coverage/
 .phpunit.result.cache
