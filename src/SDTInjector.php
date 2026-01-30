@@ -763,6 +763,11 @@ final class SDTInjector
                 $docPartProp->setAccessible(true);
                 $docPart = $docPartProp->getValue($element);
 
+                // Validate that docPart is actually a string
+                if (!is_string($docPart)) {
+                    return 'word/document.xml';
+                }
+
                 // Get docPartId if available
                 $docPartId = 1; // Default
                 if ($reflection->hasProperty('docPartId')) {
@@ -774,7 +779,7 @@ final class SDTInjector
                     }
                 }
 
-                // Map docPart to XML file
+                // Map docPart to XML file (only accept expected values)
                 if ($docPart === 'Header') {
                     return 'word/header' . $docPartId . '.xml';
                 } elseif ($docPart === 'Footer') {

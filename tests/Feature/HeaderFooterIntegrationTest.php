@@ -33,12 +33,21 @@ test('wraps Text in Header with Content Control', function () {
     $tempFile = tempnam(sys_get_temp_dir(), 'test_header_') . '.docx';
     $cc->save($tempFile);
     
-    // Extract and verify header1.xml
+    // Extract and verify header XML (discover actual filename instead of assuming header1.xml)
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Find header files dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     
     // Verify SDT structure in header
     expect($headerXml)->toContain('<w:sdt>')
@@ -74,12 +83,21 @@ test('wraps Text in Footer with Content Control', function () {
     $tempFile = tempnam(sys_get_temp_dir(), 'test_footer_') . '.docx';
     $cc->save($tempFile);
     
-    // Extract and verify footer1.xml
+    // Extract and verify footer XML (discover actual filename instead of assuming footer1.xml)
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $footerXml = $zip->getFromName('word/footer1.xml');
-    expect($footerXml)->not->toBeFalse();
+    // Find footer files dynamically
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    
+    expect($footerXml)->not->toBeNull('No footer XML file found in DOCX');
     
     // Verify SDT structure in footer
     expect($footerXml)->toContain('<w:sdt>')
@@ -129,15 +147,29 @@ test('processes body, header, and footer simultaneously', function () {
         ->and($documentXml)->toContain('<w:alias w:val="BodyText"/>')
         ->and($documentXml)->toContain('Body Content');
     
-    // Verify header1.xml
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse()
+    // Verify header (discover dynamically)
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX')
         ->and($headerXml)->toContain('<w:alias w:val="HeaderText"/>')
         ->and($headerXml)->toContain('Header Content');
     
-    // Verify footer1.xml
-    $footerXml = $zip->getFromName('word/footer1.xml');
-    expect($footerXml)->not->toBeFalse()
+    // Verify footer (discover dynamically)
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($footerXml)->not->toBeNull('No footer XML file found in DOCX')
         ->and($footerXml)->toContain('<w:alias w:val="FooterText"/>')
         ->and($footerXml)->toContain('Footer Content');
     
@@ -170,8 +202,16 @@ test('wraps Table in Header with Content Control', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse()
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX')
         ->and($headerXml)->toContain('<w:alias w:val="HeaderTable"/>')
         ->and($headerXml)->toContain('<w:tbl>')  // Table element
         ->and($headerXml)->toContain('Column 1')
@@ -220,8 +260,16 @@ test('wraps Image in Footer with Content Control', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $footerXml = $zip->getFromName('word/footer1.xml');
-    expect($footerXml)->not->toBeFalse()
+    // Discover footer file dynamically
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($footerXml)->not->toBeNull('No footer XML file found in DOCX')
         ->and($footerXml)->toContain('<w:alias w:val="FooterImage"/>')
         ->and($footerXml)->toContain('<w:picture/>')  // TYPE_PICTURE
         ->and($footerXml)->toContain('<w:pict>');  // VML image
@@ -256,28 +304,44 @@ test('handles multiple sections with independent headers and footers', function 
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    // Check if multiple headers were created or if PHPWord reused the same header
-    $header1Xml = $zip->getFromName('word/header1.xml');
-    $header2Xml = $zip->getFromName('word/header2.xml');
+    // Discover all header files dynamically
+    $headerFiles = [];
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerFiles[$filename] = $zip->getFromName($filename);
+        }
+    }
     
-    // At minimum, header1.xml should exist
-    expect($header1Xml)->not->toBeFalse();
+    // At minimum, one header file should exist
+    expect(count($headerFiles))->toBeGreaterThanOrEqual(1, 'At least one header file should exist');
     
     // If PHPWord created separate headers, verify both
-    if ($header2Xml !== false) {
-        // Two separate header files
-        expect($header1Xml)->toContain('Header Section 1')
-            ->and($header1Xml)->toContain('<w:alias w:val="Header1"/>');
+    if (count($headerFiles) >= 2) {
+        // Two or more separate header files
+        $foundHeader1 = false;
+        $foundHeader2 = false;
         
-        expect($header2Xml)->toContain('Header Section 2')
-            ->and($header2Xml)->toContain('<w:alias w:val="Header2"/>');
+        foreach ($headerFiles as $headerXml) {
+            if (is_string($headerXml) && str_contains($headerXml, '<w:alias w:val="Header1"/>')) {
+                expect($headerXml)->toContain('Header Section 1');
+                $foundHeader1 = true;
+            }
+            if (is_string($headerXml) && str_contains($headerXml, '<w:alias w:val="Header2"/>')) {
+                expect($headerXml)->toContain('Header Section 2');
+                $foundHeader2 = true;
+            }
+        }
+        
+        expect($foundHeader1)->toBeTrue('Header1 should be found in header files');
+        expect($foundHeader2)->toBeTrue('Header2 should be found in header files');
     } else {
-        // PHPWord reused the same header - both elements should be in header1.xml
-        // This can happen if sections don't have explicit header type (first/default/even)
-        expect($header1Xml)->toBeString();
-        $header1XmlStr = (string) $header1Xml; // Cast for PHPStan
-        $hasHeader1 = str_contains($header1XmlStr, '<w:alias w:val="Header1"/>');
-        $hasHeader2 = str_contains($header1XmlStr, '<w:alias w:val="Header2"/>');
+        // PHPWord reused the same header - both elements should be in the single header file
+        $headerXml = reset($headerFiles);
+        expect($headerXml)->toBeString();
+        $headerXmlStr = (string) $headerXml; // Cast for PHPStan
+        $hasHeader1 = str_contains($headerXmlStr, '<w:alias w:val="Header1"/>');
+        $hasHeader2 = str_contains($headerXmlStr, '<w:alias w:val="Header2"/>');
         
         expect($hasHeader1 || $hasHeader2)->toBeTrue(
             'Expected header1.xml to contain at least one of the header aliases when headers are shared'
@@ -326,8 +390,26 @@ test('mixed content: Text in body, Table in header, Image in footer', function (
     $zip->open($tempFile);
     
     $documentXml = $zip->getFromName('word/document.xml');
-    $headerXml = $zip->getFromName('word/header1.xml');
-    $footerXml = $zip->getFromName('word/footer1.xml');
+    
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    
+    // Discover footer file dynamically
+    $footerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/footer\d+\.xml$#', $filename) === 1) {
+            $footerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
     
     // Verify body
     expect($documentXml)->not->toBeFalse()
@@ -364,8 +446,16 @@ test('validates OOXML structure after SDT injection in headers', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Discover header file dynamically
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
     
     // Validate OOXML structure (ISO/IEC 29500-1:2016 §17.5.2)
     // <w:sdt> must contain <w:sdtPr> and <w:sdtContent>
@@ -404,9 +494,16 @@ test('does not process empty headers or footers', function () {
     $zip = new ZipArchive();
     $zip->open($tempFile);
     
-    // Header file should exist (PHPWord creates it), but without SDTs
-    $headerXml = $zip->getFromName('word/header1.xml');
-    expect($headerXml)->not->toBeFalse();
+    // Discover header file dynamically (PHPWord creates it even if empty)
+    $headerXml = null;
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $filename = $zip->getNameIndex($i);
+        if (is_string($filename) && preg_match('#^word/header\d+\.xml$#', $filename) === 1) {
+            $headerXml = $zip->getFromName($filename);
+            break;
+        }
+    }
+    expect($headerXml)->not->toBeNull('Header file should exist even if empty');
     
     // Should NOT contain SDT tags (no elements registered)
     expect($headerXml)->not->toContain('<w:sdt>');
