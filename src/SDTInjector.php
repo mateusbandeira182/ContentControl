@@ -38,16 +38,6 @@ final class SDTInjector
     private ElementLocator $locator;
 
     /**
-     * Cache de mapeamento Header/Footer → arquivo XML
-     * 
-     * Tracks which XML file each Header/Footer object belongs to.
-     * Key: spl_object_id(Header|Footer), Value: XML path (e.g., 'word/header1.xml')
-     * 
-     * @var array<int, string>
-     */
-    private array $headerFooterTracker = [];
-
-    /**
      * Cria nova instância do SDTInjector
      */
     public function __construct()
