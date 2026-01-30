@@ -294,6 +294,442 @@ final class TableBuilder
     }
 
     /**
+     * Inject table into template SDT with internal SDTs preserved
+     *
+     * Replaces the content of a target SDT in a template document with
+     * a pre-built table, preserving all internal Content Controls.
+     *
+     * Workflow:
+     * 1. Creates temporary file for table extraction
+     * 2. Saves ContentControl to temp file (triggers SDTInjector)
+     * 3. Extracts table XML with internal SDTs
+     * 4. Opens target template file
+     * 5. Locates target SDT by tag
+     * 6. Clears current SDT content
+     * 7. Imports and appends table XML
+     * 8. Marks template as modified
+     * 9. Cleans up temp file (guaranteed via try-finally)
+     *
+     * Error Cases Handled:
+     * - Template file not found
+     * - Target SDT not found in template
+     * - SDT structure invalid (missing w:sdtContent)
+     * - ZIP/XML parsing failures
+     * - Table extraction failures
+     *
+     * @param string $templatePath Absolute path to template .docx file
+     * @param string $targetSdtTag Tag of SDT to replace content
+     * @param Table $table Pre-built table with internal SDTs
+     *
+     * @return void
+     *
+     * @throws ContentControlException On any failure during injection
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $builder = new TableBuilder();
+     * 
+     * // Create table with SDTs
+     * $table = $builder->createTable([
+     *     'rows' => [
+     *         ['cells' => [
+     *             ['text' => 'Product', 'width' => 3000],
+     *             ['text' => '$0.00', 'width' => 2000, 'tag' => 'price-1']
+     *         ]]
+     *     ]
+     * ]);
+     * 
+     * // Inject into template
+     * $builder->injectTable('invoice-template.docx', 'invoice-items', $table);
+     * 
+     * // Save modified template
+     * $builder->getContentControl()->save('invoice-output.docx');
+     * ```
+     */
+    public function injectTable(string $templatePath, string $targetSdtTag, Table $table): void
+    {
+        // Ensure temp file is cleaned up even if exceptions occur
+        try {
+            // 1. Create temporary file for table extraction
+            $tempFileBase = tempnam(sys_get_temp_dir(), 'tablebuilder_');
+            if ($tempFileBase === false) {
+                throw new ContentControlException(
+                    'Failed to create temporary file for table extraction'
+                );
+            }
+            $this->tempFile = $tempFileBase . '.docx';
+
+            // 2. Save ContentControl to temp file (triggers SDTInjector)
+            $this->contentControl->save($this->tempFile);
+
+            // 3. Extract table XML with internal SDTs
+            $tableXml = $this->extractTableXmlWithSdts($this->tempFile, $table);
+
+            // 4. Open template file
+            if (!file_exists($templatePath)) {
+                throw new ContentControlException(
+                    "Template file not found: {$templatePath}"
+                );
+            }
+
+            $zip = new \ZipArchive();
+            if ($zip->open($templatePath) !== true) {
+                throw new ContentControlException(
+                    "Failed to open template as ZIP: {$templatePath}"
+                );
+            }
+
+            try {
+                // 5. Read document.xml from template
+                $documentXml = $zip->getFromName('word/document.xml');
+                if ($documentXml === false) {
+                    throw new ContentControlException(
+                        "word/document.xml not found in template: {$templatePath}"
+                    );
+                }
+
+                // 6. Parse as DOM
+                $dom = new \DOMDocument();
+                if (!$dom->loadXML($documentXml)) {
+                    throw new ContentControlException(
+                        'Failed to parse template document.xml as XML'
+                    );
+                }
+
+                // 7. Create ContentProcessor for SDT operations
+                $processor = new ContentProcessor($templatePath);
+
+                // 8. Locate target SDT by tag
+                $sdtData = $processor->findSdt($targetSdtTag);
+                if ($sdtData === null) {
+                    throw new ContentControlException(
+                        "SDT with tag '{$targetSdtTag}' not found in template"
+                    );
+                }
+
+                // 9. Create XPath with namespaces
+                $xpath = $processor->createXPathForDom($dom);
+
+                // 10. Locate SDT element in DOM using XPath
+                $sdtElements = $xpath->query("//w:sdt[.//w:tag[@w:val='{$targetSdtTag}']]");
+                if ($sdtElements === false || $sdtElements->length === 0) {
+                    throw new ContentControlException(
+                        "SDT element for tag '{$targetSdtTag}' not found in DOM"
+                    );
+                }
+
+                $sdtElement = $sdtElements->item(0);
+                if ($sdtElement === null) {
+                    throw new ContentControlException(
+                        "Failed to retrieve SDT element for tag '{$targetSdtTag}'"
+                    );
+                }
+
+                // 11. Locate w:sdtContent child
+                $sdtContentElements = $xpath->query('.//w:sdtContent', $sdtElement);
+                if ($sdtContentElements === false || $sdtContentElements->length === 0) {
+                    throw new ContentControlException(
+                        "w:sdtContent not found in SDT '{$targetSdtTag}'"
+                    );
+                }
+
+                $sdtContent = $sdtContentElements->item(0);
+                if ($sdtContent === null) {
+                    throw new ContentControlException(
+                        "Failed to retrieve w:sdtContent for SDT '{$targetSdtTag}'"
+                    );
+                }
+
+                // 12. Clear current content
+                while ($sdtContent->firstChild !== null) {
+                    $sdtContent->removeChild($sdtContent->firstChild);
+                }
+
+                // 13. Parse table XML as fragment
+                $tableFragment = $dom->createDocumentFragment();
+                if (!$tableFragment->appendXML($tableXml)) {
+                    throw new ContentControlException(
+                        'Failed to parse table XML as document fragment'
+                    );
+                }
+
+                // 14. Import and append table
+                $importedTable = $dom->importNode($tableFragment, true);
+                // @phpstan-ignore-next-line identical.alwaysFalse (DOMDocument::importNode() can return false per PHP docs)
+                if ($importedTable === false) {
+                    throw new ContentControlException(
+                        'Failed to import table XML into template DOM'
+                    );
+                }
+                /** @var \DOMNode $importedTable */
+
+                $sdtContent->appendChild($importedTable);
+
+                // 15. Serialize modified DOM
+                $modifiedXml = $dom->saveXML();
+                if ($modifiedXml === false) {
+                    throw new ContentControlException(
+                        'Failed to serialize modified template XML'
+                    );
+                }
+
+                // 16. Write back to ZIP
+                if (!$zip->deleteName('word/document.xml')) {
+                    throw new ContentControlException(
+                        'Failed to delete old document.xml from template'
+                    );
+                }
+
+                if (!$zip->addFromString('word/document.xml', $modifiedXml)) {
+                    throw new ContentControlException(
+                        'Failed to write modified document.xml to template'
+                    );
+                }
+
+                // 17. Mark template as modified
+                $processor->markModified($templatePath);
+
+            } finally {
+                $zip->close();
+            }
+
+        } finally {
+            // 18. Guaranteed cleanup of temp file
+            if ($this->tempFile !== null && file_exists($this->tempFile)) {
+                @unlink($this->tempFile);
+                $this->tempFile = null;
+            }
+        }
+    }
+
+    /**
+     * Generate hash for table identification in DOCX XML
+     *
+     * Creates a deterministic MD5 hash based on table dimensions (rows x cells)
+     * extracted via Reflection from PHPWord's private properties.
+     *
+     * Algorithm:
+     * - Extracts rowCount from Table's private $rows property
+     * - Extracts cellCount from first row's private $cells property
+     * - Generates MD5 hash from "{rowCount}x{cellCount}" string
+     *
+     * Limitations:
+     * - Hash collisions possible for tables with same dimensions
+     * - Only dimensions considered (not content or styles)
+     * - Assumes all rows have same number of cells
+     *
+     * @param Table $table PHPWord table instance
+     *
+     * @return string MD5 hash (32 characters)
+     *
+     * @throws ContentControlException If reflection fails or table has no rows
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $table = $builder->createTable([
+     *     'rows' => [
+     *         ['cells' => [['text' => 'A'], ['text' => 'B'], ['text' => 'C']]],
+     *         ['cells' => [['text' => 'D'], ['text' => 'E'], ['text' => 'F']]],
+     *     ]
+     * ]);
+     * $hash = $builder->generateTableHash($table);
+     * // Returns: md5("2x3") = "a87ff679a2f3e71d9181a67b7542122c"
+     * ```
+     */
+    private function generateTableHash(Table $table): string
+    {
+        try {
+            // Use Reflection to access private $rows property
+            $reflectionTable = new \ReflectionClass($table);
+            $rowsProperty = $reflectionTable->getProperty('rows');
+            $rowsProperty->setAccessible(true);
+            
+            /** @var array<\PhpOffice\PhpWord\Element\Row> $rows */
+            $rows = $rowsProperty->getValue($table);
+            
+            if (count($rows) === 0) {
+                throw new ContentControlException(
+                    'Cannot generate hash for empty table'
+                );
+            }
+            
+            $rowCount = count($rows);
+            
+            // Use Reflection to access private $cells property from first row
+            $firstRow = $rows[0];
+            $reflectionRow = new \ReflectionClass($firstRow);
+            $cellsProperty = $reflectionRow->getProperty('cells');
+            $cellsProperty->setAccessible(true);
+            
+            /** @var array<\PhpOffice\PhpWord\Element\Cell> $cells */
+            $cells = $cellsProperty->getValue($firstRow);
+            $cellCount = count($cells);
+            
+            // Generate hash: md5("{rowCount}x{cellCount}")
+            $dimensionString = "{$rowCount}x{$cellCount}";
+            
+            return md5($dimensionString);
+            
+        } catch (\ReflectionException $e) {
+            throw new ContentControlException(
+                "Failed to generate table hash via Reflection: {$e->getMessage()}",
+                0,
+                $e
+            );
+        }
+    }
+
+    /**
+     * Extract table XML from DOCX with internal SDTs preserved
+     *
+     * Opens a DOCX file, locates a specific table by hash, and extracts
+     * its complete XML representation including any nested Content Controls.
+     *
+     * Process:
+     * 1. Opens DOCX as ZIP archive
+     * 2. Reads word/document.xml
+     * 3. Parses XML as DOM
+     * 4. Generates hash from target table
+     * 5. Locates matching table in DOM via XPath
+     * 6. Serializes table node to XML string
+     * 7. Cleans redundant namespace declarations
+     *
+     * Namespace Cleanup:
+     * - Removes redundant xmlns:w declarations (inherited from root)
+     * - Preserves w:sdt and w:sdtContent elements
+     * - Returns clean XML ready for DOM import
+     *
+     * @param string $docxPath Absolute path to .docx file
+     * @param Table $table Table to extract (used for hash generation)
+     *
+     * @return string Complete table XML with SDTs preserved
+     *
+     * @throws ContentControlException If file not found, ZIP fails, or table not found
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $table = $builder->createTable([...]);
+     * $tempFile = sys_get_temp_dir() . '/temp.docx';
+     * $builder->getContentControl()->save($tempFile);
+     * $xml = $builder->extractTableXmlWithSdts($tempFile, $table);
+     * // Returns: "<w:tbl>...<w:sdt>...<w:sdtContent>...</w:sdtContent></w:sdt>...</w:tbl>"
+     * ```
+     */
+    private function extractTableXmlWithSdts(string $docxPath, Table $table): string
+    {
+        // 1. Validate file exists
+        if (!file_exists($docxPath)) {
+            throw new ContentControlException(
+                "DOCX file not found: {$docxPath}"
+            );
+        }
+
+        // 2. Open as ZIP archive
+        $zip = new \ZipArchive();
+        if ($zip->open($docxPath) !== true) {
+            throw new ContentControlException(
+                "Failed to open DOCX as ZIP: {$docxPath}"
+            );
+        }
+
+        try {
+            // 3. Read document.xml
+            $documentXml = $zip->getFromName('word/document.xml');
+            if ($documentXml === false) {
+                throw new ContentControlException(
+                    "word/document.xml not found in DOCX: {$docxPath}"
+                );
+            }
+
+            // 4. Parse as DOM
+            $dom = new \DOMDocument();
+            if (!$dom->loadXML($documentXml)) {
+                throw new ContentControlException(
+                    "Failed to parse word/document.xml as XML"
+                );
+            }
+
+            // 5. Create XPath with namespaces
+            $xpath = new \DOMXPath($dom);
+            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+            // 6. Generate hash for target table
+            $targetHash = $this->generateTableHash($table);
+
+            // 7. Locate all tables in document
+            $tables = $xpath->query('//w:tbl');
+            if ($tables === false || $tables->length === 0) {
+                throw new ContentControlException(
+                    "No tables found in document"
+                );
+            }
+
+            // 8. Find matching table by hash
+            $matchingTable = null;
+            foreach ($tables as $tableNode) {
+                /** @var \DOMElement $tableNode */
+                // Count rows
+                $rows = $xpath->query('.//w:tr', $tableNode);
+                if ($rows === false) {
+                    continue;
+                }
+                $rowCount = $rows->length;
+
+                // Count cells in first row
+                if ($rowCount > 0) {
+                    $firstRow = $rows->item(0);
+                    if ($firstRow !== null) {
+                        $cells = $xpath->query('.//w:tc', $firstRow);
+                        if ($cells !== false) {
+                            $cellCount = $cells->length;
+                            $currentHash = md5("{$rowCount}x{$cellCount}");
+
+                            if ($currentHash === $targetHash) {
+                                $matchingTable = $tableNode;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($matchingTable === null) {
+                throw new ContentControlException(
+                    "Table with hash {$targetHash} not found in document"
+                );
+            }
+
+            // 9. Serialize table to XML
+            $tableXml = $dom->saveXML($matchingTable);
+            if ($tableXml === false) {
+                throw new ContentControlException(
+                    "Failed to serialize table XML"
+                );
+            }
+
+            // 10. Clean redundant namespace declarations
+            // Remove xmlns:w (inherited from root element)
+            $tableXml = preg_replace('/\s+xmlns:w="[^"]+"/', '', $tableXml);
+            if ($tableXml === null) {
+                throw new ContentControlException(
+                    "Failed to clean namespace declarations"
+                );
+            }
+
+            return $tableXml;
+
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
      * Destructor - ensures cleanup of temporary files
      *
      * Automatically removes any temporary files created during
