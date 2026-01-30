@@ -367,96 +367,124 @@ final class TableBuilder
             // 3. Extract table XML with internal SDTs
             $tableXml = $this->extractTableXmlWithSdts($this->tempFile, $table);
 
-            // 4. Open template file
+            // 4. Validate template file exists
             if (!file_exists($templatePath)) {
                 throw new ContentControlException(
                     "Template file not found: {$templatePath}"
                 );
             }
 
-            $zip = new \ZipArchive();
-            if ($zip->open($templatePath) !== true) {
+            // 5. Create temporary copy for modification
+            $tempModified = tempnam(sys_get_temp_dir(), 'tablebuilder_modified_') . '.docx';
+            if (!copy($templatePath, $tempModified)) {
                 throw new ContentControlException(
-                    "Failed to open template as ZIP: {$templatePath}"
+                    "Failed to create temporary copy of template"
                 );
             }
 
             try {
-                // 5. Read document.xml from template
-                $documentXml = $zip->getFromName('word/document.xml');
-                if ($documentXml === false) {
+                // 6. Open temporary copy for modification
+                $zip = new \ZipArchive();
+                if ($zip->open($tempModified) !== true) {
                     throw new ContentControlException(
-                        "word/document.xml not found in template: {$templatePath}"
+                        "Failed to open template copy as ZIP: {$tempModified}"
                     );
                 }
 
-                // 6. Parse as DOM
-                $dom = new \DOMDocument();
-                if (!$dom->loadXML($documentXml)) {
+                try {
+                    // 7. Read document.xml from template
+                    $documentXml = $zip->getFromName('word/document.xml');
+                    if ($documentXml === false) {
+                        throw new ContentControlException(
+                            "word/document.xml not found in template: {$templatePath}"
+                        );
+                    }
+
+                    // 8. Parse as DOM
+                    $dom = new \DOMDocument();
+                    if (!$dom->loadXML($documentXml)) {
+                        throw new ContentControlException(
+                            'Failed to parse template document.xml as XML'
+                        );
+                    }
+
+                    // 9. Create ContentProcessor for SDT operations
+                    $processor = new ContentProcessor($templatePath);
+
+                    // 10. Locate target SDT by tag
+                    $sdtData = $processor->findSdt($targetSdtTag);
+                    if ($sdtData === null) {
+                        throw new ContentControlException(
+                            "SDT with tag '{$targetSdtTag}' not found in template"
+                        );
+                    }
+
+                    // 11. Create XPath with namespaces
+                    $xpath = $processor->createXPathForDom($dom);
+
+                    // 12. Locate SDT element in DOM using XPath
+                    $sdtElements = $xpath->query("//w:sdt[.//w:tag[@w:val='{$targetSdtTag}']]");
+                    if ($sdtElements === false || $sdtElements->length === 0) {
+                        throw new ContentControlException(
+                            "SDT element for tag '{$targetSdtTag}' not found in DOM"
+                        );
+                    }
+
+                    $sdtElement = $sdtElements->item(0);
+                    if ($sdtElement === null) {
+                        throw new ContentControlException(
+                            "Failed to retrieve SDT element for tag '{$targetSdtTag}'"
+                        );
+                    }
+
+                    // 13. Locate w:sdtContent child
+                    $sdtContentElements = $xpath->query('.//w:sdtContent', $sdtElement);
+                    if ($sdtContentElements === false || $sdtContentElements->length === 0) {
+                        throw new ContentControlException(
+                            "w:sdtContent not found in SDT '{$targetSdtTag}'"
+                        );
+                    }
+
+                    $sdtContent = $sdtContentElements->item(0);
+                    if ($sdtContent === null) {
+                        throw new ContentControlException(
+                            "Failed to retrieve w:sdtContent for SDT '{$targetSdtTag}'"
+                        );
+                    }
+
+                    // 14. Clear current content
+                    while ($sdtContent->firstChild !== null) {
+                        $sdtContent->removeChild($sdtContent->firstChild);
+                    }
+
+                    // 15. Parse table XML as fragment and wrap with proper namespace
+                    // Note: We need to wrap the XML in a temporary element with namespace declaration
+                    // because createDocumentFragment() doesn't preserve namespace context
+                    $wrappedXml = '<root xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' 
+                        . $tableXml . '</root>';
+                    
+                    $tempDom = new \DOMDocument();
+                    if (!$tempDom->loadXML($wrappedXml)) {
+                        throw new ContentControlException(
+                            'Failed to parse wrapped table XML'
+                        );
+                    }
+
+                    // Get the table element (first child of root)
+                $documentElement = $tempDom->documentElement;
+                if ($documentElement === null) {
+                    throw new ContentControlException('Root element not found in temporary DOM');
+                }
+                
+                $tableElement = $documentElement->firstChild;
+                if ($tableElement === null) {
                     throw new ContentControlException(
-                        'Failed to parse template document.xml as XML'
+                        'No table element found in wrapped XML'
                     );
                 }
 
-                // 7. Create ContentProcessor for SDT operations
-                $processor = new ContentProcessor($templatePath);
-
-                // 8. Locate target SDT by tag
-                $sdtData = $processor->findSdt($targetSdtTag);
-                if ($sdtData === null) {
-                    throw new ContentControlException(
-                        "SDT with tag '{$targetSdtTag}' not found in template"
-                    );
-                }
-
-                // 9. Create XPath with namespaces
-                $xpath = $processor->createXPathForDom($dom);
-
-                // 10. Locate SDT element in DOM using XPath
-                $sdtElements = $xpath->query("//w:sdt[.//w:tag[@w:val='{$targetSdtTag}']]");
-                if ($sdtElements === false || $sdtElements->length === 0) {
-                    throw new ContentControlException(
-                        "SDT element for tag '{$targetSdtTag}' not found in DOM"
-                    );
-                }
-
-                $sdtElement = $sdtElements->item(0);
-                if ($sdtElement === null) {
-                    throw new ContentControlException(
-                        "Failed to retrieve SDT element for tag '{$targetSdtTag}'"
-                    );
-                }
-
-                // 11. Locate w:sdtContent child
-                $sdtContentElements = $xpath->query('.//w:sdtContent', $sdtElement);
-                if ($sdtContentElements === false || $sdtContentElements->length === 0) {
-                    throw new ContentControlException(
-                        "w:sdtContent not found in SDT '{$targetSdtTag}'"
-                    );
-                }
-
-                $sdtContent = $sdtContentElements->item(0);
-                if ($sdtContent === null) {
-                    throw new ContentControlException(
-                        "Failed to retrieve w:sdtContent for SDT '{$targetSdtTag}'"
-                    );
-                }
-
-                // 12. Clear current content
-                while ($sdtContent->firstChild !== null) {
-                    $sdtContent->removeChild($sdtContent->firstChild);
-                }
-
-                // 13. Parse table XML as fragment
-                $tableFragment = $dom->createDocumentFragment();
-                if (!$tableFragment->appendXML($tableXml)) {
-                    throw new ContentControlException(
-                        'Failed to parse table XML as document fragment'
-                    );
-                }
-
-                // 14. Import and append table
-                $importedTable = $dom->importNode($tableFragment, true);
+                // 16. Import table into main DOM
+                $importedTable = $dom->importNode($tableElement, true);
                 // @phpstan-ignore-next-line identical.alwaysFalse (DOMDocument::importNode() can return false per PHP docs)
                 if ($importedTable === false) {
                     throw new ContentControlException(
@@ -467,7 +495,7 @@ final class TableBuilder
 
                 $sdtContent->appendChild($importedTable);
 
-                // 15. Serialize modified DOM
+                // 17. Serialize modified DOM
                 $modifiedXml = $dom->saveXML();
                 if ($modifiedXml === false) {
                     throw new ContentControlException(
@@ -475,7 +503,7 @@ final class TableBuilder
                     );
                 }
 
-                // 16. Write back to ZIP
+                // 18. Write back to ZIP
                 if (!$zip->deleteName('word/document.xml')) {
                     throw new ContentControlException(
                         'Failed to delete old document.xml from template'
@@ -488,15 +516,29 @@ final class TableBuilder
                     );
                 }
 
-                // 17. Mark template as modified
+                } finally {
+                    $zip->close();
+                }
+
+                // 18. Copy modified file back to original template
+                if (!copy($tempModified, $templatePath)) {
+                    throw new ContentControlException(
+                        "Failed to copy modified template back to: {$templatePath}"
+                    );
+                }
+
+                // 19. Mark template as modified
                 $processor->markModified($templatePath);
 
             } finally {
-                $zip->close();
+                // Cleanup temporary modified file
+                if (file_exists($tempModified)) {
+                    @unlink($tempModified);
+                }
             }
 
         } finally {
-            // 18. Guaranteed cleanup of temp file
+            // 20. Guaranteed cleanup of temp file
             if ($this->tempFile !== null && file_exists($this->tempFile)) {
                 @unlink($this->tempFile);
                 $this->tempFile = null;
