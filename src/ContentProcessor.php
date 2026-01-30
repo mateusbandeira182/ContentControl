@@ -163,6 +163,86 @@ final class ContentProcessor
     }
 
     /**
+     * Find SDT by tag in document
+     *
+     * Exposes internal SDT search functionality for extensions like TableBuilder.
+     * Searches in order: document.xml → headers → footers.
+     *
+     * @param string $tag The tag value to search for
+     *
+     * @return array{dom: \DOMDocument, sdt: \DOMElement, file: string}|null
+     *         Array containing DOM document, SDT element, and file path; null if not found
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $result = $processor->findSdt('invoice-total');
+     * if ($result !== null) {
+     *     ['dom' => $dom, 'sdt' => $sdt, 'file' => $file] = $result;
+     *     // Manipulate SDT element as needed
+     * }
+     * ```
+     */
+    public function findSdt(string $tag): ?array
+    {
+        return $this->findSdtByTag($tag);
+    }
+
+    /**
+     * Create configured XPath object for DOM document
+     *
+     * Creates XPath instance with all necessary OOXML namespaces registered:
+     * - w: WordprocessingML
+     * - r: Relationships
+     * - v: VML (for images)
+     *
+     * @param \DOMDocument $dom The DOM document to create XPath for
+     *
+     * @return \DOMXPath XPath instance with namespaces registered
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $result = $processor->findSdt('table-container');
+     * $xpath = $processor->createXPathForDom($result['dom']);
+     * $content = $xpath->query('.//w:sdtContent', $result['sdt'])->item(0);
+     * ```
+     */
+    public function createXPathForDom(\DOMDocument $dom): \DOMXPath
+    {
+        return $this->createXPath($dom);
+    }
+
+    /**
+     * Mark file as modified for subsequent save operation
+     *
+     * Notifies the processor that a specific file within the DOCX archive
+     * has been modified and should be written back on save().
+     *
+     * Used by extensions that directly manipulate DOM elements.
+     *
+     * @param string $filePath Relative path within DOCX (e.g., 'word/document.xml')
+     *
+     * @return void
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $result = $processor->findSdt('content');
+     * // ... modify $result['dom'] ...
+     * $processor->markModified($result['file']);
+     * $processor->save('output.docx');
+     * ```
+     */
+    public function markModified(string $filePath): void
+    {
+        $this->markFileAsModified($filePath);
+    }
+
+    /**
      * Load XML string as DOMDocument
      *
      * @param string $xmlContent XML content to parse
