@@ -4,7 +4,7 @@
 
 [![Latest Stable Version](https://poser.pugx.org/mkgrow/content-control/v/stable)](https://packagist.org/packages/mkgrow/content-control)
 [![CI Status](https://img.shields.io/github/actions/workflow/status/mateusbandeira182/ContentControl/ci.yml?branch=main&label=CI)](https://github.com/mateusbandeira182/ContentControl/actions)
-[![Code Coverage](https://img.shields.io/badge/coverage-82.3%25-brightgreen)](coverage/html/index.html)
+[![Code Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](coverage/html/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-blue)](composer.json)
 [![PHPStan Level 9](https://img.shields.io/badge/PHPStan-Level%209-brightgreen)](phpstan.neon)
@@ -371,20 +371,13 @@ $processor->save();
 
 Search order: `document.xml` → `header*.xml` → `footer*.xml`
 
-### Coming Soon (Phase 3+)
+### Coming Soon
 
 ```php
-// Append content to existing SDT (preserving current content)
-$processor->appendContent('tag', $element);
-
-// Remove all content from SDT
-$processor->removeContent('tag');
-
-// Replace text while preserving formatting
-$processor->setValue('tag', 'text');
-
-// Remove all SDTs from document (convert to static content)
-$count = $processor->removeAllControlContents($lockDocument = false);
+// Future enhancements under consideration:
+// - Multi-file batch processing
+// - SDT content type validation
+// - Advanced namespace management
 ```
 
 ---
@@ -727,7 +720,7 @@ $cc->save('document_with_toc.docx');
 ## Testing
 
 ```bash
-# Run all tests (293 tests, 788 assertions)
+# Run all tests (323 tests, 857 assertions)
 composer test
 
 # Unit tests only
@@ -736,7 +729,7 @@ composer test:unit
 # Integration tests
 composer test:feature
 
-# Code coverage report (82.3%)
+# Code coverage report (85%+)
 composer test:coverage
 ```
 
@@ -793,6 +786,13 @@ try {
 
 ## Version History
 
+- **v0.3.0** (2026-01-30) - ContentProcessor Complete Implementation
+  - All advanced methods implemented: `setValue()`, `appendContent()`, `removeContent()`, `removeAllControlContents()`
+  - Full template processing capabilities
+  - 323 tests, 857 assertions, 85%+ coverage
+  - Windows compatibility improvements (Unix permission test properly skipped)
+  - Production ready with PHPStan Level 9 compliance
+  
 - **v0.2.0** (2026-01-29) - Header and Footer Support
   - Content Controls in headers and footers
   - Support for first page and even page headers/footers

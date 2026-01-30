@@ -78,11 +78,6 @@ describe('ContentProcessor Constructor', function () {
     });
 
     it('throws exception for non-readable file', function () {
-        if (PHP_OS_FAMILY === 'Windows') {
-            expect(true)->toBeTrue(); // Skip test on Windows
-            return;
-        }
-
         $tempFile = tempnam(sys_get_temp_dir(), 'readonly_') . '.docx';
         createValidDocx($tempFile);
         chmod($tempFile, 0000);
@@ -95,7 +90,8 @@ describe('ContentProcessor Constructor', function () {
                 unlink($tempFile);
             }
         }
-    })->throws(\InvalidArgumentException::class, 'File is not readable');
+    })->skip(PHP_OS_FAMILY === 'Windows', 'Unix file permissions not supported on Windows')
+      ->throws(\InvalidArgumentException::class, 'File is not readable');
 });
 
 /**

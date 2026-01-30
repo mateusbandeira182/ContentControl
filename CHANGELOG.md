@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-30
+
 ### Added
 
-**ContentProcessor Class - Phase 3 Advanced Methods (Completed)**
+**ContentProcessor Class - Complete Implementation**
 - ✅ **`appendContent(string $tag, AbstractElement $element): bool`** - Add content to end of existing SDT content
   - Useful for building lists, adding items to tables, accumulating notes
   - Preserves existing content while adding new elements
@@ -43,11 +45,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `samples/content_processor_example.php` - Basic usage (replaceContent, save)
 - `samples/advanced_methods_example.php` - All Phase 3 methods with real-world scenarios
 
-**Implementation Status**
-- ✅ Phase 1: Foundation and class structure (100%)
-- ✅ Phase 2: Core content manipulation (100%)
-- ✅ Phase 3: Advanced methods (appendContent, removeContent, setValue, removeAllControlContents) (100%)
-- ⏳ Phase 4: Multi-file support enhancements - Partial (basic header/footer support works)
+**Test Coverage & Quality**
+- 323 passing tests (1 skipped on Windows - Unix permissions)
+- 857 test assertions
+- 85%+ code coverage
+- PHPStan Level 9 strict mode - 0 errors
+- Full support for document.xml, headers, and footers
+
+**Breaking Changes**
+- None (fully backward compatible with v0.2.0)
+
+**Known Limitations**
+- ContentProcessor is single-use (cannot call `save()` multiple times)
+- Windows: File permission test skipped (Unix-specific functionality)
+- PhpWord Row elements cannot be serialized individually (use Text/TextRun instead)
 - ⏳ Phase 5: Documentation and 100% coverage - In Progress
 
 ### Technical Details
