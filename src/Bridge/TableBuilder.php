@@ -8,7 +8,6 @@ use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ContentProcessor;
 use MkGrow\ContentControl\Exception\ContentControlException;
 use PhpOffice\PhpWord\Element\Table;
-use PhpOffice\PhpWord\Element\Cell;
 
 /**
  * TableBuilder - Create and inject PHPWord tables with Content Controls
@@ -117,6 +116,181 @@ final class TableBuilder
     public function getContentControl(): ContentControl
     {
         return $this->contentControl;
+    }
+
+    /**
+     * Create table with Content Controls from configuration
+     *
+     * Builds a PHPWord table with automatic SDT registration for cells and
+     * optionally the entire table. Supports multi-level styling and validation.
+     *
+     * Configuration Structure:
+     * - rows: Array of row configurations (required)
+     * - style: Table-level style array (optional)
+     * - tableTag: Content Control tag for entire table (optional)
+     * - tableAlias: Display name for table SDT (optional)
+     * - tableLockType: Lock type for table SDT (optional)
+     *
+     * Row Configuration:
+     * - cells: Array of cell configurations (required)
+     * - height: Row height in twips (optional)
+     * - style: Row-level style array (optional)
+     *
+     * Cell Configuration:
+     * - text: Cell text content (required, mutually exclusive with element)
+     * - element: Custom element (NOT SUPPORTED in v0.4.0)
+     * - width: Cell width in twips (optional, default: 2000)
+     * - style: Cell-level style array (optional)
+     * - tag: Content Control tag for cell (optional)
+     * - alias: Display name for cell SDT (optional)
+     * - type: SDT type (optional, default: TYPE_RICH_TEXT)
+     * - lockType: SDT lock type (optional, default: LOCK_NONE)
+     *
+     * @phpstan-type CellConfig array{
+     *     text?: string,
+     *     element?: object,
+     *     tag?: string,
+     *     alias?: string,
+     *     type?: string,
+     *     lockType?: string,
+     *     width?: int,
+     *     style?: array<string, mixed>
+     * }
+     * @phpstan-type RowConfig array{
+     *     cells: array<CellConfig>,
+     *     height?: int|null,
+     *     style?: array<string, mixed>
+     * }
+     * @phpstan-type TableConfig array{
+     *     rows: array<RowConfig>,
+     *     style?: array<string, mixed>,
+     *     tableTag?: string,
+     *     tableAlias?: string,
+     *     tableLockType?: string
+     * }
+     *
+     * @param array<string, mixed> $config Table configuration array
+     *
+     * @return Table The created PHPWord table with registered SDTs
+     *
+     * @throws ContentControlException If configuration is invalid or element is used
+     *
+     * @since 0.4.0
+     *
+     * @example
+     * ```php
+     * $builder = new TableBuilder();
+     * 
+     * // Simple table
+     * $table = $builder->createTable([
+     *     'rows' => [
+     *         ['cells' => [
+     *             ['text' => 'Item', 'width' => 3000],
+     *             ['text' => '$0.00', 'width' => 2000, 'tag' => 'price-1']
+     *         ]]
+     *     ]
+     * ]);
+     * 
+     * // Table with styles and wrapper SDT
+     * $table = $builder->createTable([
+     *     'tableTag' => 'invoice-items',
+     *     'style' => ['borderSize' => 6, 'borderColor' => '000000'],
+     *     'rows' => [
+     *         ['cells' => [
+     *             ['text' => 'Product', 'width' => 4000],
+     *             ['text' => 'Price', 'width' => 2000]
+     *         ]]
+     *     ]
+     * ]);
+     * ```
+     */
+    public function createTable(array $config): Table
+    {
+        // 1. Validate configuration structure
+        $this->validateTableConfig($config);
+        
+        // 2. Get section from ContentControl
+        $section = $this->contentControl->addSection();
+        
+        // 3. Create table with optional style
+        $tableStyle = $config['style'] ?? [];
+        $table = $section->addTable($tableStyle);
+        
+        // 4. Process rows
+        /** @var array<string, mixed> $rowsConfig */
+        $rowsConfig = $config['rows'];
+        
+        foreach ($rowsConfig as $rowConfig) {
+            /** @var array<string, mixed> $rowConfig */
+            $rowHeight = isset($rowConfig['height']) && is_int($rowConfig['height']) ? $rowConfig['height'] : null;
+            $rowStyle = isset($rowConfig['style']) && is_array($rowConfig['style']) ? $rowConfig['style'] : [];
+            $row = $table->addRow($rowHeight, $rowStyle);
+            
+            // 5. Process cells
+            /** @var array<array<string, mixed>> $cellsConfig */
+            $cellsConfig = $rowConfig['cells'];
+            
+            foreach ($cellsConfig as $cellConfig) {
+                $cellWidth = isset($cellConfig['width']) && is_int($cellConfig['width']) ? $cellConfig['width'] : 2000;
+                $cellStyle = isset($cellConfig['style']) && is_array($cellConfig['style']) ? $cellConfig['style'] : [];
+                $cell = $row->addCell($cellWidth, $cellStyle);
+                
+                // 6. Add content (text only in v0.4.0)
+                if (isset($cellConfig['element'])) {
+                    throw new ContentControlException(
+                        'Custom elements in cells not yet supported. Use "text" property.'
+                    );
+                }
+                
+                $textContent = isset($cellConfig['text']) && is_string($cellConfig['text']) 
+                    ? $cellConfig['text'] 
+                    : '';
+                $textElement = $cell->addText($textContent);
+                
+                // 7. Register SDT for cell if configured
+                if (isset($cellConfig['tag'])) {
+                    $tag = is_string($cellConfig['tag']) ? $cellConfig['tag'] : '';
+                    $alias = isset($cellConfig['alias']) && is_string($cellConfig['alias']) 
+                        ? $cellConfig['alias'] 
+                        : $tag;
+                    $type = isset($cellConfig['type']) && is_string($cellConfig['type'])
+                        ? $cellConfig['type']
+                        : ContentControl::TYPE_RICH_TEXT;
+                    $lockType = isset($cellConfig['lockType']) && is_string($cellConfig['lockType'])
+                        ? $cellConfig['lockType']
+                        : ContentControl::LOCK_NONE;
+                    
+                    $sdtConfig = [
+                        'tag' => $tag,
+                        'alias' => $alias,
+                        'type' => $type,
+                        'lockType' => $lockType,
+                    ];
+                    $this->contentControl->addContentControl($textElement, $sdtConfig);
+                }
+            }
+        }
+        
+        // 8. Register table wrapper SDT if configured
+        if (isset($config['tableTag'])) {
+            $tableTag = is_string($config['tableTag']) ? $config['tableTag'] : '';
+            $tableAlias = isset($config['tableAlias']) && is_string($config['tableAlias'])
+                ? $config['tableAlias']
+                : $tableTag;
+            $tableLockType = isset($config['tableLockType']) && is_string($config['tableLockType'])
+                ? $config['tableLockType']
+                : ContentControl::LOCK_NONE;
+            
+            $tableSdtConfig = [
+                'tag' => $tableTag,
+                'alias' => $tableAlias,
+                'type' => ContentControl::TYPE_GROUP,
+                'lockType' => $tableLockType,
+            ];
+            $this->contentControl->addContentControl($table, $tableSdtConfig);
+        }
+        
+        return $table;
     }
 
     /**
