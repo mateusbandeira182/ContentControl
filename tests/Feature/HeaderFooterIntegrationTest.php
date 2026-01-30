@@ -48,6 +48,7 @@ test('wraps Text in Header with Content Control', function () {
     }
     
     expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
+    assert(is_string($headerXml));
     
     // Verify SDT structure in header
     expect($headerXml)->toContain('<w:sdt>')
@@ -98,6 +99,7 @@ test('wraps Text in Footer with Content Control', function () {
     }
     
     expect($footerXml)->not->toBeNull('No footer XML file found in DOCX');
+    assert(is_string($footerXml));
     
     // Verify SDT structure in footer
     expect($footerXml)->toContain('<w:sdt>')

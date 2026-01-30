@@ -5,6 +5,9 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\SDTInjector;
 
+/**
+ * @phpstan-ignore offsetAccess.nonOffsetAccessible
+ */
 describe('SDTInjector - Header/Footer Discovery', function () {
     
     test('discoverHeaderFooterFiles lists header and footer files correctly', function () {
@@ -117,11 +120,14 @@ describe('SDTInjector - Header/Footer Discovery', function () {
         
         $headerTuples = $method->invoke($injector, $sdtTuples, 'word/header1.xml');
         
-        expect(is_array($headerTuples))->toBeTrue();
-        expect(count($headerTuples))->toBe(1);
-        expect(isset($headerTuples[0]['config']))->toBeTrue();
-        expect($headerTuples[0]['config'] instanceof \MkGrow\ContentControl\SDTConfig)->toBeTrue();
-        expect($headerTuples[0]['config']->alias)->toBe('Header Control');
+        expect($headerTuples)->toBeArray();
+        expect($headerTuples)->toHaveCount(1);
+        expect($headerTuples[0])->toBeArray();
+        expect($headerTuples[0]['config'] ?? null)->toBeInstanceOf(\MkGrow\ContentControl\SDTConfig::class);
+        /** @var \MkGrow\ContentControl\SDTConfig $config */
+        /** @phpstan-ignore offsetAccess.nonOffsetAccessible */
+        $config = $headerTuples[0]['config'];
+        expect($config->alias)->toBe('Header Control');
     });
     
     test('filterElementsByXmlFile filters elements from body', function () {
@@ -145,11 +151,14 @@ describe('SDTInjector - Header/Footer Discovery', function () {
         
         $bodyTuples = $method->invoke($injector, $sdtTuples, 'word/document.xml');
         
-        expect(is_array($bodyTuples))->toBeTrue();
-        expect(count($bodyTuples))->toBe(1);
-        expect(isset($bodyTuples[0]['config']))->toBeTrue();
-        expect($bodyTuples[0]['config'] instanceof \MkGrow\ContentControl\SDTConfig)->toBeTrue();
-        expect($bodyTuples[0]['config']->alias)->toBe('Body Control');
+        expect($bodyTuples)->toBeArray();
+        expect($bodyTuples)->toHaveCount(1);
+        expect($bodyTuples[0])->toBeArray();
+        expect($bodyTuples[0]['config'] ?? null)->toBeInstanceOf(\MkGrow\ContentControl\SDTConfig::class);
+        /** @var \MkGrow\ContentControl\SDTConfig $config */
+        /** @phpstan-ignore offsetAccess.nonOffsetAccessible */
+        $config = $bodyTuples[0]['config'];
+        expect($config->alias)->toBe('Body Control');
     });
     
     test('filterElementsByXmlFile returns empty array when no matching elements', function () {
@@ -168,7 +177,7 @@ describe('SDTInjector - Header/Footer Discovery', function () {
         
         $headerTuples = $method->invoke($injector, $sdtTuples, 'word/header1.xml');
         
-        expect(is_array($headerTuples))->toBeTrue();
-        expect(count($headerTuples))->toBe(0);
+        expect($headerTuples)->toBeArray();
+        expect($headerTuples)->toHaveCount(0);
     });
 });

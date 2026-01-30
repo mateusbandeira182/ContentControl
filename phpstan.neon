@@ -91,7 +91,7 @@ parameters:
         -
             message: '#Cannot access offset .* on mixed#'
             path: tests/Unit/SDTInjectorHeaderFooterTest.php
-            count: 6
+            count: 10
         -
             message: '#Cannot access property .* on mixed#'
             path: tests/Unit/SDTInjectorHeaderFooterTest.php

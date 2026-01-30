@@ -429,6 +429,7 @@ test('processes mixed element types in same header', function () {
         }
     }
     expect($headerXml)->not->toBeNull('No header XML file found in DOCX');
+    assert(is_string($headerXml));
     
     // Verify all SDTs are present
     expect($headerXml)->toContain('<w:alias w:val="HeaderTitle"/>')
