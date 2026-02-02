@@ -111,11 +111,41 @@ final class ElementLocator
             return ($node instanceof DOMElement) ? $node : null;
         }
 
-        // Para outros elementos (Text, Table, etc), aplicar filtro similar
-        // e sempre usar [1] pois elementos wrappados são removidos do resultado
-        if ($element instanceof \PhpOffice\PhpWord\Element\Text ||
-            $element instanceof \PhpOffice\PhpWord\Element\TextRun ||
-            $element instanceof \PhpOffice\PhpWord\Element\Table) {
+        // Text/TextRun: tentar primeiro no rootElement, depois em células
+        if ($element instanceof \PhpOffice\PhpWord\Element\Text) {
+            // Estratégia 1: Buscar no rootElement (w:body, w:hdr, w:ftr)
+            $query .= '[not(ancestor::w:sdtContent)][1]';
+            $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
+            
+            if ($nodes !== null && $nodes !== false && $nodes->length > 0) {
+                $node = $nodes->item(0);
+                if ($node instanceof DOMElement) {
+                    return $node;
+                }
+            }
+            
+            // Estratégia 2: Buscar dentro de células (inline-level SDT)
+            return $this->findTextInCell($order, $rootElement);
+        }
+        
+        if ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
+            // Estratégia 1: Buscar no rootElement (w:body, w:hdr, w:ftr)
+            $query .= '[not(ancestor::w:sdtContent)][1]';
+            $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
+            
+            if ($nodes !== null && $nodes !== false && $nodes->length > 0) {
+                $node = $nodes->item(0);
+                if ($node instanceof DOMElement) {
+                    return $node;
+                }
+            }
+            
+            // Estratégia 2: Buscar dentro de células (inline-level SDT)
+            return $this->findTextRunInCell($order, $rootElement);
+        }
+        
+        // Table: aplicar filtro similar e sempre usar [1]
+        if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
             // Buscar apenas elementos NÃO envolvidos em SDTs
             $query .= '[not(ancestor::w:sdtContent)][1]';
             
@@ -507,6 +537,84 @@ final class ElementLocator
         }
 
         return ($parent instanceof DOMElement) ? $parent : null;
+    }
+
+    /**
+     * Localiza um Text element dentro de uma célula de tabela
+     * 
+     * Busca Text elements que estão dentro de células (w:tc).
+     * Suporta inline-level Content Controls.
+     * 
+     * XPath Query Pattern:
+     * //{rootElement}//w:tbl//w:tc/w:p[not(ancestor::w:sdtContent)][1]
+     * 
+     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
+     *                   Mantido por compatibilidade e possível suporte futuro.
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
+     * @return DOMElement|null O elemento w:p dentro da célula, ou null se não encontrado
+     * @since 4.0.0
+     */
+    private function findTextInCell(int $order, string $rootElement = 'w:body'): ?DOMElement
+    {
+        // NOTE: The $order parameter is intentionally unused.
+        // In v3.0+, element de-duplication guarantees that only the first
+        // matching Text in cell exists (order is always 1). We keep this parameter
+        // for interface compatibility and potential future use.
+        if ($this->xpath === null) {
+            return null;
+        }
+
+        // Query para localizar <w:p> dentro de células de tabela
+        // Busca apenas parágrafos que NÃO estão dentro de SDTs já existentes
+        $query = '//' . $rootElement . '//w:tbl//w:tc/w:p[not(ancestor::w:sdtContent)][1]';
+
+        $nodes = $this->xpath->query($query);
+        if ($nodes === false || $nodes->length === 0) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+        return ($node instanceof DOMElement) ? $node : null;
+    }
+
+    /**
+     * Localiza um TextRun element dentro de uma célula de tabela
+     * 
+     * Busca TextRun elements (parágrafos com runs formatados) que estão dentro de células (w:tc).
+     * Diferencia de Text simples pela presença de elementos w:r.
+     * Suporta inline-level Content Controls.
+     * 
+     * XPath Query Pattern:
+     * //{rootElement}//w:tbl//w:tc/w:p[w:r][not(ancestor::w:sdtContent)][1]
+     * 
+     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
+     *                   Mantido por compatibilidade e possível suporte futuro.
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
+     * @return DOMElement|null O elemento w:p contendo w:r dentro da célula, ou null se não encontrado
+     * @since 4.0.0
+     */
+    private function findTextRunInCell(int $order, string $rootElement = 'w:body'): ?DOMElement
+    {
+        // NOTE: The $order parameter is intentionally unused.
+        // In v3.0+, element de-duplication guarantees that only the first
+        // matching TextRun in cell exists (order is always 1). We keep this parameter
+        // for interface compatibility and potential future use.
+        if ($this->xpath === null) {
+            return null;
+        }
+
+        // Query para localizar <w:p> com <w:r> dentro de células de tabela
+        // w:r indica que é um TextRun (texto com formatação)
+        // Busca apenas parágrafos que NÃO estão dentro de SDTs já existentes
+        $query = '//' . $rootElement . '//w:tbl//w:tc/w:p[w:r][not(ancestor::w:sdtContent)][1]';
+
+        $nodes = $this->xpath->query($query);
+        if ($nodes === false || $nodes->length === 0) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+        return ($node instanceof DOMElement) ? $node : null;
     }
 
     /**
