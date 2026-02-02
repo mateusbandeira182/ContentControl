@@ -22,6 +22,7 @@ final class SDTConfig
      * @param string $tag Tag de metadados para identificação programática
      * @param string $type Tipo do controle (TYPE_RICH_TEXT, TYPE_PLAIN_TEXT, etc)
      * @param string $lockType Nível de bloqueio (LOCK_NONE, LOCK_SDT_LOCKED, etc)
+     * @param bool $inlineLevel Se true, injeta SDT dentro de célula; se false, no nível de body
      * 
      * @throws \InvalidArgumentException Se algum parâmetro for inválido
      */
@@ -31,6 +32,7 @@ final class SDTConfig
         public readonly string $tag = '',
         public readonly string $type = ContentControl::TYPE_RICH_TEXT,
         public readonly string $lockType = ContentControl::LOCK_NONE,
+        public readonly bool $inlineLevel = false,
     ) {
         $this->validateId($id);
         $this->validateAlias($alias);
@@ -47,7 +49,8 @@ final class SDTConfig
      *     alias?: string,
      *     tag?: string,
      *     type?: string,
-     *     lockType?: string
+     *     lockType?: string,
+     *     inlineLevel?: bool
      * } $options Configurações do Content Control
      * 
      * @return self
@@ -59,7 +62,8 @@ final class SDTConfig
      *     'id' => '12345678',
      *     'alias' => 'Nome do Cliente',
      *     'tag' => 'customer-name',
-     *     'type' => ContentControl::TYPE_RICH_TEXT
+     *     'type' => ContentControl::TYPE_RICH_TEXT,
+     *     'inlineLevel' => true
      * ]);
      * ```
      */
@@ -71,6 +75,7 @@ final class SDTConfig
             tag: $options['tag'] ?? '',
             type: $options['type'] ?? ContentControl::TYPE_RICH_TEXT,
             lockType: $options['lockType'] ?? ContentControl::LOCK_NONE,
+            inlineLevel: $options['inlineLevel'] ?? false,
         );
     }
 
@@ -89,6 +94,34 @@ final class SDTConfig
             tag: $this->tag,
             type: $this->type,
             lockType: $this->lockType,
+            inlineLevel: $this->inlineLevel,
+        );
+    }
+
+    /**
+     * Retorna nova instância com inlineLevel diferente (imutabilidade)
+     * 
+     * Utilizado para alternar entre injeção inline-level (dentro de células)
+     * e block-level (no nível de body do documento).
+     * 
+     * @param bool $inlineLevel Se true, injeta SDT dentro de célula
+     * @return self Nova instância com inlineLevel atualizado
+     * 
+     * @example
+     * ```php
+     * $config = SDTConfig::fromArray(['id' => '12345678']);
+     * $inlineConfig = $config->withInlineLevel(true);
+     * ```
+     */
+    public function withInlineLevel(bool $inlineLevel): self
+    {
+        return new self(
+            id: $this->id,
+            alias: $this->alias,
+            tag: $this->tag,
+            type: $this->type,
+            lockType: $this->lockType,
+            inlineLevel: $inlineLevel,
         );
     }
 
@@ -107,6 +140,7 @@ final class SDTConfig
             tag: $this->tag,
             type: $this->type,
             lockType: $this->lockType,
+            inlineLevel: $this->inlineLevel,
         );
     }
 
@@ -125,6 +159,7 @@ final class SDTConfig
             tag: $tag,
             type: $this->type,
             lockType: $this->lockType,
+            inlineLevel: $this->inlineLevel,
         );
     }
 

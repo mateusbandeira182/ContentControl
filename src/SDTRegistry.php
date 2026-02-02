@@ -265,4 +265,19 @@ final class SDTRegistry
     {
         return $this->elementMarkers;
     }
+
+    /**
+     * Retorna todas as configs registradas (v3.1)
+     * 
+     * Útil para testes e debugging.
+     * 
+     * @return list<SDTConfig> Array de configs
+     */
+    public function getAllConfigs(): array
+    {
+        return array_values(array_map(
+            fn(array $entry): SDTConfig => $entry['config'],
+            $this->registry
+        ));
+    }
 }
