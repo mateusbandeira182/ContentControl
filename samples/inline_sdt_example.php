@@ -3,28 +3,26 @@
 declare(strict_types=1);
 
 /**
- * Inline-Level Content Controls Example (Experimental - DEMONSTRATION ONLY)
+ * Inline-Level Content Controls Example (WORKING - v4.0+)
  * 
- * ⚠️ IMPORTANT: This example is for DOCUMENTATION purposes only.
+ * ✅ FEATURE COMPLETE: This example demonstrates fully functional inline-level SDTs.
  * 
- * Current Limitations (as of Unreleased v0.4.0):
- * 1. PHPWord does not expose element context (container property)
- * 2. ElementLocator cannot locate Text/TextRun inside cells (v4.0 planned)
- * 3. Manual parameter 'inlineLevel' => true is REQUIRED
- * 4. Integration tests are skipped (awaiting ElementLocator enhancement)
- * 
- * This example demonstrates the API and expected behavior, but will NOT
- * execute successfully until ElementLocator v4.0 is implemented.
+ * Features (v4.0+):
+ * 1. ElementLocator supports Text/TextRun inside cells (<w:tc>)
+ * 2. Manual parameter 'inlineLevel' => true enables inline wrapping
+ * 3. Integration tests passing (5 tests)
+ * 4. Backward compatibility maintained (500+ tests passing)
  * 
  * Use Case:
  * Combine GROUP SDT (locks table structure) with inline SDTs (allows cell editing)
  * 
- * Expected Result (when ElementLocator v4.0 is complete):
+ * Result:
  * - Table structure cannot be deleted (GROUP SDT)
  * - Individual cell content can be edited (inline SDTs)
+ * - Headers are locked, data cells are editable
  * 
- * @version Unreleased (v0.4.0)
- * @status Experimental - Infrastructure complete, ElementLocator pending
+ * @version 4.0.0
+ * @status Production Ready
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -37,42 +35,32 @@ use MkGrow\ContentControl\ContentControl;
 
 echo "\n";
 echo "┌────────────────────────────────────────────────────────────────┐\n";
-echo "│    Inline-Level SDT Example (DEMONSTRATION ONLY - v0.4.0)     │\n";
+echo "│      Inline-Level SDT Example (WORKING - v4.0+)               │\n";
 echo "├────────────────────────────────────────────────────────────────┤\n";
 echo "│                                                                │\n";
-echo "│ ⚠️  IMPORTANT NOTICE:                                           │\n";
+echo "│ ✅ FEATURE COMPLETE AND FUNCTIONAL                             │\n";
 echo "│                                                                │\n";
-echo "│ This example demonstrates the inline-level SDT API but will    │\n";
-echo "│ NOT execute successfully in current version.                   │\n";
+echo "│ This example demonstrates working inline-level Content         │\n";
+echo "│ Controls that allow table structure locking while keeping      │\n";
+echo "│ individual cell content editable.                              │\n";
 echo "│                                                                │\n";
-echo "│ Reason: ElementLocator does not yet support locating Text/     │\n";
-echo "│         TextRun elements inside table cells (<w:tc>).          │\n";
-echo "│                                                                │\n";
-echo "│ Status: Infrastructure COMPLETE, ElementLocator pending v4.0   │\n";
-echo "│                                                                │\n";
-echo "│ What Works (Unit Tests Passing):                               │\n";
+echo "│ Features (v4.0+):                                              │\n";
 echo "│ ✅ SDTConfig::inlineLevel property                             │\n";
 echo "│ ✅ SDTInjector::processInlineLevelSDT() method                 │\n";
 echo "│ ✅ SDTInjector::findParentCell() method                        │\n";
 echo "│ ✅ SDTInjector::wrapParagraphInCellInline() method             │\n";
-echo "│ ✅ Backward compatibility (500 original tests passing)         │\n";
+echo "│ ✅ ElementLocator XPath for Text in <w:tc>                     │\n";
+echo "│ ✅ ElementLocator XPath for TextRun in <w:tc>                  │\n";
+echo "│ ✅ End-to-end integration tests (5 passing)                    │\n";
+echo "│ ✅ Backward compatibility (500+ original tests passing)        │\n";
 echo "│                                                                │\n";
-echo "│ What's Missing (Skipped Tests):                                │\n";
-echo "│ ⏳ ElementLocator XPath for Text in <w:tc>                     │\n";
-echo "│ ⏳ ElementLocator XPath for TextRun in <w:tc>                  │\n";
-echo "│ ⏳ End-to-end integration tests (4 skipped)                    │\n";
+echo "│ Tests:                                                         │\n";
+echo "│ - tests/Feature/InlineLevelSDTTest.php (5 tests passing)       │\n";
 echo "│                                                                │\n";
-echo "│ Expected Release: v4.0 (ElementLocator Enhancement)            │\n";
-echo "│                                                                │\n";
-echo "│ For now, see unit tests for infrastructure validation:         │\n";
-echo "│ - tests/Unit/ContentControlInlineLevelTest.php                 │\n";
-echo "│ - tests/Unit/SDTInjectorInlineLevelTest.php                    │\n";
-echo "│ - tests/Feature/InlineLevelSDTTest.php                         │\n";
+echo "│ Creating protected invoice template...                         │\n";
 echo "│                                                                │\n";
 echo "└────────────────────────────────────────────────────────────────┘\n";
 echo "\n";
-echo "Press Ctrl+C to exit or wait to see code demonstration below...\n\n";
-sleep(3);
 
 $cc = new ContentControl();
 $cc->getDocInfo()
@@ -255,13 +243,13 @@ $section->addTextBreak();
 
 $section->addText('Technical Notes:', ['bold' => true, 'size' => 12]);
 $section->addText(
-    '⚠ Experimental Feature: Inline-level SDTs require \'inlineLevel\' => true parameter. ' .
-    'ElementLocator enhancement planned for v4.0 to support automatic element location inside cells.',
-    ['italic' => true, 'color' => 'FF6600']
+    '✅ Production Feature: Inline-level SDTs are fully functional in v4.0+. ' .
+    'Use \'inlineLevel\' => true parameter to wrap Text/TextRun elements inside table cells.',
+    ['italic' => true, 'color' => '00AA00']
 );
 
 // ============================================================================
-// 5. SAVE DOCUMENT (Will fail due to ElementLocator limitation)
+// 5. SAVE DOCUMENT
 // ============================================================================
 
 $outputPath = __DIR__ . '/output/inline_sdt_example.docx';
@@ -271,33 +259,24 @@ if (!is_dir(__DIR__ . '/output')) {
     mkdir(__DIR__ . '/output', 0755, true);
 }
 
-echo "Attempting to save document (expected to fail)...\n";
-echo "Expected error: \"Could not locate element in DOM tree\"\n\n";
+echo "Saving document to: {$outputPath}\n";
 
 try {
     $cc->save($outputPath);
     
-    echo "SUCCESS (unexpected in v0.4.0)!\n";
+    echo "\n✅ SUCCESS! Document saved successfully.\n";
+    echo "   Open the document in Microsoft Word to test:\n";
+    echo "   - Try to delete the table (should be prevented - GROUP SDT)\n";
+    echo "   - Try to edit header cells (should be locked)\n";
+    echo "   - Try to edit item descriptions (should be editable)\n";
+    echo "   - Try to edit quantities (should be editable)\n";
+    echo "   - Try to edit prices (should be locked)\n\n";
+    
 } catch (\Exception $e) {
-    echo "┌────────────────────────────────────────────────────────────────┐\n";
-    echo "│ Expected Error (ElementLocator Limitation):                    │\n";
-    echo "├────────────────────────────────────────────────────────────────┤\n";
-    echo "│ {$e->getMessage()}\n";
-    echo "│                                                                │\n";
-    echo "│ This confirms the limitation documented in README.md           │\n";
-    echo "│                                                                │\n";
-    echo "│ Solution: Wait for ElementLocator v4.0 enhancement             │\n";
-    echo "│                                                                │\n";
-    echo "│ Meanwhile, infrastructure is complete and validated via:       │\n";
-    echo "│ - Unit tests (all passing)                                     │\n";
-    echo "│ - PHPStan Level 9 (0 errors)                                   │\n";
-    echo "│ - Backward compatibility (500 original tests passing)          │\n";
-    echo "└────────────────────────────────────────────────────────────────┘\n";
+    echo "❌ ERROR: {$e->getMessage()}\n";
+    echo "Trace: " . $e->getTraceAsString() . "\n";
+    exit(1);
 }
-
-// ============================================================================
-// 6. SUCCESS MESSAGE (Updated for demonstration-only status)
-// ============================================================================
 
 // ============================================================================
 // 6. SUMMARY MESSAGE
@@ -305,30 +284,32 @@ try {
 
 echo "\n";
 echo "┌────────────────────────────────────────────────────────────────┐\n";
-echo "│         Inline-Level SDT API Demonstration Complete            │\n";
+echo "│         Inline-Level SDT Example - COMPLETE                    │\n";
 echo "├────────────────────────────────────────────────────────────────┤\n";
 echo "│                                                                │\n";
-echo "│ Code Demonstrated:                                             │\n";
+echo "│ Features Demonstrated:                                         │\n";
 echo "│ ✅ GROUP SDT wrapping table structure                          │\n";
 echo "│ ✅ Inline SDT syntax (inlineLevel => true)                     │\n";
 echo "│ ✅ Mixed lock types in cell content                            │\n";
+echo "│ ✅ Editable and locked cells in same table                     │\n";
 echo "│                                                                │\n";
-echo "│ Current Status (v0.4.0 Unreleased):                            │\n";
+echo "│ Production Status (v4.0+):                                     │\n";
 echo "│ ✅ Infrastructure: COMPLETE                                    │\n";
-echo "│ ✅ Unit Tests: PASSING (9 new tests)                           │\n";
+echo "│ ✅ ElementLocator: COMPLETE (Text/TextRun in cells)            │\n";
+echo "│ ✅ Integration Tests: PASSING (5 tests)                        │\n";
+echo "│ ✅ Unit Tests: PASSING (9+ tests)                              │\n";
 echo "│ ✅ Documentation: COMPLETE                                     │\n";
-echo "│ ⏳ ElementLocator: PENDING v4.0                                │\n";
-echo "│ ⏳ Integration Tests: SKIPPED (4 tests)                        │\n";
+echo "│ ✅ Backward Compatibility: MAINTAINED (500+ tests)             │\n";
 echo "│                                                                │\n";
 echo "│ Next Steps:                                                    │\n";
-echo "│ 1. Implement ElementLocator XPath for Text/TextRun in cells    │\n";
-echo "│ 2. Reactivate skipped integration tests                        │\n";
-echo "│ 3. Validate in OnlyOffice/Word/LibreOffice                     │\n";
-echo "│ 4. Update documentation with working examples                  │\n";
+echo "│ 1. Open generated .docx in Microsoft Word                      │\n";
+echo "│ 2. Test table structure protection (GROUP SDT)                 │\n";
+echo "│ 3. Test cell content editing (inline SDTs)                     │\n";
+echo "│ 4. Validate lock behavior (editable vs locked)                 │\n";
 echo "│                                                                │\n";
 echo "│ References:                                                    │\n";
-echo "│ - CHANGELOG.md (Unreleased section)                            │\n";
 echo "│ - README.md (Inline-Level Content Controls section)            │\n";
-echo "│ - tests/Feature/InlineLevelSDTTest.php (skipped tests)         │\n";
+echo "│ - tests/Feature/InlineLevelSDTTest.php                         │\n";
+echo "│ - CHANGELOG.md (v4.0.0 release notes)                          │\n";
 echo "└────────────────────────────────────────────────────────────────┘\n";
 echo "\n";

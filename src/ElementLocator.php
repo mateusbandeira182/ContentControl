@@ -111,9 +111,16 @@ final class ElementLocator
             return ($node instanceof DOMElement) ? $node : null;
         }
 
-        // Text/TextRun: tentar primeiro no rootElement, depois em células
+        // Text/TextRun: tentar primeiro em células, depois no rootElement
+        // ORDEM IMPORTANTE: células têm prioridade para evitar falsos positivos com elementos block-level
         if ($element instanceof \PhpOffice\PhpWord\Element\Text) {
-            // Estratégia 1: Buscar no rootElement (w:body, w:hdr, w:ftr)
+            // Estratégia 1: Buscar dentro de células (inline-level SDT)
+            $cellResult = $this->findTextInCell($order, $rootElement);
+            if ($cellResult !== null) {
+                return $cellResult;
+            }
+            
+            // Estratégia 2: Buscar no rootElement (w:body, w:hdr, w:ftr) - block-level fallback
             $query .= '[not(ancestor::w:sdtContent)][1]';
             $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
             
@@ -124,12 +131,17 @@ final class ElementLocator
                 }
             }
             
-            // Estratégia 2: Buscar dentro de células (inline-level SDT)
-            return $this->findTextInCell($order, $rootElement);
+            return null;
         }
         
         if ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
-            // Estratégia 1: Buscar no rootElement (w:body, w:hdr, w:ftr)
+            // Estratégia 1: Buscar dentro de células (inline-level SDT)
+            $cellResult = $this->findTextRunInCell($order, $rootElement);
+            if ($cellResult !== null) {
+                return $cellResult;
+            }
+            
+            // Estratégia 2: Buscar no rootElement (w:body, w:hdr, w:ftr) - block-level fallback
             $query .= '[not(ancestor::w:sdtContent)][1]';
             $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
             
@@ -140,8 +152,7 @@ final class ElementLocator
                 }
             }
             
-            // Estratégia 2: Buscar dentro de células (inline-level SDT)
-            return $this->findTextRunInCell($order, $rootElement);
+            return null;
         }
         
         // Table: aplicar filtro similar e sempre usar [1]
