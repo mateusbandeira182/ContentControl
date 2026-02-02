@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0]
+## [0.4.1] - 2026-02-02
+
+### Fixed
+
+**Inline-Level SDT Element Location**
+- ✅ **`ElementLocator::findByTypeAndOrder()`** - Fixed search priority for Text/TextRun elements
+  - **Problem**: Elements with `inlineLevel => true` were incorrectly locating block-level paragraphs instead of cell paragraphs
+  - **Root Cause**: Search strategy prioritized `rootElement` (w:body) before cells, causing false positives when document contained both block-level and inline-level Text elements
+  - **Solution**: Inverted search order - now searches cells FIRST, then falls back to rootElement
+  - **Impact**: Inline-level SDTs now work correctly in documents with mixed content (e.g., description text + table with editable cells)
+- ✅ **`samples/inline_sdt_example.php`** - Updated documentation to reflect fully functional status
+  - Removed "DEMONSTRATION ONLY" warnings
+  - Updated status from "Experimental (v0.4.0)" to "Production Ready (v4.0+)"
+  - Updated messaging to indicate feature is complete and functional
+
+### Changed
+- **Element Search Priority** - Text/TextRun elements in cells now have priority over block-level elements
+  - Ensures correct element location when `inlineLevel => true` is specified
+  - Maintains backward compatibility for block-level SDTs (default behavior)
+
+### Technical Details
+- **Before**: `findByTypeAndOrder()` → Search rootElement → Fallback to cells
+- **After**: `findByTypeAndOrder()` → Search cells → Fallback to rootElement
+- **Affected Elements**: `\PhpOffice\PhpWord\Element\Text`, `\PhpOffice\PhpWord\Element\TextRun`
+- **Test Coverage**: All 517 tests passing, including 5 inline-level SDT integration tests
+
+## [0.4.0] - 2026-01-31
 
 ### Added
 

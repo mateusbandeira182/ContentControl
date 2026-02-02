@@ -215,10 +215,10 @@ $cc->addContentControl($element, [
 ]);
 ```
 
-### Inline-Level Content Controls (Experimental)
+### Inline-Level Content Controls
 
-**Available since:** Unreleased (v0.4.0)  
-**Status:** Experimental - Infrastructure complete, ElementLocator enhancement pending
+**Available since:** v0.4.1  
+**Status:** Production Ready - Fully functional and tested
 
 #### What is Inline-Level?
 
@@ -227,7 +227,7 @@ Content Controls can be injected at two levels in OOXML documents:
 | Level | Structure | Use Case | Status |
 |-------|-----------|----------|--------|
 | **Block-level** (default) | `<w:body>` → `<w:sdt>` → `<w:p>` | Protect entire elements | ✅ Stable |
-| **Inline-level** | `<w:tc>` → `<w:sdt>` → `<w:p>` | Protect content inside table cells | ⚠️ Experimental |
+| **Inline-level** | `<w:tc>` → `<w:sdt>` → `<w:p>` | Protect content inside table cells | ✅ Production Ready |
 
 #### Use Case: Editable Cells in Locked Tables
 
@@ -258,7 +258,7 @@ $cc->addContentControl($table, [
 // Wrap cell content with inline SDT (allows editing inside locked table)
 $cc->addContentControl($text, [
     'alias' => 'Customer Name',
-    'inlineLevel' => true,  // EXPERIMENTAL: Inject inside <w:tc> instead of <w:body>
+    'inlineLevel' => true,  // Inject inside <w:tc> instead of <w:body>
     'lockType' => ContentControl::LOCK_NONE
 ]);
 
@@ -268,9 +268,7 @@ $cc->save('locked-table-editable-cells.docx');
 #### Known Limitations
 
 1. **Manual Parameter Required**: PHPWord does not expose element context (`container` property), so you must explicitly set `'inlineLevel' => true`
-2. **ElementLocator Pending**: Current implementation cannot locate Text/TextRun elements inside cells via XPath (planned for v4.0)
-3. **Experimental Status**: Not fully tested in OnlyOffice/Word/LibreOffice (integration tests marked as skipped)
-4. **Backward Compatibility**: All existing code continues to work unchanged (default `inlineLevel = false`)
+2. **Mixed Content**: When using inline-level SDTs, avoid registering block-level Text elements before inline elements (register inline SDTs first, then block-level elements)
 
 #### Technical Details
 
