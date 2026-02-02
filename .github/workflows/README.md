@@ -81,7 +81,7 @@ if: matrix.php >= '8.3'
 
 ### Optional (for full functionality):
 - `PACKAGIST_USERNAME`: Packagist account username
-- `PACKAGIST_TOKEN`: Packagist API token (for auto-update on release)
+- `PACKAGIST_TOKEN`: Packagist API token (for automatic update on release)
 
 ### Auto-configured (GitHub):
 - `GITHUB_TOKEN`: Automatic (for creating releases, pushing commits)
