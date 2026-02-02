@@ -210,9 +210,105 @@ $cc->addContentControl($element, [
     'alias' => 'Display Name',   // Optional: Name shown in Word UI (max 255 chars)
     'tag' => 'metadata-tag',     // Optional: Programmatic identifier (alphanumeric + _-.)
     'type' => 'richText',        // Optional: Control type (default: TYPE_RICH_TEXT)
-    'lockType' => 'sdtLocked'    // Optional: Lock level (default: LOCK_NONE)
+    'lockType' => 'sdtLocked',   // Optional: Lock level (default: LOCK_NONE)
+    'inlineLevel' => false       // Optional: Inline-level SDT injection (default: false, experimental)
 ]);
 ```
+
+### Inline-Level Content Controls (Experimental)
+
+**Available since:** Unreleased (v0.4.0)  
+**Status:** Experimental - Infrastructure complete, ElementLocator enhancement pending
+
+#### What is Inline-Level?
+
+Content Controls can be injected at two levels in OOXML documents:
+
+| Level | Structure | Use Case | Status |
+|-------|-----------|----------|--------|
+| **Block-level** (default) | `<w:body>` → `<w:sdt>` → `<w:p>` | Protect entire elements | ✅ Stable |
+| **Inline-level** | `<w:tc>` → `<w:sdt>` → `<w:p>` | Protect content inside table cells | ⚠️ Experimental |
+
+#### Use Case: Editable Cells in Locked Tables
+
+Combine GROUP SDT (locks table structure) with inline-level SDTs (allows cell editing):
+
+```php
+<?php
+use MkGrow\ContentControl\ContentControl;
+
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+// Create table
+$table = $section->addTable(['borderSize' => 6]);
+$table->addRow();
+
+// Add editable cell content
+$cell = $table->addCell(3000);
+$text = $cell->addText('Editable content');
+
+// Wrap table with GROUP SDT (locks structure)
+$cc->addContentControl($table, [
+    'alias' => 'Invoice Table',
+    'type' => ContentControl::TYPE_GROUP,
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+// Wrap cell content with inline SDT (allows editing inside locked table)
+$cc->addContentControl($text, [
+    'alias' => 'Customer Name',
+    'inlineLevel' => true,  // EXPERIMENTAL: Inject inside <w:tc> instead of <w:body>
+    'lockType' => ContentControl::LOCK_NONE
+]);
+
+$cc->save('locked-table-editable-cells.docx');
+```
+
+#### Known Limitations
+
+1. **Manual Parameter Required**: PHPWord does not expose element context (`container` property), so you must explicitly set `'inlineLevel' => true`
+2. **ElementLocator Pending**: Current implementation cannot locate Text/TextRun elements inside cells via XPath (planned for v4.0)
+3. **Experimental Status**: Not fully tested in OnlyOffice/Word/LibreOffice (integration tests marked as skipped)
+4. **Backward Compatibility**: All existing code continues to work unchanged (default `inlineLevel = false`)
+
+#### Technical Details
+
+**Block-level XML:**
+```xml
+<w:body>
+    <w:sdt>
+        <w:sdtPr><w:id w:val="12345678"/></w:sdtPr>
+        <w:sdtContent>
+            <w:p>...</w:p>  <!-- Original paragraph -->
+        </w:sdtContent>
+    </w:sdt>
+</w:body>
+```
+
+**Inline-level XML:**
+```xml
+<w:tbl>
+    <w:tr>
+        <w:tc>
+            <w:sdt>
+                <w:sdtPr><w:id w:val="12345678"/></w:sdtPr>
+                <w:sdtContent>
+                    <w:p>...</w:p>  <!-- Paragraph inside cell -->
+                </w:sdtContent>
+            </w:sdt>
+        </w:tc>
+    </w:tr>
+</w:tbl>
+```
+
+**Roadmap (v4.0):**
+- Implement XPath queries for Text/TextRun in `<w:tc>` elements
+- Reactivate skipped integration tests
+- Full validation in OnlyOffice/Word/LibreOffice
+- Create `samples/inline_sdt_example.php` with end-to-end workflow
+
+**See:** `CHANGELOG.md` for detailed implementation notes
 
 ## Supported Elements
 

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**Experimental: Inline-Level Content Controls**
+- ✅ **`inlineLevel` Parameter** - New optional parameter in `addContentControl()` to enable inline-level SDT injection
+  - **Block-level (default)**: Wraps elements at document body level (`<w:body>` → `<w:sdt>`)
+  - **Inline-level (experimental)**: Wraps elements inside table cells (`<w:tc>` → `<w:sdt>` → `<w:p>`)
+  - **Use case**: Combine GROUP SDT (locked table) with inline SDTs (editable cells)
+  - **Example**: `$cc->addContentControl($text, ['inlineLevel' => true, ...])`
+- ✅ **Infrastructure Classes Enhanced**
+  - `SDTConfig::__construct()` - Added `public readonly bool $inlineLevel = false`
+  - `SDTConfig::fromArray()` - Supports `'inlineLevel' => true` in configuration arrays
+  - `SDTInjector::processInlineLevelSDT()` - New method for inline-level DOM manipulation
+  - `SDTInjector::findParentCell()` - Locates parent `<w:tc>` element in DOM tree
+  - `SDTInjector::wrapParagraphInCellInline()` - Wraps paragraph inside cell with SDT XML
+
+### Changed
+- **`SDTInjector::processElement()`** - Now routes to block-level or inline-level processing based on `SDTConfig::$inlineLevel`
+
+### Known Limitations
+- **PHPWord Auto-Detection**: PHPWord does not expose `container` property in `AbstractElement`, preventing automatic detection of element context (Section vs Cell)
+- **ElementLocator Support**: Current implementation requires manual XPath queries for Text/TextRun elements in cells (planned for v4.0)
+- **Experimental Status**: Inline-level SDTs require explicit `'inlineLevel' => true` parameter and are not fully tested in OnlyOffice/Word/LibreOffice (integration tests marked as skipped)
+- **Backward Compatibility**: All existing code continues to work unchanged (default `inlineLevel = false`)
+
 ## [0.3.0] - 2026-01-30
 
 ### Added
