@@ -74,7 +74,7 @@ To re-enable: `git mv tests.yaml.disabled tests.yaml`
 
 **Expected**: PHPStan 2.0 requires PHP 8.3+. The workflow runs PHPStan only on PHP 8.3+:
 ```yaml
-if: matrix.php >= '8.3'
+if: fromJson(matrix.php) >= 8.3
 ```
 
 ## Secrets Required
