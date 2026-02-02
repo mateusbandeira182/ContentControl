@@ -107,5 +107,4 @@ Check status: https://github.com/mateusbandeira182/ContentControl/actions
 **Badges** (add to README.md):
 ```markdown
 ![CI](https://github.com/mateusbandeira182/ContentControl/workflows/CI%2FCD%20Pipeline/badge.svg)
-![Tests](https://github.com/mateusbandeira182/ContentControl/workflows/Tests/badge.svg)
 ```
