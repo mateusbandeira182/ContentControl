@@ -10,6 +10,7 @@ composer.lock
 .review
 .prompts
 .backlog
+.searches
 # Cobertura de testes
 coverage/
 .phpunit.result.cache

@@ -78,11 +78,12 @@ describe('ElementLocator', function () {
         $section = $phpWord->addSection();
         $text = $section->addText('Texto qualquer');  // Busca <w:p> mas XML só tem <w:tbl>
 
-        // v3.0: Testa que retorna null quando tipo não existe
+        // v4.0: Com suporte a Text em células, findElementInDOM agora ENCONTRA <w:p> dentro de <w:tc>
         $found = $locator->findElementInDOM($dom, $text, 0);
 
-        // Deve retornar null pois não há <w:p> direto em <w:body> (apenas dentro de <w:tc>)
-        expect($found)->toBeNull();
+        // Deve encontrar o <w:p> dentro da célula (inline-level support)
+        expect($found)->not->toBeNull();
+        expect($found->nodeName)->toBe('w:p');
     });
 
     test('findElementInDOM fallback para hash de conteúdo funciona', function () {

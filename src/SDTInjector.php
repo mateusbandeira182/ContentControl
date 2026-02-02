@@ -208,8 +208,12 @@ final class SDTInjector
             return; // Já foi envolvido em <w:sdt>, pular
         }
         
-        // Envolver elemento inline
-        $this->wrapElementInline($targetElement, $config);
+        // NOVA LÓGICA v3.1: Roteamento baseado em inlineLevel
+        if ($config->inlineLevel) {
+            $this->processInlineLevelSDT($targetElement, $config);
+        } else {
+            $this->processBlockLevelSDT($targetElement, $config);
+        }
     }
 
     /**
@@ -540,6 +544,208 @@ final class SDTInjector
         
         // 7. Marcar como processado
         $this->markElementAsProcessed($targetElement);
+    }
+
+    /**
+     * Processa SDT block-level (comportamento v3.0 existente)
+     * 
+     * Método de roteamento que delega para wrapElementInline().
+     * Criado para clareza do código e facilitar manutenção futura.
+     * 
+     * @param \DOMElement $targetElement Elemento no DOM
+     * @param SDTConfig $config Configuração do SDT
+     * @return void
+     */
+    private function processBlockLevelSDT(\DOMElement $targetElement, SDTConfig $config): void
+    {
+        // Delega para método existente (comportamento v3.0)
+        $this->wrapElementInline($targetElement, $config);
+    }
+
+    /**
+     * Processa SDT inline-level (dentro de células)
+     * 
+     * Workflow:
+     * 1. Valida que elemento é <w:p>
+     * 2. Localiza célula pai do parágrafo
+     * 3. Determina índice do parágrafo na célula
+     * 4. Envolve parágrafo com SDT inline
+     * 
+     * @param \DOMElement $targetElement Elemento <w:p> no DOM
+     * @param SDTConfig $config Configuração do SDT
+     * @return void
+     * @throws \RuntimeException Se parágrafo não estiver dentro de célula
+     */
+    private function processInlineLevelSDT(\DOMElement $targetElement, SDTConfig $config): void
+    {
+        // Validar que é um parágrafo
+        if ($targetElement->localName !== 'p' || 
+            $targetElement->namespaceURI !== self::WORDML_NAMESPACE) {
+            throw new \RuntimeException(
+                'SDTInjector: Inline-level SDT can only wrap paragraphs (<w:p>)'
+            );
+        }
+        
+        // Localizar célula pai
+        $cellElement = $this->findParentCell($targetElement);
+        
+        // Determinar índice do parágrafo na célula
+        $paragraphIndex = $this->getParagraphIndexInCell($cellElement, $targetElement);
+        
+        // Envolver parágrafo inline
+        $this->wrapParagraphInCellInline($cellElement, $paragraphIndex, $config);
+    }
+
+    /**
+     * Localiza elemento <w:tc> (célula) que contém o parágrafo
+     * 
+     * Navega DOM tree para cima até encontrar <w:tc>.
+     * 
+     * @param \DOMElement $paragraphElement Elemento <w:p>
+     * @return \DOMElement Elemento <w:tc> pai
+     * @throws \RuntimeException Se não encontrar célula pai
+     */
+    private function findParentCell(\DOMElement $paragraphElement): \DOMElement
+    {
+        $current = $paragraphElement->parentNode;
+        
+        while ($current !== null) {
+            if ($current instanceof \DOMElement &&
+                $current->localName === 'tc' && 
+                $current->namespaceURI === self::WORDML_NAMESPACE) {
+                return $current;
+            }
+            $current = $current->parentNode;
+        }
+        
+        throw new \RuntimeException('SDTInjector: Paragraph not inside a table cell (<w:tc>)');
+    }
+
+    /**
+     * Retorna índice do parágrafo dentro da célula (0-based)
+     * 
+     * Usa XPath para listar todos parágrafos não processados
+     * e encontra índice do parágrafo alvo.
+     * 
+     * @param \DOMElement $cellElement Elemento <w:tc>
+     * @param \DOMElement $paragraphElement Elemento <w:p>
+     * @return int Índice 0-based
+     * @throws \RuntimeException Se parágrafo não for encontrado
+     */
+    private function getParagraphIndexInCell(
+        \DOMElement $cellElement,
+        \DOMElement $paragraphElement
+    ): int {
+        $dom = $cellElement->ownerDocument;
+        
+        if ($dom === null) {
+            throw new \RuntimeException('SDTInjector: Cell element has no owner document');
+        }
+        
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::WORDML_NAMESPACE);
+        
+        $paragraphs = $xpath->query(
+            './/w:p[not(ancestor::w:sdtContent)]',
+            $cellElement
+        );
+        
+        if ($paragraphs === false) {
+            throw new \RuntimeException('SDTInjector: XPath query failed');
+        }
+        
+        for ($i = 0; $i < $paragraphs->length; $i++) {
+            $node = $paragraphs->item($i);
+            if ($node !== null && $node->isSameNode($paragraphElement)) {
+                return $i;
+            }
+        }
+        
+        throw new \RuntimeException('SDTInjector: Paragraph not found in cell');
+    }
+
+    /**
+     * Envolve parágrafo dentro de célula com SDT inline
+     * 
+     * Estrutura gerada:
+     * <w:tc>
+     *   <w:sdt>
+     *     <w:sdtPr>...</w:sdtPr>
+     *     <w:sdtContent>
+     *       <w:p>...</w:p>  <!-- Parágrafo MOVIDO (não clonado) -->
+     *     </w:sdtContent>
+     *   </w:sdt>
+     * </w:tc>
+     * 
+     * @param \DOMElement $cellElement Elemento <w:tc>
+     * @param int $paragraphIndex Índice do parágrafo (0-based)
+     * @param SDTConfig $config Configuração do SDT
+     * @return void
+     * @throws \RuntimeException Se parágrafo não for encontrado
+     */
+    private function wrapParagraphInCellInline(
+        \DOMElement $cellElement,
+        int $paragraphIndex,
+        SDTConfig $config
+    ): void {
+        $dom = $cellElement->ownerDocument;
+        
+        if ($dom === null) {
+            throw new \RuntimeException('SDTInjector: Cell element has no owner document');
+        }
+        
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', self::WORDML_NAMESPACE);
+        
+        // Buscar parágrafo NÃO processado dentro da célula
+        $paragraphs = $xpath->query(
+            './/w:p[not(ancestor::w:sdtContent)]',
+            $cellElement
+        );
+        
+        if ($paragraphs === false || $paragraphIndex >= $paragraphs->length) {
+            throw new \RuntimeException(
+                sprintf(
+                    'SDTInjector: Paragraph index %d not found in cell (found %d paragraphs)',
+                    $paragraphIndex,
+                    $paragraphs === false ? 0 : $paragraphs->length
+                )
+            );
+        }
+        
+        $paragraphElement = $paragraphs->item($paragraphIndex);
+        
+        if (!($paragraphElement instanceof \DOMElement)) {
+            throw new \RuntimeException('SDTInjector: Located paragraph is not a DOMElement');
+        }
+        
+        // Detectar namespace
+        $nsUri = $cellElement->namespaceURI !== null ? $cellElement->namespaceURI : self::WORDML_NAMESPACE;
+        
+        // Criar estrutura SDT inline
+        $sdt = $dom->createElementNS($nsUri, 'w:sdt');
+        
+        // Adicionar propriedades (reutiliza método existente)
+        $sdtPr = $this->createSdtProperties($dom, $config);
+        $sdt->appendChild($sdtPr);
+        
+        // Criar container de conteúdo VAZIO
+        $sdtContent = $dom->createElementNS($nsUri, 'w:sdtContent');
+        
+        // Inserir SDT ANTES do parágrafo (preserva posição)
+        $parent = $paragraphElement->parentNode;
+        if ($parent === null) {
+            throw new \RuntimeException('SDTInjector: Paragraph element has no parent node');
+        }
+        $parent->insertBefore($sdt, $paragraphElement);
+        
+        // MOVER parágrafo para dentro do SDT (não clonar!)
+        // appendChild() remove o parágrafo da posição original automaticamente
+        $sdtContent->appendChild($paragraphElement);
+        $sdt->appendChild($sdtContent);
+        
+        // Marcar como processado
+        $this->markElementAsProcessed($paragraphElement);
     }
 
     /**

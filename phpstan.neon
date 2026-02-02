@@ -31,6 +31,15 @@ parameters:
         # Pest-specific: throws() método não reconhecido por PHPStan
         - '#Call to an undefined method Pest\\PendingCalls\\TestCall.*::throws\(\)#'
         
+        # Pest-specific: skip() método não reconhecido por PHPStan
+        - '#Call to an undefined method Pest\\PendingCalls\\TestCall.*::skip\(\)#'
+        - '#Call to an undefined method Pest\\Support\\HigherOrderTapProxy::skip\(\)#'
+        
+        # Test-specific: Property access em DOMElement
+        -
+            message: '#Cannot access property \$localName on mixed#'
+            path: tests/Unit/SDTInjectorInlineLevelTest.php
+        
         # Pest-specific: DOMNodeList pode retornar false em algumas versões
         - '#Cannot access property .* on DOMNodeList.*\|false#'
         - '#Cannot call method .* on DOMNodeList.*\|false#'
