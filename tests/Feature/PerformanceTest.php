@@ -66,7 +66,7 @@ describe('Performance Tests', function () {
             
         } finally {
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         }
     });
@@ -204,6 +204,6 @@ describe('Performance - v3.0 (DOM Inline Wrapping)', function () {
         }
 
         // Cleanup
-        unlink($outputFile);
+        safeUnlink($outputFile);
     });
 });

@@ -54,7 +54,7 @@ test('processes single section with body, header, and footer efficiently', funct
     expect($zip->getFromName('word/footer1.xml'))->toContain('<w:alias w:val="Footer"/>');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('processes 3 sections with headers and footers efficiently', function () {
@@ -133,7 +133,7 @@ test('processes 3 sections with headers and footers efficiently', function () {
         ->and($allHeaderFooterXml)->toContain('Section 2 Header');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('processes 10 sections efficiently', function () {
@@ -190,7 +190,7 @@ test('processes 10 sections efficiently', function () {
         ->and($documentXml)->toContain('<w:alias w:val="S10"/>');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('overhead for headers/footers is less than 20 percent', function () {
@@ -262,8 +262,8 @@ test('overhead for headers/footers is less than 20 percent', function () {
         "Header/footer overhead is {$overhead}%, expected <= 60%. " .
         "Body-only: {$bodyOnlyTime}ms, With H/F: {$withHeaderFooterTime}ms");
     
-    unlink($tempBodyOnly);
-    unlink($tempWithHeaderFooter);
+    safeUnlink($tempBodyOnly);
+    safeUnlink($tempWithHeaderFooter);
 });
 
 test('processes 100 elements across body, header, and footer efficiently', function () {
@@ -330,5 +330,5 @@ test('processes 100 elements across body, header, and footer efficiently', funct
         ->and($footerSdtCount)->toBe(15);
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });

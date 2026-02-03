@@ -16,7 +16,7 @@ beforeEach(function () {
 afterEach(function () {
     // Cleanup temp files
     if (isset($this->tempFile) && file_exists($this->tempFile)) {
-        unlink($this->tempFile);
+        safeUnlink($this->tempFile);
     }
 });
 

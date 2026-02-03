@@ -53,15 +53,19 @@ final class ElementLocator
         $this->xpath->registerNamespace('v', self::VML_NS);
         $this->xpath->registerNamespace('o', self::OFFICE_NS);
 
-        // Estratégia 1: Por tipo + ordem
-        $found = $this->findByTypeAndOrder($element, $registrationOrder, $rootElement);
+        // FIX v0.4.2: Changed strategy priority to use content hash FIRST
+        // This fixes the issue where registrationOrder doesn't match DOM position
+        // when multiple elements are added to a section but only some have SDTs
+        
+        // Estratégia 1: Por hash de conteúdo (mais confiável)
+        $contentHash = ElementIdentifier::generateContentHash($element);
+        $found = $this->findByContentHash($element, $contentHash, $rootElement);
         if ($found !== null) {
             return $found;
         }
 
-        // Estratégia 2: Por hash de conteúdo
-        $contentHash = ElementIdentifier::generateContentHash($element);
-        $found = $this->findByContentHash($element, $contentHash, $rootElement);
+        // Estratégia 2: Por tipo + ordem (fallback)
+        $found = $this->findByTypeAndOrder($element, $registrationOrder, $rootElement);
         if ($found !== null) {
             return $found;
         }
@@ -121,6 +125,8 @@ final class ElementLocator
             }
             
             // Estratégia 2: Buscar no rootElement (w:body, w:hdr, w:ftr) - block-level fallback
+            // NOTE: Using [1] to always get first unprocessed paragraph
+            // This works because findByContentHash (called first) identifies the correct element
             $query .= '[not(ancestor::w:sdtContent)][1]';
             $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
             
@@ -142,6 +148,8 @@ final class ElementLocator
             }
             
             // Estratégia 2: Buscar no rootElement (w:body, w:hdr, w:ftr) - block-level fallback
+            // NOTE: Using [1] to always get first unprocessed paragraph
+            // This works because findByContentHash (called first) identifies the correct element
             $query .= '[not(ancestor::w:sdtContent)][1]';
             $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
             

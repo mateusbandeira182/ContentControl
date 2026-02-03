@@ -95,7 +95,7 @@ test('handles multiple sections with independent headers and footers', function 
         ->and($allXml)->toContain('<w:alias w:val="Footer2"/>');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('wraps complex Table in Header with Content Control', function () {
@@ -172,7 +172,7 @@ test('wraps complex Table in Header with Content Control', function () {
     expect($sdtWithTable->length)->toBeGreaterThan(0);
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('wraps Image in Footer with Content Control', function () {
@@ -233,9 +233,9 @@ test('wraps Image in Footer with Content Control', function () {
         ->and($footerXml)->toContain('<w:pict>'); // VML picture element
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
     if (file_exists($imagePath)) {
-        unlink($imagePath);
+        safeUnlink($imagePath);
     }
 });
 
@@ -286,7 +286,7 @@ test('handles first page header with different content', function () {
         ->and($allHeaders)->toContain('First Page Header');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('handles even page footer with different content', function () {
@@ -336,7 +336,7 @@ test('handles even page footer with different content', function () {
         ->and($allFooters)->toContain('Even Page Footer');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('wraps TextRun with formatting in Header', function () {
@@ -387,7 +387,7 @@ test('wraps TextRun with formatting in Header', function () {
         ->and($headerXml)->toContain('<w:b '); // Bold formatting (w:b w:val="1")
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('processes mixed element types in same header', function () {
@@ -445,7 +445,7 @@ test('processes mixed element types in same header', function () {
     expect($sdtCount)->toBe(3);
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('validates OOXML structure after SDT injection in complex headers', function () {
@@ -513,7 +513,7 @@ test('validates OOXML structure after SDT injection in complex headers', functio
     }
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('does not wrap elements when no Content Control registered', function () {
@@ -566,5 +566,5 @@ test('does not wrap elements when no Content Control registered', function () {
         ->and($footerXml)->toContain('Plain Footer');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });

@@ -49,7 +49,7 @@ describe('Feature - Inline-Level SDTs', function () {
         // Verificar que SDT está DENTRO de <w:tc> (inline)
         expect($xml)->toMatch('/<w:tc>.*<w:sdt>.*<w:alias w:val="EditableField".*<\/w:sdt>.*<\/w:tc>/s');
         
-        unlink($tempFile);
+        safeUnlink($tempFile);
     });
 
     /**
@@ -94,7 +94,7 @@ describe('Feature - Inline-Level SDTs', function () {
         // Verificar inline SDT DENTRO do GROUP
         expect($xml)->toContain('<w:alias w:val="ItemName"/>');
         
-        unlink($tempFile);
+        safeUnlink($tempFile);
     });
 
     /**
@@ -127,7 +127,7 @@ describe('Feature - Inline-Level SDTs', function () {
         $count = substr_count($xml, 'Unique Content');
         expect($count)->toBe(1, 'Content should appear exactly once (no duplication)');
         
-        unlink($tempFile);
+        safeUnlink($tempFile);
     });
 
     /**
@@ -157,7 +157,7 @@ describe('Feature - Inline-Level SDTs', function () {
         expect($xml)->toContain('<w:alias w:val="TestParagraph"/>');
         expect($xml)->toContain('Paragraph Content');
         
-        unlink($tempFile);
+        safeUnlink($tempFile);
     });
 
     /**
@@ -201,6 +201,6 @@ describe('Feature - Inline-Level SDTs', function () {
         expect($xml)->toContain('First Run');
         expect($xml)->toContain('Second Run');
         
-        unlink($tempFile);
+        safeUnlink($tempFile);
     });
 });
