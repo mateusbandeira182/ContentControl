@@ -49,12 +49,12 @@ $builder
     ->end()
     ->addRow()
         ->addCell(3000)
-            ->addText('Widget A')
             ->withContentControl(['tag' => 'product_name'])
+            ->addText('Widget A')
         ->end()
         ->addCell(2000)
-            ->addText('$50.00')
             ->withContentControl(['tag' => 'product_price'])
+            ->addText('$50.00')
         ->end()
     ->end();
 

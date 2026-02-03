@@ -66,23 +66,23 @@ $builder2
     ->addRow()
         ->addCell(4000)->addText('Customer Name:')->end()
         ->addCell(4000)
-            ->addText('{{ name_placeholder }}')
             ->withContentControl([
                 'tag' => 'customer_name',
                 'alias' => 'Customer Name Field',
                 'lockType' => ContentControl::LOCK_CONTENT_LOCKED,
             ])
+            ->addText('{{ name_placeholder }}')
         ->end()
     ->end()
     ->addRow()
         ->addCell(4000)->addText('Order ID:')->end()
         ->addCell(4000)
-            ->addText('{{ order_id }}')
             ->withContentControl([
                 'tag' => 'order_id',
                 'alias' => 'Order ID Field',
                 'lockType' => ContentControl::LOCK_CONTENT_LOCKED,
             ])
+            ->addText('{{ order_id }}')
         ->end()
     ->end();
 
@@ -137,40 +137,40 @@ $builder4
     ->end()
     ->addRow()
         ->addCell(3000)
-            ->addText('Premium Widget')
             ->withContentControl([
                 'tag' => 'product_1_name',
                 'alias' => 'Product 1 Name',
             ])
+            ->addText('Premium Widget')
         ->end()
         ->addCell(3000)
             ->addText('High-quality widget with extended warranty')
         ->end()
         ->addCell(2000)
-            ->addText('In Stock', ['color' => '00AA00'])
             ->withContentControl([
                 'tag' => 'product_1_status',
                 'alias' => 'Product 1 Status',
             ])
+            ->addText('In Stock', ['color' => '00AA00'])
         ->end()
     ->end()
     ->addRow()
         ->addCell(3000)
-            ->addText('Standard Widget')
             ->withContentControl([
                 'tag' => 'product_2_name',
                 'alias' => 'Product 2 Name',
             ])
+            ->addText('Standard Widget')
         ->end()
         ->addCell(3000)
             ->addText('Basic model suitable for most use cases')
         ->end()
         ->addCell(2000)
-            ->addText('Low Stock', ['color' => 'FF6600'])
             ->withContentControl([
                 'tag' => 'product_2_status',
                 'alias' => 'Product 2 Status',
             ])
+            ->addText('Low Stock', ['color' => 'FF6600'])
         ->end()
     ->end()
     ->addContentControl([

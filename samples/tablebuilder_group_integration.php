@@ -90,36 +90,36 @@ $builder
     ->end()
     ->addRow()
         ->addCell(3000)
-            ->addText('Widget Premium')
             ->withContentControl([
                 'tag' => 'item_1_name',
                 'alias' => 'Item 1 Name',
             ])
+            ->addText('Widget Premium')
         ->end()
         ->addCell(1500)
-            ->addText('5')
             ->withContentControl([
                 'tag' => 'item_1_qty',
                 'alias' => 'Item 1 Quantity',
             ])
+            ->addText('5')
         ->end()
         ->addCell(1500)->addText('$50.00')->end()
         ->addCell(2000)->addText('$250.00', ['bold' => true])->end()
     ->end()
     ->addRow()
         ->addCell(3000)
-            ->addText('Widget Standard')
             ->withContentControl([
                 'tag' => 'item_2_name',
                 'alias' => 'Item 2 Name',
             ])
+            ->addText('Widget Standard')
         ->end()
         ->addCell(1500)
-            ->addText('10')
             ->withContentControl([
                 'tag' => 'item_2_qty',
                 'alias' => 'Item 2 Quantity',
             ])
+            ->addText('10')
         ->end()
         ->addCell(1500)->addText('$30.00')->end()
         ->addCell(2000)->addText('$300.00', ['bold' => true])->end()
@@ -127,11 +127,11 @@ $builder
     ->addRow()
         ->addCell(6000, ['gridSpan' => 3])->addText('TOTAL:', ['bold' => true, 'align' => 'right'])->end()
         ->addCell(2000)
-            ->addText('$550.00', ['bold' => true, 'size' => 12])
             ->withContentControl([
                 'tag' => 'invoice_total',
                 'alias' => 'Invoice Total Amount',
             ])
+            ->addText('$550.00', ['bold' => true, 'size' => 12])
         ->end()
     ->end()
     ->addContentControl([
