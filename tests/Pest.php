@@ -236,7 +236,9 @@ function safeUnlink(string $filePath, int $maxAttempts = 5, int $delayMs = 50): 
         // Try to delete with full error suppression
         try {
             // Set error handler to suppress warnings
-            set_error_handler(function() { /* suppress */ });
+            set_error_handler(function(int $errno, string $errstr, string $errfile, int $errline): bool {
+                return true; // Suppress all errors
+            });
             $result = unlink($filePath);
             restore_error_handler();
             
