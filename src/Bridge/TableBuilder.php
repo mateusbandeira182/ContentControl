@@ -213,7 +213,11 @@ final class TableBuilder
      * Add Content Control to entire table
      *
      * Wraps the table with a GROUP SDT. The configuration is stored and applied
-     * when the table is extracted via injectInto() or manual extraction.
+     * when injectInto() is called. This is primarily intended for template injection workflows.
+     *
+     * **Important:** Table-level SDTs via addContentControl() are only reliably applied
+     * when using injectInto(). For direct ContentControl::save(), the timing of SDT application
+     * may conflict with cell-level SDTs. This limitation will be addressed in a future version.
      *
      * This allows creating a table-level SDT that contains all cell SDTs,
      * useful for template scenarios where the entire table needs to be replaceable.
@@ -236,6 +240,11 @@ final class TableBuilder
      *         ->addCell(3000)->addText('Product')->end()
      *         ->addCell(2000)->addText('Price')->end()
      *         ->end();
+     * 
+     * // Use with injectInto() for reliable table-level SDT
+     * $processor = new ContentProcessor('template.docx');
+     * $builder->injectInto($processor, 'invoice-table');
+     * $processor->save('output.docx');
      * ```
      */
     public function addContentControl(array $config): self
@@ -251,12 +260,10 @@ final class TableBuilder
      * 1. Applies table-level SDT if configured
      * 2. Saves table to temporary file
      * 3. Extracts table XML with nested SDTs
-     * 4. Replaces target SDT in template
+     * 4. Replaces target SDT in template using the existing injectTable() logic
      *
-     * This is a convenience method equivalent to:
-     * - Manually calling getContentControl()->save()
-     * - Calling extractTableXmlWithSdts()
-     * - Calling processor->replaceContent()
+     * This is a convenience method that wraps the existing inject workflow but
+     * works with ContentProcessor instead of file paths.
      *
      * @param ContentProcessor $processor Template processor with target SDT
      * @param string $targetTag Tag of SDT to replace in template
@@ -288,9 +295,12 @@ final class TableBuilder
             );
         }
 
-        // Apply table-level SDT if configured
+        // Apply pending table-level SDT if not yet applied
+        // (This handles edge case where user calls injectInto() without creating rows first,
+        // though that would be unusual since $table is null without rows)
         if ($this->tableSdtConfig !== null) {
             $this->contentControl->addContentControl($this->table, $this->tableSdtConfig);
+            $this->tableSdtConfig = null;
         }
 
         // Save to temp file and extract XML
@@ -299,13 +309,92 @@ final class TableBuilder
 
         $tableXml = $this->extractTableXmlWithSdts($tempPath, $this->table);
 
-        // Create fragment and replace in template
-        $processor->replaceContent($targetTag, $tableXml);
+        // Use ContentProcessor to inject
+        // We need to use internal DOM manipulation like injectTable() does
+        // because replaceContent() escapes XML strings
+        $this->injectTableXmlIntoProcessor($processor, $targetTag, $tableXml);
 
         // Cleanup
         if (file_exists($tempPath)) {
             unlink($tempPath);
         }
+    }
+
+    /**
+     * Inject table XML into ContentProcessor using DOM manipulation
+     *
+     * Internal method that replicates the DOM injection logic from injectTable()
+     * but works with ContentProcessor instance instead of file paths.
+     *
+     * @param ContentProcessor $processor Template processor
+     * @param string $targetTag SDT tag to replace
+     * @param string $tableXml Extracted table XML
+     *
+     * @return void
+     *
+     * @throws ContentControlException If SDT not found or injection fails
+     *
+     * @since 0.4.2
+     */
+    private function injectTableXmlIntoProcessor(
+        ContentProcessor $processor,
+        string $targetTag,
+        string $tableXml
+    ): void {
+        // Find the SDT element (returns ['sdt' => DOMElement, 'dom' => DOMDocument, 'file' => string])
+        $result = $processor->findSdt($targetTag);
+        
+        if ($result === null) {
+            throw new ContentControlException(
+                "SDT with tag '{$targetTag}' not found in template"
+            );
+        }
+
+        $sdtElement = $result['sdt'];
+        $doc = $result['dom'];
+        $filePath = $result['file']; // Use the actual file path from search result
+
+        // Find w:sdtContent
+        $xpath = $processor->createXPathForDom($doc);
+        $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtElement);
+        
+        if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+            throw new ContentControlException(
+                "SDT '{$targetTag}' has no w:sdtContent element"
+            );
+        }
+
+        $sdtContent = $sdtContentNodes->item(0);
+        if ($sdtContent === null) {
+            throw new ContentControlException(
+                "Failed to retrieve w:sdtContent element"
+            );
+        }
+
+        // Clear existing content
+        while ($sdtContent->firstChild !== null) {
+            $sdtContent->removeChild($sdtContent->firstChild);
+        }
+
+        // Create fragment from table XML
+        $tempDoc = new \DOMDocument();
+        $tempDoc->loadXML(
+            '<w:root xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' .
+            $tableXml .
+            '</w:root>'
+        );
+
+        // Import table nodes
+        $tempRoot = $tempDoc->documentElement;
+        if ($tempRoot !== null) {
+            foreach ($tempRoot->childNodes as $node) {
+                $imported = $doc->importNode($node, true);
+                $sdtContent->appendChild($imported);
+            }
+        }
+
+        // Mark the correct file as modified (use result from findSdt, not hardcoded)
+        $processor->markModified($filePath);
     }
 
     /**
@@ -962,15 +1051,29 @@ final class TableBuilder
                 );
             }
 
-            // 9. Serialize table to XML
-            $tableXml = $dom->saveXML($matchingTable);
+            // 9. Check if table is wrapped in SDT - if so, serialize the SDT instead
+            $elementToSerialize = $matchingTable;
+            $parent = $matchingTable->parentNode;
+            
+            // Check if parent is w:sdtContent (table is wrapped in SDT)
+            if ($parent instanceof \DOMElement && $parent->localName === 'sdtContent') {
+                // Get the w:sdt grandparent
+                $sdtElement = $parent->parentNode;
+                if ($sdtElement instanceof \DOMElement && $sdtElement->localName === 'sdt') {
+                    // Serialize the entire SDT structure instead of just the table
+                    $elementToSerialize = $sdtElement;
+                }
+            }
+
+            // 10. Serialize element (table or wrapping SDT) to XML
+            $tableXml = $dom->saveXML($elementToSerialize);
             if ($tableXml === false) {
                 throw new ContentControlException(
                     "Failed to serialize table XML"
                 );
             }
 
-            // 10. Clean redundant namespace declarations
+            // 11. Clean redundant namespace declarations
             // Remove xmlns:w (inherited from root element)
             $tableXml = preg_replace('/\s+xmlns:w="[^"]+"/', '', $tableXml);
             if ($tableXml === null) {
