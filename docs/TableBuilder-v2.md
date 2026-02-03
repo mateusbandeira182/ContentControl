@@ -112,14 +112,14 @@ Every method returns either:
 - **Child Builder** - For descending into nested structure (`addCell()` → `CellBuilder`)
 - **Parent Builder** - For ascending back up (`end()` → `RowBuilder/TableBuilder`)
 
-### 3. Deferred SDT Registration
+### 3. SDT Configuration Before Element Creation
 
-Content Controls are registered **after** the element is created, ensuring proper element reference:
+`withContentControl()` configures the SDT **before** the element is created. The configuration is applied when `addText()` / `addImage()` is called:
 
 ```php
 ->addCell(3000)
-    ->addText('Customer Name')          // 1. Create element
-    ->withContentControl(['tag' => 'customer'])  // 2. Register SDT
+    ->withContentControl(['tag' => 'customer'])  // 1. Set configuration
+    ->addText('Customer Name')                   // 2. Create element and apply SDT
 ->end()
 ```
 
@@ -156,12 +156,12 @@ $builder
     ->addRow()
         ->addCell(4000)->addText('Customer Name:')->end()
         ->addCell(4000)
-            ->addText('{{ placeholder }}')
             ->withContentControl([
                 'tag' => 'customer_name',
                 'alias' => 'Customer Name Field',
                 'lockType' => ContentControl::LOCK_CONTENT_LOCKED,
             ])
+            ->addText('{{ placeholder }}')
         ->end()
     ->end();
 ```
@@ -303,7 +303,7 @@ Adds an image to the cell.
 
 #### `withContentControl(array $config): self`
 
-Wraps the last added element (text/image) with a Content Control.
+Configures the Content Control to apply to the next element (text/image).
 
 **Parameters:**
 - `$config['tag']` (string): SDT tag (required)
@@ -312,11 +312,11 @@ Wraps the last added element (text/image) with a Content Control.
 
 ```php
 ->addCell(3000)
-    ->addText('Customer Name')
     ->withContentControl([
         'tag' => 'customer_name',
         'alias' => 'Customer Name',
     ])
+    ->addText('Customer Name')
 ->end()
 ```
 
@@ -345,12 +345,12 @@ $builder
     ->end()
     ->addRow()
         ->addCell(3000)
-            ->addText('Premium Widget')
             ->withContentControl(['tag' => 'product_name'])
+            ->addText('Premium Widget')
         ->end()
         ->addCell(3000)
-            ->addText('In Stock', ['color' => '00AA00'])
             ->withContentControl(['tag' => 'product_status'])
+            ->addText('In Stock', ['color' => '00AA00'])
         ->end()
     ->end()
     ->addContentControl([
