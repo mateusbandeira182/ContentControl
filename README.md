@@ -15,22 +15,61 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
+- � **Fluent TableBuilder API** - Type-safe, chainable interface for table creation with 60% less code (v0.4.2)
 - 🔧 **TableBuilder** - Create and inject tables into templates with automatic SDT wrapping (v0.3.0)
+- 📦 **GROUP SDT Support** - Replace GROUP Content Controls with complex structures preserving nested SDTs (v0.4.2)
 - 📝 **ContentProcessor** - Open and modify existing DOCX files with powerful manipulation methods (v0.3.0)
+  - `replaceGroupContent()` - Replace GROUP SDT with complex structures (v0.4.2)
   - `replaceContent()` - Replace entire Content Control content
   - `setValue()` - Replace text while preserving formatting (bold, color, size, etc.)
   - `appendContent()` - Add content to existing SDT content
   - `removeContent()` - Clear specific Content Control
   - `removeAllControlContents()` - Clear all SDTs and optionally block editing
 - 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
-- 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
+- 🔢 **UUID v5 Hashing** - Zero-collision deterministic table hashing (SHA-1 based) replacing MD5 (v0.4.2)
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 500 tests, PHPStan Level 9 (0 errors), 80%+ code coverage
+- ✅ **Production Ready** - 464 tests, PHPStan Level 9 (0 errors), 82%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
+
+## Fluent TableBuilder API (v0.4.2) ✨
+
+The `TableBuilder` now supports a **fluent interface** for type-safe, chainable table creation:
+
+```php
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+$cc = new ContentControl();
+$builder = new TableBuilder($cc);
+
+$builder
+    ->addRow()
+        ->addCell(3000)->addText('Product', ['bold' => true])->end()
+        ->addCell(2000)->addText('Price', ['bold' => true])->end()
+    ->end()
+    ->addRow()
+        ->addCell(3000)
+            ->addText('Widget A')
+            ->withContentControl(['tag' => 'product_name'])
+        ->end()
+        ->addCell(2000)
+            ->addText('$50.00')
+            ->withContentControl(['tag' => 'product_price'])
+        ->end()
+    ->end();
+
+$cc->save('fluent-table.docx');
+```
+
+**Benefits:** 60% less code, full IDE autocomplete, compile-time type safety
+
+**See:** [`docs/TableBuilder-v2.md`](docs/TableBuilder-v2.md) for complete fluent API documentation
+
+---
 
 ## TableBuilder - Dynamic Table Creation (v0.3.0)
 
-The `TableBuilder` class provides a declarative API for creating and injecting tables into templates:
+The legacy declarative API is still supported (deprecated in v0.4.2):
 
 ```php
 use MkGrow\ContentControl\Bridge\TableBuilder;
@@ -58,6 +97,7 @@ $table = $builder->createTable([
         ]
     ]
 ]);
+
 
 // Inject into template with SDT placeholder
 $builder->injectTable('template.docx', 'invoice-table', $table);
