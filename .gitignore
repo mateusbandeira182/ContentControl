@@ -17,7 +17,6 @@ coverage/
 
 # PHPStan
 var/phpstan/
-phpstan-baseline.neon
 
 # Relatórios
 *.cache

@@ -1,0 +1,7 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to method MkGrow\\ContentControl\\Bridge\\RowBuilder\:\:end\(\) on a separate line has no effect\.$#'
+			identifier: method.resultUnused
+			count: 12
+			path: tests/Feature/FluentTableBuilderTest.php
