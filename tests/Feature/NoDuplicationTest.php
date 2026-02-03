@@ -42,7 +42,7 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         expect($documentXml)->toContain('w:val="12345678"');
         
         // Limpar arquivo
-        @unlink($outputPath);
+        @safeUnlink($outputPath);
     });
 
     test('não duplica conteúdo ao envolver Table com SDT', function () {
@@ -81,7 +81,7 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         expect($documentXml)->toContain('<w:sdt>');
         expect($documentXml)->toContain('w:val="87654321"');
         
-        @unlink($outputPath);
+        @safeUnlink($outputPath);
     });
 
     test('não duplica conteúdo ao envolver Cell aninhada', function () {
@@ -124,7 +124,7 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         expect($documentXml)->toContain('w:val="11111111"');
         expect($documentXml)->toContain('w:val="sdtLocked"');
         
-        @unlink($outputPath);
+        @safeUnlink($outputPath);
     });
 
     test('não duplica ao envolver múltiplos elementos diferentes', function () {
@@ -167,7 +167,7 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         expect($documentXml)->toContain('<w:sdt>');
         expect($documentXml)->toContain('w:val="22222222"');
         
-        @unlink($outputPath);
+        @safeUnlink($outputPath);
     });
 });
 

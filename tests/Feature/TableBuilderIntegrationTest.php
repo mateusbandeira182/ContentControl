@@ -83,7 +83,7 @@ describe('TableBuilder Integration', function (): void {
             // This is acceptable behavior for now - the table is correctly injected.
         } finally {
             if (file_exists($templatePath)) {
-                @unlink($templatePath);
+                @safeUnlink($templatePath);
             }
         }
     });
@@ -127,7 +127,7 @@ describe('TableBuilder Integration', function (): void {
             expect($xml)->toContain('Cell 2');
         } finally {
             if (file_exists($templatePath)) {
-                @unlink($templatePath);
+                @safeUnlink($templatePath);
             }
         }
     });
@@ -169,7 +169,7 @@ describe('TableBuilder Integration', function (): void {
             expect($xml)->not->toContain('old content that will be replaced');
         } finally {
             if (file_exists($templatePath)) {
-                @unlink($templatePath);
+                @safeUnlink($templatePath);
             }
         }
     });
@@ -218,7 +218,7 @@ describe('TableBuilder Integration', function (): void {
             // For now, we skip the inner-table-sdt check
         } finally {
             if (file_exists($templatePath)) {
-                @unlink($templatePath);
+                @safeUnlink($templatePath);
             }
         }
     })->skip('Table-level SDTs not yet supported - planned for v0.5.0');
@@ -274,7 +274,7 @@ describe('TableBuilder Integration', function (): void {
             expect($xml)->not->toContain('Table 2 placeholder');
         } finally {
             if (file_exists($templatePath)) {
-                @unlink($templatePath);
+                @safeUnlink($templatePath);
             }
         }
     });
@@ -331,7 +331,7 @@ describe('TableBuilder Integration', function (): void {
         expect($tables->length)->toBe(1);
         } finally {
             if (file_exists($templatePath)) {
-                @unlink($templatePath);
+                @safeUnlink($templatePath);
             }
         }
     });});

@@ -211,3 +211,51 @@ function normalizeXml(string $xml): string
     
     return $doc->saveXML();
 }
+
+/**
+ * Safely delete a file with retry mechanism for Windows file locking
+ *
+ * Windows can temporarily lock .docx files (ZIP archives) after operations.
+ * This function implements retry with exponential backoff to handle these cases.
+ *
+ * @param string $filePath Path to file to delete
+ * @param int $maxAttempts Maximum number of deletion attempts
+ * @param int $delayMs Initial delay in milliseconds (doubles each retry)
+ * @return bool True if deleted successfully, false otherwise
+ */
+function safeUnlink(string $filePath, int $maxAttempts = 5, int $delayMs = 50): bool
+{
+    if (!file_exists($filePath)) {
+        return true; // Already deleted
+    }
+    
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        // Clear file status cache (important for Windows)
+        clearstatcache(true, $filePath);
+        
+        // Try to delete with full error suppression
+        try {
+            // Set error handler to suppress warnings
+            set_error_handler(function() { /* suppress */ });
+            $result = unlink($filePath);
+            restore_error_handler();
+            
+            if ($result) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+            restore_error_handler();
+            // Continue to retry
+        }
+        
+        // If not the last attempt, wait before retrying
+        if ($attempt < $maxAttempts) {
+            usleep($delayMs * 1000); // Convert ms to microseconds
+            $delayMs *= 2; // Exponential backoff
+        }
+    }
+    
+    // If all attempts failed, return false but don't throw
+    // This prevents test failures due to Windows file locking
+    return false;
+}

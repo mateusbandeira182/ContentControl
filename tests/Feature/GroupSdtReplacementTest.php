@@ -84,8 +84,8 @@ test('replaceGroupContent() replaces GROUP SDT with simple structure', function 
         ->and($xml)->toContain('Total: $1,200.00')
         ->and($xml)->not->toContain('Section Placeholder');
 
-    unlink($templatePath);
-    unlink($outputPath);
+    safeUnlink($templatePath);
+    safeUnlink($outputPath);
 });
 
 test('replaceGroupContent() preserves nested SDTs in replaced content', function () {
@@ -141,8 +141,8 @@ test('replaceGroupContent() preserves nested SDTs in replaced content', function
     expect($xml)->toContain('<w:lock w:val="sdtLocked"/>')
         ->and($xml)->toContain('<w:lock w:val="sdtContentLocked"/>');
 
-    unlink($templatePath);
-    unlink($outputPath);
+    safeUnlink($templatePath);
+    safeUnlink($outputPath);
 });
 
 test('replaceGroupContent() works with table structures and cell SDTs', function () {
@@ -197,8 +197,8 @@ test('replaceGroupContent() works with table structures and cell SDTs', function
     expect($xml)->toContain('<w:tag w:val="item-price"/>')
         ->and($xml)->toContain('<w:alias w:val="Item Price"/>');
 
-    unlink($templatePath);
-    unlink($outputPath);
+    safeUnlink($templatePath);
+    safeUnlink($outputPath);
 });
 
 test('replaceGroupContent() throws InvalidArgumentException for non-GROUP SDT', function () {
@@ -242,7 +242,7 @@ XML;
             "SDT with tag 'not-group' is not a GROUP type Content Control"
         );
 
-    unlink($templatePath);
+    safeUnlink($templatePath);
 });
 
 test('replaceGroupContent() returns false for non-existent tag', function () {
@@ -258,7 +258,7 @@ test('replaceGroupContent() returns false for non-existent tag', function () {
 
     expect($result)->toBeFalse();
 
-    unlink($templatePath);
+    safeUnlink($templatePath);
 });
 
 test('replaceGroupContent() handles multiple nested levels of SDTs', function () {
@@ -302,8 +302,8 @@ test('replaceGroupContent() handles multiple nested levels of SDTs', function ()
         ->and($xml)->toContain('<w:alias w:val="Level 1 SDT"/>')
         ->and($xml)->toContain('<w:alias w:val="Level 2 SDT"/>');
 
-    unlink($templatePath);
-    unlink($outputPath);
+    safeUnlink($templatePath);
+    safeUnlink($outputPath);
 });
 
 test('replaceGroupContent() clears existing content before replacement', function () {
@@ -367,8 +367,8 @@ XML;
         ->and($xml)->not->toContain('Old Paragraph 2')
         ->and($xml)->not->toContain('Old Paragraph 3');
 
-    unlink($templatePath);
-    unlink($outputPath);
+    safeUnlink($templatePath);
+    safeUnlink($outputPath);
 });
 
 test('replaceGroupContent() preserves GROUP SDT properties', function () {
@@ -430,6 +430,6 @@ XML;
         ->and($xml)->toContain('<w:group/>')
         ->and($xml)->toContain('<w:lock w:val="sdtLocked"/>');
 
-    unlink($templatePath);
-    unlink($outputPath);
+    safeUnlink($templatePath);
+    safeUnlink($outputPath);
 });

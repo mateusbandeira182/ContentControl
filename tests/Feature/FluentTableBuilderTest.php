@@ -42,7 +42,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
 
@@ -61,7 +61,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
 
@@ -84,7 +84,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
     });
@@ -121,7 +121,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
 
@@ -154,7 +154,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
     });
@@ -206,7 +206,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             // Cleanup
             foreach ([$templatePath, $outputPath] as $file) {
                 if (file_exists($file)) {
-                    unlink($file);
+                    safeUnlink($file);
                 }
             }
         });
@@ -231,9 +231,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
                 );
 
             // Cleanup
-            if (file_exists($templatePath)) {
-                unlink($templatePath);
-            }
+            safeUnlink($templatePath);
         });
 
         it('injects table with table-level SDT creating nested structure', function () {
@@ -278,7 +276,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             // Cleanup
             foreach ([$templatePath, $outputPath] as $file) {
                 if (file_exists($file)) {
-                    unlink($file);
+                    safeUnlink($file);
                 }
             }
         });
@@ -334,7 +332,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
 
@@ -372,7 +370,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
 
@@ -403,7 +401,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
     });
@@ -431,7 +429,7 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Cleanup
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         });
     });
