@@ -6,6 +6,7 @@ namespace MkGrow\ContentControl\Bridge;
 
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ContentProcessor;
+use MkGrow\ContentControl\ElementIdentifier;
 use MkGrow\ContentControl\Exception\ContentControlException;
 use PhpOffice\PhpWord\Element\Table;
 
@@ -568,6 +569,8 @@ final class TableBuilder
      *
      * @throws ContentControlException If reflection fails or table has no rows
      *
+     * @deprecated since 0.4.2, use ElementIdentifier::generateTableHash() instead.
+     *             This method will be removed in v1.0.0.
      * @since 0.4.0
      *
      * @example
@@ -582,7 +585,7 @@ final class TableBuilder
      * // Returns: md5("2x3") = "a87ff679a2f3e71d9181a67b7542122c"
      * ```
      */
-    private function generateTableHash(Table $table): string
+    private function generateTableHash(Table $table): string // @phpstan-ignore-line method.unused
     {
         try {
             // Use Reflection to access private $rows property
@@ -702,7 +705,15 @@ final class TableBuilder
             $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
 
             // 6. Generate hash for target table
-            $targetHash = $this->generateTableHash($table);
+            try {
+                $targetHash = ElementIdentifier::generateTableHash($table);
+            } catch (\RuntimeException $e) {
+                throw new ContentControlException(
+                    "Failed to generate table hash: " . $e->getMessage(),
+                    0,
+                    $e
+                );
+            }
 
             // 7. Locate all tables in document
             $tables = $xpath->query('//w:tbl');
@@ -730,7 +741,11 @@ final class TableBuilder
                         $cells = $xpath->query('.//w:tc', $firstRow);
                         if ($cells !== false) {
                             $cellCount = $cells->length;
-                            $currentHash = md5("{$rowCount}x{$cellCount}");
+                            
+                            // Generate UUID v5 hash using same algorithm as ElementIdentifier
+                            $dimensionString = "{$rowCount}x{$cellCount}";
+                            $namespace = \Ramsey\Uuid\Uuid::NAMESPACE_DNS;
+                            $currentHash = \Ramsey\Uuid\Uuid::uuid5($namespace, "contentcontrol:table:{$dimensionString}")->toString();
 
                             if ($currentHash === $targetHash) {
                                 $matchingTable = $tableNode;
