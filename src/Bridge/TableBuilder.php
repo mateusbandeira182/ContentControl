@@ -120,6 +120,26 @@ final class TableBuilder
     }
 
     /**
+     * Register Content Control for an element (internal use by fluent API)
+     *
+     * This method is called internally by CellBuilder to register SDTs
+     * for elements added via the fluent interface. It delegates to
+     * ContentControl::addContentControl() for the actual registration.
+     *
+     * @internal Used by CellBuilder, not part of public API
+     *
+     * @param \PhpOffice\PhpWord\Element\AbstractElement $element The element to wrap with SDT
+     * @param array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string, inlineLevel?: bool} $config SDT configuration
+     * @return void
+     *
+     * @since 0.4.2
+     */
+    public function registerSdt(\PhpOffice\PhpWord\Element\AbstractElement $element, array $config): void
+    {
+        $this->contentControl->addContentControl($element, $config);
+    }
+
+    /**
      * Create table with Content Controls from configuration
      *
      * Builds a PHPWord table with automatic SDT registration for cells and
