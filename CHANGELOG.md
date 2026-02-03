@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+**Element Locator Search Strategy** (v0.4.2)
+- ✅ **`ElementLocator::findElementInDOM()`** - Fixed search strategy priority to use content hash FIRST
+  - **Problem**: When multiple elements existed in a section, `addContentControl()` would wrap the wrong element (first element instead of target element)
+  - **Root Cause**: Search strategy used registration order as primary key, but this didn't match DOM position when only some elements had SDTs
+  - **Solution**: Inverted strategy priority - now uses content hash FIRST (reliable), registration order SECOND (fallback)
+  - **Impact**: `ContentControl::addContentControl()` now correctly wraps the target element in all scenarios ([#BUG-SDTInjector-001](BUG-REPORT-SDTInjector-Duplication.md))
+- ✅ **FluentTableBuilderTest** - Removed manual XML workarounds, now uses ContentControl API directly
+  - Tests confirm bug is fixed and API works as expected
+
 ## [0.4.1] - 2026-02-02
 
 ### Fixed

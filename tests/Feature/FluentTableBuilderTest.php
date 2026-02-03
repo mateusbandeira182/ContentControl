@@ -161,29 +161,16 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
     describe('injectInto() Method', function () {
         it('injects fluent table into template SDT', function () {
-            // Create template MANUALLY (not using ContentControl.addContentControl to avoid SDTInjector bug)
-            // This mimics how tests/Helpers/ContentProcessorTestHelper.php creates templates
-            $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:p><w:r><w:t>Before table</w:t></w:r></w:p>
-        <w:sdt>
-            <w:sdtPr>
-                <w:id w:val="12345678"/>
-                <w:tag w:val="table-placeholder"/>
-            </w:sdtPr>
-            <w:sdtContent>
-                <w:p><w:r><w:t>Placeholder</w:t></w:r></w:p>
-            </w:sdtContent>
-        </w:sdt>
-        <w:p><w:r><w:t>After table</w:t></w:r></w:p>
-    </w:body>
-</w:document>
-XML;
+            // Create template using ContentControl API (bug fixed)
+            $template = new \MkGrow\ContentControl\ContentControl();
+            $section = $template->addSection();
+            $section->addText('Before table');
+            $placeholder = $section->addText('Placeholder');
+            $template->addContentControl($placeholder, ['tag' => 'table-placeholder', 'id' => '12345678']);
+            $section->addText('After table');
 
             $templatePath = tempnam(sys_get_temp_dir(), 'fluent_template_') . '.docx';
-            createDocxFromXml($templatePath, $xml);
+            $template->save($templatePath);
 
             // Create table with fluent API
             $builder = new TableBuilder();
@@ -250,26 +237,14 @@ XML;
         });
 
         it('injects table with table-level SDT creating nested structure', function () {
-            // Create template MANUALLY (avoid SDTInjector bug)
-            $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:sdt>
-            <w:sdtPr>
-                <w:id w:val="87654321"/>
-                <w:tag w:val="invoice-table"/>
-            </w:sdtPr>
-            <w:sdtContent>
-                <w:p><w:r><w:t>Placeholder</w:t></w:r></w:p>
-            </w:sdtContent>
-        </w:sdt>
-    </w:body>
-</w:document>
-XML;
+            // Create template using ContentControl API (bug fixed)
+            $template = new \MkGrow\ContentControl\ContentControl();
+            $section = $template->addSection();
+            $placeholder = $section->addText('Placeholder');
+            $template->addContentControl($placeholder, ['tag' => 'invoice-table', 'id' => '87654321']);
 
             $templatePath = tempnam(sys_get_temp_dir(), 'fluent_template_sdt_') . '.docx';
-            createDocxFromXml($templatePath, $xml);
+            $template->save($templatePath);
 
             // Create table with its own SDT
             $builder = new TableBuilder();
