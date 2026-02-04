@@ -115,7 +115,7 @@ function createSectionWithText(string $text = 'Sample text'): Section
 }
 
 /**
- * Creates a ContentControl with all properties configured (v2.0 API)
+ * Creates a ContentControl with all properties configured
  */
 function createFullContentControl(): ContentControl
 {

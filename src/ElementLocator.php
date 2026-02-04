@@ -9,12 +9,12 @@ use DOMElement;
 use DOMXPath;
 
 /**
- * Localizador de elementos PHPWord no DOM tree de document.xml
+ * PHPWord Element Locator in document.xml DOM tree
  * 
- * Usa múltiplas estratégias de busca XPath:
- * 1. Por tipo + ordem de registro (mais rápida)
- * 2. Por hash de conteúdo (fallback para elementos idênticos)
- * 3. Por características estruturais (tabelas, cells)
+ * Uses multiple XPath search strategies:
+ * 1. By type + registration order (fastest)
+ * 2. By content hash (fallback for identical elements)
+ * 3. By structural characteristics (tables, cells)
  * 
  * @since 3.0.0
  */
@@ -25,19 +25,19 @@ final class ElementLocator
     private const OFFICE_NS = 'urn:schemas-microsoft-com:office:office';
 
     /**
-     * Cache de XPath instance para reutilização
+     * XPath instance cache for reuse
      */
     private ?DOMXPath $xpath = null;
 
     /**
-     * Localiza elemento PHPWord no DOM
+     * Locates PHPWord element in DOM
      * 
-     * @param DOMDocument $dom Documento DOM carregado
-     * @param object $element Elemento PHPWord a localizar
-     * @param int $registrationOrder Ordem de registro do elemento (0-indexed)
+     * @param DOMDocument $dom Loaded DOM Document
+     * @param object $element PHPWord element to locate
+     * @param int $registrationOrder Element registration order (0-indexed)
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
-     * @return DOMElement|null Elemento DOM ou null se não encontrado
-     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
+     * @return DOMElement|null DOM Element or null if not found
+     * @throws \InvalidArgumentException If element type is not supported
      */
     public function findElementInDOM(
         DOMDocument $dom,
@@ -57,31 +57,31 @@ final class ElementLocator
         // This fixes the issue where registrationOrder doesn't match DOM position
         // when multiple elements are added to a section but only some have SDTs
         
-        // Estratégia 1: Por hash de conteúdo (mais confiável)
+        // Strategy 1: By content hash (more reliable)
         $contentHash = ElementIdentifier::generateContentHash($element);
         $found = $this->findByContentHash($element, $contentHash, $rootElement);
         if ($found !== null) {
             return $found;
         }
 
-        // Estratégia 2: Por tipo + ordem (fallback)
+        // Strategy 2: By type + order (fallback)
         $found = $this->findByTypeAndOrder($element, $registrationOrder, $rootElement);
         if ($found !== null) {
             return $found;
         }
 
-        // Não encontrado
+        // Not found
         return null;
     }
 
     /**
-     * Busca por tipo de elemento + ordem de registro
+     * Search by element type + registration order
      * 
-     * @param object $element Elemento PHPWord
-     * @param int $order Ordem de registro (0-indexed)
+     * @param object $element PHPWord Element
+     * @param int $order Registration order (0-indexed)
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return DOMElement|null
-     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
+     * @throws \InvalidArgumentException If element type is not supported
      */
     private function findByTypeAndOrder(object $element, int $order, string $rootElement): ?DOMElement
     {
@@ -93,16 +93,16 @@ final class ElementLocator
             return $this->findTitleByDepth($element, $order);
         }
 
-        // Image: usar método especializado
+        // Image: use specialized method
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
             return $this->findImageByOrder($order, $rootElement);
         }
 
         $query = $this->createXPathQuery($element, $rootElement);
 
-        // Para células, buscar apenas células NÃO envolvidas em SDTs
-        // Isso evita localizar células que já foram movidas para <w:sdtContent>
-        // Sempre busca [1] pois células são removidas do resultado após wrapping
+        // For cells, search only cells NOT involved in SDTs
+        // This avoids locating cells that have already been moved to <w:sdtContent>
+        // Always search [1] because cells are removed from result after wrapping
         if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
             $query = '//' . $rootElement . '//w:tc[not(ancestor::w:sdtContent)][1]';
             
@@ -115,16 +115,16 @@ final class ElementLocator
             return ($node instanceof DOMElement) ? $node : null;
         }
 
-        // Text/TextRun: tentar primeiro em células, depois no rootElement
-        // ORDEM IMPORTANTE: células têm prioridade para evitar falsos positivos com elementos block-level
+        // Text/TextRun: try first in cells, then in rootElement
+        // IMPORTANT ORDER: cells have priority to avoid false positives with block-level elements
         if ($element instanceof \PhpOffice\PhpWord\Element\Text) {
-            // Estratégia 1: Buscar dentro de células (inline-level SDT)
+            // Strategy 1: Search inside cells (inline-level SDT)
             $cellResult = $this->findTextInCell($order, $rootElement);
             if ($cellResult !== null) {
                 return $cellResult;
             }
             
-            // Estratégia 2: Buscar no rootElement (w:body, w:hdr, w:ftr) - block-level fallback
+            // Strategy 2: Search in rootElement (w:body, w:hdr, w:ftr) - block-level fallback
             // NOTE: Using [1] to always get first unprocessed paragraph
             // This works because findByContentHash (called first) identifies the correct element
             $query .= '[not(ancestor::w:sdtContent)][1]';
@@ -141,13 +141,13 @@ final class ElementLocator
         }
         
         if ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
-            // Estratégia 1: Buscar dentro de células (inline-level SDT)
+            // Strategy 1: Search inside cells (inline-level SDT)
             $cellResult = $this->findTextRunInCell($order, $rootElement);
             if ($cellResult !== null) {
                 return $cellResult;
             }
             
-            // Estratégia 2: Buscar no rootElement (w:body, w:hdr, w:ftr) - block-level fallback
+            // Strategy 2: Search in rootElement (w:body, w:hdr, w:ftr) - block-level fallback
             // NOTE: Using [1] to always get first unprocessed paragraph
             // This works because findByContentHash (called first) identifies the correct element
             $query .= '[not(ancestor::w:sdtContent)][1]';
@@ -163,9 +163,9 @@ final class ElementLocator
             return null;
         }
         
-        // Table: aplicar filtro similar e sempre usar [1]
+        // Table: apply similar filter and always use [1]
         if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
-            // Buscar apenas elementos NÃO envolvidos em SDTs
+            // Search only elements NOT involved in SDTs
             $query .= '[not(ancestor::w:sdtContent)][1]';
             
             $nodes = $this->xpath !== null ? $this->xpath->query($query) : null;
@@ -177,8 +177,8 @@ final class ElementLocator
             return ($node instanceof DOMElement) ? $node : null;
         }
 
-        // Para outros elementos sem filtro, usar índice de registro
-        // XPath é 1-indexed
+        // For other elements without filter, use registration index
+        // XPath is 1-indexed
         $xpathPosition = $order + 1;
         $query .= "[{$xpathPosition}]";
 
@@ -192,16 +192,16 @@ final class ElementLocator
     }
 
     /**
-     * Busca por hash de conteúdo
+     * Search by content hash
      * 
-     * Itera por todos elementos do tipo e compara hash.
-     * Mais lento, mas funciona para elementos idênticos.
+     * Iterates through all elements of the type and compares hash.
+     * Slower, but works for identical elements.
      * 
-     * @param object $element Elemento PHPWord
-     * @param string $contentHash Hash MD5 do conteúdo
+     * @param object $element PHPWord Element
+     * @param string $contentHash Content MD5 Hash
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @return DOMElement|null
-     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
+     * @throws \InvalidArgumentException If element type is not supported
      */
     private function findByContentHash(object $element, string $contentHash, string $rootElement): ?DOMElement
     {
@@ -225,7 +225,7 @@ final class ElementLocator
                 continue;
             }
 
-            // Calcular hash do elemento DOM
+            // Calculate DOM element hash
             $domHash = $this->hashDOMElement($node, $element);
             
             if ($domHash === $contentHash) {
@@ -237,45 +237,45 @@ final class ElementLocator
     }
 
     /**
-     * Cria query XPath para tipo de elemento
+     * Creates XPath query for element type
      * 
-     * @param object $element Elemento PHPWord
+     * @param object $element PHPWord Element
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
-     * @return string Query XPath
-     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
+     * @return string XPath Query
+     * @throws \InvalidArgumentException If element type is not supported
      */
     private function createXPathQuery(object $element, string $rootElement = 'w:body'): string
     {
-        // Text/TextRun: buscar <w:p> (paragraph)
+        // Text/TextRun: search <w:p> (paragraph)
         if ($element instanceof \PhpOffice\PhpWord\Element\Text ||
             $element instanceof \PhpOffice\PhpWord\Element\TextRun) {
             return '//' . $rootElement . '/w:p';
         }
 
-        // Table: buscar <w:tbl>
+        // Table: search <w:tbl>
         if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
             return '//' . $rootElement . '/w:tbl';
         }
 
-        // Cell: buscar <w:tc> (table cell)
+        // Cell: search <w:tc> (table cell)
         if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
             return '//' . $rootElement . '//w:tc';
         }
 
-        // Title: buscar <w:p> com w:pStyle (tratado em findTitleByDepth)
+        // Title: search <w:p> with w:pStyle (handled in findTitleByDepth)
         if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
             return '//' . $rootElement . '/w:p[w:pPr/w:pStyle]';
         }
 
-        // Image: buscar <w:p> que contenha <w:r>/<w:pict> (tratado em findImageByOrder)
+        // Image: search <w:p> that contains <w:r>/<w:pict> (handled in findImageByOrder)
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
             return '//' . $rootElement . '//w:p[.//w:r/w:pict]';
         }
 
-        // Section: não localiza (não serializado como elemento único)
-        // Containers são processados via seus elementos filhos
+        // Section: does not locate (not serialized as a single element)
+        // Containers are processed via their child elements
         
-        // Elemento não suportado - lançar exceção descritiva
+        // Unsupported element - throw descriptive exception
         $supportedTypes = [
             \PhpOffice\PhpWord\Element\Text::class,
             \PhpOffice\PhpWord\Element\TextRun::class,
@@ -285,7 +285,7 @@ final class ElementLocator
             \PhpOffice\PhpWord\Element\Image::class,
         ];
 
-        // Usar nomes de classe curtos para melhor legibilidade na mensagem de erro
+        // Use short class names for better readability in error message
         $shortSupportedTypes = array_map(
             function(string $class): string {
                 $lastBackslashPos = strrpos($class, '\\');
@@ -308,35 +308,35 @@ final class ElementLocator
     }
 
     /**
-     * Gera hash de elemento DOM para comparação
+     * Generates DOM element hash for comparison
      * 
-     * @param DOMElement $domElement Elemento DOM do document.xml
-     * @param object $phpWordElement Elemento PHPWord (para contexto de tipo)
-     * @return string Hash MD5 truncado (8 chars)
+     * @param DOMElement $domElement DOM Element from document.xml
+     * @param object $phpWordElement PHPWord Element (for type context)
+     * @return string Truncated MD5 Hash (8 chars)
      */
     private function hashDOMElement(DOMElement $domElement, object $phpWordElement): string
     {
         $parts = [];
 
-        // Paragraph: extrair todo texto
+        // Paragraph: extract all text
         if ($domElement->nodeName === 'w:p') {
-            // Verificar se é Image (contém w:pict)
+            // Check if it is an Image (contains w:pict)
             if ($this->xpath !== null) {
                 $pict = $this->xpath->query('.//w:r/w:pict', $domElement);
                 if ($pict !== false && $pict->length > 0) {
                     $pictNode = $pict->item(0);
                     if ($pictNode instanceof DOMElement) {
-                        // Processar como imagem
+                        // Process as image
                         $parts[] = 'image';
                         
-                        // Extrair dimensões do atributo style do v:shape
+                        // Extract dimensions from v:shape style attribute
                         $shapes = $this->xpath->query('.//v:shape', $pictNode);
                         if ($shapes !== false && $shapes->length > 0) {
                             $shape = $shapes->item(0);
                             if ($shape instanceof DOMElement) {
                                 $style = $shape->getAttribute('style');
                                 
-                                // Parsear width e height do style (formato: "width:100pt; height:100pt;")
+                                // Parse width and height from style (format: "width:100pt; height:100pt;")
                                 if (preg_match('/width:\s*([0-9.]+)pt/i', $style, $widthMatch) === 1) {
                                     $parts[] = "width:{$widthMatch[1]}";
                                 }
@@ -344,22 +344,22 @@ final class ElementLocator
                                     $parts[] = "height:{$heightMatch[1]}";
                                 }
                                 
-                                // Nota: Não incluímos o r:id (relationship id) no hash pois ele não
-                                // corresponde ao basename do arquivo usado pelo ElementIdentifier e
-                                // não pode ser resolvido para o nome do arquivo sem ler document.xml.rels.
-                                // LIMITAÇÃO: Usar apenas width+height pode causar colisões entre imagens
-                                // distintas com as mesmas dimensões. Para identificação única garantida,
-                                // seria necessário resolver relationships ou usar metadados adicionais.
+                                // Note: We do not include r:id (relationship id) in the hash because it does not
+                                // correspond to the file basename used by ElementIdentifier and
+                                // cannot be resolved to the filename without reading document.xml.rels.
+                                // LIMITATION: Using only width+height may cause collisions between distinct
+                                // distinct images with the same dimensions. For guaranteed unique identification,
+                                // it would be necessary to resolve relationships or use additional metadata.
                             }
                         }
                         
-                        // Retornar hash de imagem
+                        // Return image hash
                         $serialized = implode('|', $parts);
                         return substr(md5($serialized), 0, 8);
                     }
                 }
                 
-                // Verificar se é Title (tem w:pStyle)
+                // Check if it is a Title (has w:pStyle)
                 $pStyle = $this->xpath->query('.//w:pPr/w:pStyle', $domElement);
                 if ($pStyle !== false && $pStyle->length > 0) {
                     $styleNode = $pStyle->item(0);
@@ -369,27 +369,27 @@ final class ElementLocator
                         $parts[] = $styleName;
                         $text = $this->extractTextContent($domElement);
                         $parts[] = $text;
-                        // Hash diferente de Text comum
+                        // Hash different from regular Text
                         $serialized = implode('|', $parts);
                         return substr(md5($serialized), 0, 8);
                     }
                 }
             }
             
-            // Text/TextRun comum
-            $parts[] = 'paragraph';  // Compatível com ElementIdentifier
+            // Regular Text/TextRun
+            $parts[] = 'paragraph';  // Compatible with ElementIdentifier
             $text = $this->extractTextContent($domElement);
             $parts[] = $text;
         }
 
-        // Table: contar linhas
+        // Table: count rows
         if ($domElement->nodeName === 'w:tbl' && $this->xpath !== null) {
-            $parts[] = 'table';  // Compatível com ElementIdentifier
+            $parts[] = 'table';  // Compatible with ElementIdentifier
             $rows = $this->xpath->query('.//w:tr', $domElement);
             if ($rows !== false) {
                 $parts[] = "rows:{$rows->length}";
 
-                // Texto da primeira célula de cada linha
+                // Text from the first cell of each row
                 foreach ($rows as $row) {
                     if (!$row instanceof DOMElement) {
                         continue;
@@ -403,11 +403,11 @@ final class ElementLocator
             }
         }
 
-        // Cell: extrair conteúdo textual de elementos filhos
+        // Cell: extract textual content from child elements
         if ($domElement->nodeName === 'w:tc' && $this->xpath !== null) {
-            $parts[] = 'cell';  // Compatível com ElementIdentifier
+            $parts[] = 'cell';  // Compatible with ElementIdentifier
             
-            // Buscar elementos filhos (parágrafos dentro da célula)
+            // Search child elements (paragraphs inside cell)
             $childParagraphs = $this->xpath->query('.//w:p', $domElement);
             if ($childParagraphs !== false) {
                 foreach ($childParagraphs as $p) {
@@ -427,20 +427,20 @@ final class ElementLocator
     }
 
     /**
-     * Localiza um Title element no DOM por depth e order
+     * Locates a Title element in DOM by depth and order
      * 
-     * Busca Title elements usando o atributo w:pStyle que corresponde
-     * ao depth (0=Title, 1=Heading1, 2=Heading2, etc.). Este método
-     * usa Reflection para acessar a propriedade privada $depth do Title.
+     * Searches Title elements using the w:pStyle attribute that corresponds
+     * to the depth (0=Title, 1=Heading1, 2=Heading2, etc.). This method
+     * uses Reflection to access the private $depth property of said Title.
      * 
      * XPath Query Pattern:
      * //w:body/w:p[w:pPr/w:pStyle[@w:val="Heading{depth}"]][not(ancestor::w:sdtContent)][1]
      * 
-     * @param \PhpOffice\PhpWord\Element\Title $element O Title element a localizar
-     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
-     *                   Mantido por compatibilidade e possível suporte futuro a múltiplos títulos.
-     * @return DOMElement|null O paragraph element localizado, ou null se não encontrado
-     * @throws \RuntimeException Se a propriedade depth não for um inteiro válido
+     * @param \PhpOffice\PhpWord\Element\Title $element The Title element to locate
+     * @param int $order Registration order (0-indexed), ignored in v3.0 implementation.
+     *                   Kept for compatibility and potential future support for multiple titles.
+     * @return DOMElement|null The located paragraph element, or null if not found
+     * @throws \RuntimeException If the depth property is not a valid integer
      * @since 0.1.0
      */
     private function findTitleByDepth(
@@ -456,20 +456,20 @@ final class ElementLocator
             return null;
         }
 
-        // Usar Reflection para acessar $depth privado
+        // Use Reflection to access private $depth
         try {
             $reflection = new \ReflectionClass($element);
             $depthProperty = $reflection->getProperty('depth');
             $depthProperty->setAccessible(true);
             $depth = $depthProperty->getValue($element);
             
-            // Garantir que depth seja inteiro
+            // Ensure depth is integer
             if (!is_int($depth)) {
                 throw new \RuntimeException('Title depth must be an integer');
             }
         } catch (\ReflectionException $e) {
-            // Não foi possível acessar a propriedade "depth" via Reflection.
-            // Registrar erro e retornar null, pois não há fallback viável sem o depth.
+            // Could not access "depth" property via Reflection.
+            // Log error and return null, as there is no viable fallback without depth.
             error_log(sprintf(
                 'ElementLocator: failed to access "depth" property via Reflection for element of type %s: %s',
                 get_class($element),
@@ -478,10 +478,10 @@ final class ElementLocator
             return null;
         }
 
-        // Mapear depth para nome de estilo
+        // Map depth to style name
         $styleName = $depth === 0 ? 'Title' : 'Heading' . $depth;
-        
-        // Validar que styleName contém apenas alfanuméricos para prevenir injeção XPath
+
+        // Validate that styleName contains only alphanumerics to prevent XPath injection
         if (preg_match('/^[a-zA-Z0-9]+$/', $styleName) !== 1) {
             throw new \RuntimeException(sprintf(
                 'Invalid style name "%s" generated from depth %d',
@@ -490,7 +490,7 @@ final class ElementLocator
             ));
         }
 
-        // Query XPath para localizar por estilo
+        // XPath Query to locate by style
         $query = sprintf(
             '//w:body/w:p[w:pPr/w:pStyle[@w:val="%s"]][not(ancestor::w:sdtContent)][1]',
             $styleName
@@ -506,23 +506,23 @@ final class ElementLocator
     }
 
     /**
-     * Localiza um Image element no DOM por order
+     * Locates an Image element in DOM by order
      * 
-     * Busca Image elements localizando elementos w:pict dentro de w:r (run) nodes.
-     * Suporta imagens inline e floating. Imagens watermark não são suportadas e
-     * resultarão em exceção durante o processamento.
+     * Searches Image elements by locating w:pict elements inside w:r (run) nodes.
+     * Supports inline and floating images. Watermark images are not supported and
+     * will result in exception during processing.
      * 
      * XPath Query Pattern:
      * //{rootElement}//w:r/w:pict[not(ancestor::w:sdtContent)][1]
      * 
-     * Requer namespaces VML registrados:
+     * Requires VML namespaces registered:
      * - v: urn:schemas-microsoft-com:vml
      * - o: urn:schemas-microsoft-com:office:office
      * 
-     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
-     *                   Mantido por compatibilidade e possível suporte futuro a múltiplas imagens.
+     * @param int $order Registration order (0-indexed), ignored in v3.0 implementation.
+     *                   Kept for compatibility and potential future support for multiple images.
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
-     * @return DOMElement|null O elemento w:p pai contendo w:pict, ou null se não encontrado
+     * @return DOMElement|null The parent w:p element containing w:pict, or null if not found
      * @since 0.1.0
      */
     private function findImageByOrder(int $order, string $rootElement = 'w:body'): ?DOMElement
@@ -536,7 +536,7 @@ final class ElementLocator
             return null;
         }
 
-        // Query para localizar w:pict (VML images)
+        // Query to locate w:pict (VML images)
         $query = '//' . $rootElement . '//w:r/w:pict[not(ancestor::w:sdtContent)][1]';
 
         $nodes = $this->xpath->query($query);
@@ -549,7 +549,7 @@ final class ElementLocator
             return null;
         }
 
-        // Retornar o elemento <w:p> pai que contém a imagem
+        // Return parent <w:p> element containing the image
         $parent = $node->parentNode;
         while ($parent !== null && !($parent instanceof DOMElement && $parent->nodeName === 'w:p')) {
             $parent = $parent->parentNode;
@@ -559,18 +559,18 @@ final class ElementLocator
     }
 
     /**
-     * Localiza um Text element dentro de uma célula de tabela
+     * Locates a Text element inside a table cell
      * 
-     * Busca Text elements que estão dentro de células (w:tc).
-     * Suporta inline-level Content Controls.
+     * Searches Text elements that are inside cells (w:tc).
+     * Supports inline-level Content Controls.
      * 
      * XPath Query Pattern:
      * //{rootElement}//w:tbl//w:tc/w:p[not(ancestor::w:sdtContent)][1]
      * 
-     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
-     *                   Mantido por compatibilidade e possível suporte futuro.
+     * @param int $order Registration order (0-indexed), ignored in v3.0 implementation.
+     *                   Kept for compatibility and potential future support.
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
-     * @return DOMElement|null O elemento w:p dentro da célula, ou null se não encontrado
+     * @return DOMElement|null The w:p element inside the cell, or null if not found
      * @since 4.0.0
      */
     private function findTextInCell(int $order, string $rootElement = 'w:body'): ?DOMElement
@@ -583,8 +583,8 @@ final class ElementLocator
             return null;
         }
 
-        // Query para localizar <w:p> dentro de células de tabela
-        // Busca apenas parágrafos que NÃO estão dentro de SDTs já existentes
+        // Query to locate <w:p> inside table cells
+        // Searches only paragraphs that are NOT inside existing SDTs
         $query = '//' . $rootElement . '//w:tbl//w:tc/w:p[not(ancestor::w:sdtContent)][1]';
 
         $nodes = $this->xpath->query($query);
@@ -597,19 +597,19 @@ final class ElementLocator
     }
 
     /**
-     * Localiza um TextRun element dentro de uma célula de tabela
+     * Locates a TextRun element inside a table cell
      * 
-     * Busca TextRun elements (parágrafos com runs formatados) que estão dentro de células (w:tc).
-     * Diferencia de Text simples pela presença de elementos w:r.
-     * Suporta inline-level Content Controls.
+     * Searches TextRun elements (paragraphs with formatted runs) inside cells (w:tc).
+     * Distinguishes from simple Text by the presence of w:r elements.
+     * Supports inline-level Content Controls.
      * 
      * XPath Query Pattern:
      * //{rootElement}//w:tbl//w:tc/w:p[w:r][not(ancestor::w:sdtContent)][1]
      * 
-     * @param int $order Ordem de registro (0-indexed), ignorado na implementação v3.0.
-     *                   Mantido por compatibilidade e possível suporte futuro.
+     * @param int $order Registration order (0-indexed), ignored in v3.0 implementation.
+     *                   Kept for compatibility and potential future support.
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
-     * @return DOMElement|null O elemento w:p contendo w:r dentro da célula, ou null se não encontrado
+     * @return DOMElement|null The w:p element containing w:r inside the cell, or null if not found
      * @since 4.0.0
      */
     private function findTextRunInCell(int $order, string $rootElement = 'w:body'): ?DOMElement
@@ -622,9 +622,9 @@ final class ElementLocator
             return null;
         }
 
-        // Query para localizar <w:p> com <w:r> dentro de células de tabela
-        // w:r indica que é um TextRun (texto com formatação)
-        // Busca apenas parágrafos que NÃO estão dentro de SDTs já existentes
+        // Query to locate <w:p> with <w:r> inside table cells
+        // w:r indicates it is a TextRun (formatted text)
+        // Searches only paragraphs that are NOT inside existing SDTs
         $query = '//' . $rootElement . '//w:tbl//w:tc/w:p[w:r][not(ancestor::w:sdtContent)][1]';
 
         $nodes = $this->xpath->query($query);
@@ -637,10 +637,10 @@ final class ElementLocator
     }
 
     /**
-     * Extrai todo conteúdo textual de elemento DOM
+     * Extracts all textual content from DOM element
      * 
-     * @param DOMElement $element Elemento DOM
-     * @return string Texto concatenado
+     * @param DOMElement $element DOM Element
+     * @return string Concatenated text
      */
     private function extractTextContent(DOMElement $element): string
     {
@@ -663,15 +663,15 @@ final class ElementLocator
     }
 
     /**
-     * Valida se elemento DOM corresponde ao elemento PHPWord
+     * Validates if DOM element matches PHPWord element
      * 
-     * @param DOMElement $domElement Elemento DOM
-     * @param object $phpWordElement Elemento PHPWord
-     * @return bool true se corresponder
+     * @param DOMElement $domElement DOM Element
+     * @param object $phpWordElement PHPWord Element
+     * @return bool true if matches
      */
     public function validateMatch(DOMElement $domElement, object $phpWordElement): bool
     {
-        // Inicializar XPath se necessário
+        // Initialize XPath if necessary
         if ($this->xpath === null && $domElement->ownerDocument !== null) {
             $this->xpath = new DOMXPath($domElement->ownerDocument);
             $this->xpath->registerNamespace('w', self::WORDML_NS);
@@ -679,7 +679,7 @@ final class ElementLocator
             $this->xpath->registerNamespace('o', self::OFFICE_NS);
         }
 
-        // Validar tipo
+        // Validate type
         $expectedNodeName = null;
 
         if ($phpWordElement instanceof \PhpOffice\PhpWord\Element\Text ||
@@ -695,7 +695,7 @@ final class ElementLocator
             return false;
         }
 
-        // Validar hash
+        // Validate hash
         $phpWordHash = ElementIdentifier::generateContentHash($phpWordElement);
         $domHash = $this->hashDOMElement($domElement, $phpWordElement);
 

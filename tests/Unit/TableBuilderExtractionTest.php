@@ -180,7 +180,7 @@ describe('TableBuilder Extraction and Injection', function () {
             
             $tempPath = $tempProperty->getValue($builder);
             
-            expect($exceptionCaught)->toBeTrue(); // Verificar que exceção foi lançada
+            expect($exceptionCaught)->toBeTrue(); // Verify that exception was thrown
             if ($tempPath !== null) {
                 expect(file_exists($tempPath))->toBeFalse();
             }
@@ -221,9 +221,9 @@ describe('TableBuilder Extraction and Injection', function () {
             expect($xml)->toContain('Widget');
         });
 
-        // Teste removido: preserves internal SDTs during injection
-        // Motivo: Complexidade de setup com múltiplas instâncias de ContentControl
-        // A funcionalidade é testada indiretamente pelos testes de feature
+        // Test removed: preserves internal SDTs during injection
+        // Reason: Setup complexity with multiple ContentControl instances
+        // Functionality is indirectly tested by feature tests
 
         it('replaces existing content in target SDT', function () {
             // 1. Create template with existing content

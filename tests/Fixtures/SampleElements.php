@@ -13,9 +13,9 @@ use PhpOffice\PhpWord\PhpWord;
 class SampleElements
 {
     /**
-     * Cria Section com Text simples
+     * Creates Section with simple Text
      */
-    public static function createSectionWithText(string $text = 'Texto de teste'): Section
+    public static function createSectionWithText(string $text = 'Test Text'): Section
     {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
@@ -33,9 +33,9 @@ class SampleElements
         $section = $phpWord->addSection();
         
         $textRun = $section->addTextRun();
-        $textRun->addText('Texto normal ');
-        $textRun->addText('Texto negrito', ['bold' => true]);
-        $textRun->addText(' Texto itálico', ['italic' => true]);
+        $textRun->addText('Normal text ');
+        $textRun->addText('Bold text', ['bold' => true]);
+        $textRun->addText(' Italic text', ['italic' => true]);
         
         return $section;
     }

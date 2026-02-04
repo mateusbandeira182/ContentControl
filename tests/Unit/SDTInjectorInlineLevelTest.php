@@ -7,7 +7,7 @@ use MkGrow\ContentControl\SDTConfig;
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * Test suite for SDTInjector inline-level helper methods (v3.1)
+ * Test suite for SDTInjector inline-level helper methods
  * 
  * Tests private methods findParentCell(), getParagraphIndexInCell(), etc.
  */

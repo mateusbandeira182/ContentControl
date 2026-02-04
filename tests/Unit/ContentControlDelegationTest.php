@@ -9,12 +9,12 @@ use PhpOffice\PhpWord\Metadata\Settings;
 use PhpOffice\PhpWord\PhpWord;
 
 /**
- * Testes de métodos de delegação do ContentControl para PhpWord
+ * Tests for ContentControl delegation methods to PhpWord
  * 
- * Cobertura de linhas: 134, 144, 156, 168, 181, 194, 204, 262, 272
+ * Line coverage: 134, 144, 156, 168, 181, 194, 204, 262, 272
  */
 
-test('getDocInfo retorna instância DocInfo do PhpWord', function () {
+test('getDocInfo returns PhpWord DocInfo instance', function () {
     $cc = new ContentControl();
     
     $docInfo = $cc->getDocInfo();
@@ -22,7 +22,7 @@ test('getDocInfo retorna instância DocInfo do PhpWord', function () {
     expect($docInfo)->toBeInstanceOf(DocInfo::class);
 });
 
-test('getSettings retorna instância Settings do PhpWord', function () {
+test('getSettings returns PhpWord Settings instance', function () {
     $cc = new ContentControl();
     
     $settings = $cc->getSettings();
@@ -30,51 +30,51 @@ test('getSettings retorna instância Settings do PhpWord', function () {
     expect($settings)->toBeInstanceOf(Settings::class);
 });
 
-test('addFontStyle adiciona estilo de fonte ao PhpWord', function () {
+test('addFontStyle adds font style to PhpWord', function () {
     $cc = new ContentControl();
     
-    // addFontStyle retorna void, apenas testar que não lança exceção
+    // addFontStyle returns void, just test that it doesn't throw exception
     $cc->addFontStyle('CustomFont', [
         'size' => 14,
         'bold' => true,
         'color' => 'FF0000'
     ]);
     
-    // Verificar que método foi chamado sem erros
+    // Verify that method was called without errors
     expect(true)->toBeTrue();
 });
 
-test('addParagraphStyle adiciona estilo de parágrafo ao PhpWord', function () {
+test('addParagraphStyle adds paragraph style to PhpWord', function () {
     $cc = new ContentControl();
     
-    // addParagraphStyle retorna void, apenas testar que não lança exceção
+    // addParagraphStyle returns void, just test that it doesn't throw exception
     $cc->addParagraphStyle('CustomParagraph', [
         'alignment' => 'center',
         'spaceAfter' => 200
     ]);
     
-    // Verificar que método foi chamado sem erros
+    // Verify that method was called without errors
     expect(true)->toBeTrue();
 });
 
-test('addTableStyle adiciona estilo de tabela ao PhpWord', function () {
+test('addTableStyle adds table style to PhpWord', function () {
     $cc = new ContentControl();
     
-    // addTableStyle retorna void, apenas testar que não lança exceção
+    // addTableStyle returns void, just test that it doesn't throw exception
     $cc->addTableStyle('CustomTable', [
         'borderSize' => 6,
         'borderColor' => '999999',
         'cellMargin' => 80
     ]);
     
-    // Verificar que método foi chamado sem erros
+    // Verify that method was called without errors
     expect(true)->toBeTrue();
 });
 
-test('addTableStyle aceita estilo de primeira linha opcional', function () {
+test('addTableStyle accepts optional first row style', function () {
     $cc = new ContentControl();
     
-    // addTableStyle retorna void, apenas testar que não lança exceção
+    // addTableStyle returns void, just test that it doesn't throw exception
     $cc->addTableStyle('TableWithHeader', [
         'borderSize' => 6,
         'borderColor' => '999999'
@@ -83,14 +83,14 @@ test('addTableStyle aceita estilo de primeira linha opcional', function () {
         'bold' => true
     ]);
     
-    // Verificar que método foi chamado sem erros
+    // Verify that method was called without errors
     expect(true)->toBeTrue();
 });
 
-test('addTitleStyle adiciona estilo de título ao PhpWord', function () {
+test('addTitleStyle adds title style to PhpWord', function () {
     $cc = new ContentControl();
     
-    // addTitleStyle retorna void, apenas testar que não lança exceção
+    // addTitleStyle returns void, just test that it doesn't throw exception
     $cc->addTitleStyle(1, [
         'size' => 20,
         'bold' => true
@@ -98,14 +98,14 @@ test('addTitleStyle adiciona estilo de título ao PhpWord', function () {
         'spaceAfter' => 240
     ]);
     
-    // Verificar que método foi chamado sem erros
+    // Verify that method was called without errors
     expect(true)->toBeTrue();
 });
 
-test('addTitleStyle suporta múltiplos níveis de título', function () {
+test('addTitleStyle supports multiple title levels', function () {
     $cc = new ContentControl();
     
-    // Adicionar títulos de nível 1 a 3 - apenas testar que não lança exceção
+    // Add titles from level 1 to 3 - just test that it doesn't throw exception
     for ($level = 1; $level <= 3; $level++) {
         $cc->addTitleStyle($level, [
             'size' => 20 - ($level * 2),
@@ -113,11 +113,11 @@ test('addTitleStyle suporta múltiplos níveis de título', function () {
         ]);
     }
     
-    // Verificar que métodos foram chamados sem erros
+    // Verify that methods were called without errors
     expect(true)->toBeTrue();
 });
 
-test('getSections retorna array vazio quando nenhuma seção foi adicionada', function () {
+test('getSections returns empty array when no section was added', function () {
     $cc = new ContentControl();
     
     $sections = $cc->getSections();
@@ -126,7 +126,7 @@ test('getSections retorna array vazio quando nenhuma seção foi adicionada', fu
     expect($sections)->toHaveCount(0);
 });
 
-test('getSections retorna array de seções adicionadas', function () {
+test('getSections returns array of added sections', function () {
     $cc = new ContentControl();
     
     $section1 = $cc->addSection();
@@ -145,7 +145,7 @@ test('getSections retorna array de seções adicionadas', function () {
     expect($sections[2])->toBe($section3);
 });
 
-test('getPhpWord retorna instância PhpWord encapsulada', function () {
+test('getPhpWord returns encapsulated PhpWord instance', function () {
     $cc = new ContentControl();
     
     $phpWord = $cc->getPhpWord();
@@ -153,7 +153,7 @@ test('getPhpWord retorna instância PhpWord encapsulada', function () {
     expect($phpWord)->toBeInstanceOf(PhpWord::class);
 });
 
-test('getPhpWord retorna a mesma instância em múltiplas chamadas', function () {
+test('getPhpWord returns same instance in multiple calls', function () {
     $cc = new ContentControl();
     
     $phpWord1 = $cc->getPhpWord();
@@ -162,18 +162,18 @@ test('getPhpWord retorna a mesma instância em múltiplas chamadas', function ()
     expect($phpWord1)->toBe($phpWord2);
 });
 
-test('getPhpWord permite acesso avançado a recursos PhpWord', function () {
+test('getPhpWord allows advanced access to PhpWord resources', function () {
     $cc = new ContentControl();
     $cc->addSection()->addText('Sample content');
     
     $phpWord = $cc->getPhpWord();
     
-    // Verificar que PhpWord tem conteúdo adicionado
+    // Verify that PhpWord has added content
     $sections = $phpWord->getSections();
     expect($sections)->toHaveCount(1);
 });
 
-test('getSDTRegistry retorna instância SDTRegistry', function () {
+test('getSDTRegistry returns SDTRegistry instance', function () {
     $cc = new ContentControl();
     
     $registry = $cc->getSDTRegistry();
@@ -181,7 +181,7 @@ test('getSDTRegistry retorna instância SDTRegistry', function () {
     expect($registry)->toBeInstanceOf(\MkGrow\ContentControl\SDTRegistry::class);
 });
 
-test('getSDTRegistry retorna a mesma instância em múltiplas chamadas', function () {
+test('getSDTRegistry returns same instance in multiple calls', function () {
     $cc = new ContentControl();
     
     $registry1 = $cc->getSDTRegistry();
@@ -190,7 +190,7 @@ test('getSDTRegistry retorna a mesma instância em múltiplas chamadas', functio
     expect($registry1)->toBe($registry2);
 });
 
-test('getSDTRegistry permite acesso a Content Controls registrados', function () {
+test('getSDTRegistry allows access to registered Content Controls', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $section->addText('Test');

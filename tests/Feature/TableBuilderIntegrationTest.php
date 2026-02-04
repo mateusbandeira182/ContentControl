@@ -221,7 +221,7 @@ describe('TableBuilder Integration', function (): void {
                 @safeUnlink($templatePath);
             }
         }
-    })->skip('Table-level SDTs not yet supported - planned for v0.5.0');
+    })->skip('Table-level SDTs not yet supported');
 
     it('handles multiple tables in one document', function (): void {
         $builder = new TableBuilder();

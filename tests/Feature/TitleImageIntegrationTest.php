@@ -5,19 +5,20 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ElementIdentifier;
 use MkGrow\ContentControl\Tests\Helpers\TestImageHelper;
+use Tests\Helpers\WithTempFile;
+
+uses(WithTempFile::class);
 
 beforeEach(function () {
     ElementIdentifier::clearCache();
     
-    // Garantir que a imagem de teste existe
+    // Ensure test image exists
     TestImageHelper::ensureTestImageExists();
 });
 
 afterEach(function () {
     // Cleanup temp files
-    if (isset($this->tempFile) && file_exists($this->tempFile)) {
-        safeUnlink($this->tempFile);
-    }
+    $this->tearDownTempFile();
 });
 
 test('wraps Title elements with Content Controls in real DOCX', function () {

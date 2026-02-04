@@ -11,7 +11,7 @@ beforeEach(function () {
     ElementIdentifier::clearCache();
 });
 
-test('localizes Title element by depth (Title - depth 0)', function () {
+test('locates Title element by depth (Title - depth 0)', function () {
     $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -55,7 +55,7 @@ XML;
     expect($pStyle->item(0)->getAttribute('w:val'))->toBe('Title');
 });
 
-test('localizes Title element by depth (Heading1 - depth 1)', function () {
+test('locates Title element by depth (Heading1 - depth 1)', function () {
     $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -90,7 +90,7 @@ XML;
     expect($pStyle->item(0)->getAttribute('w:val'))->toBe('Heading1');
 });
 
-test('localizes Title element by depth (Heading2 - depth 2)', function () {
+test('locates Title element by depth (Heading2 - depth 2)', function () {
     $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -157,7 +157,7 @@ XML;
     $text = new Text('Same Text');
     $textHash = ElementIdentifier::generateContentHash($text);
     
-    // Hashes devem ser diferentes
+    // Hashes must be different
     expect($titleHash)->not->toBe($textHash);
 });
 
@@ -200,7 +200,7 @@ XML;
     
     expect($found)->not->toBeNull();
     
-    // Verificar que encontrou o segundo (não wrapped)
+    // Verify that it found the second (not wrapped)
     $xpath = new DOMXPath($dom);
     $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
     $text = $xpath->query('.//w:t', $found);
@@ -236,7 +236,7 @@ XML;
     
     expect($found)->not->toBeNull();
     
-    // Verificar que bookmarks estão preservados
+    // Verify that bookmarks are preserved
     $xpath = new DOMXPath($dom);
     $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
     

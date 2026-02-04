@@ -6,7 +6,7 @@ use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ElementLocator;
 
 /**
- * Tests for ElementLocator with headers and footers support (v0.2.0)
+ * Tests for ElementLocator with headers and footers support
  * 
  * Validates that ElementLocator can locate elements in w:hdr and w:ftr
  * root elements, in addition to the existing w:body support.

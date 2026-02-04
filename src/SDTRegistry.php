@@ -5,73 +5,73 @@ declare(strict_types=1);
 namespace MkGrow\ContentControl;
 
 /**
- * Registry para gerenciar IDs únicos e mapeamento elemento→config
+ * Registry for managing unique IDs and element->config mapping
  * 
- * Responsável por:
- * - Gerar IDs únicos de 8 dígitos sem colisão
- * - Registrar elementos com suas configurações SDT
- * - Detectar elementos duplicados
- * - Marcar IDs como usados
+ * Responsible for:
+ * - Generating unique 8-digit IDs without collision
+ * - Registering elements with their SDT configurations
+ * - Detecting duplicate elements
+ * - Marking IDs as used
  * 
  * @since 2.0.0
  */
 final class SDTRegistry
 {
     /**
-     * Registry de elementos e configurações
+     * Registry of elements and configurations
      * 
-     * Estrutura: [['element' => $obj, 'config' => $cfg], ...]
+     * Structure: [['element' => $obj, 'config' => $cfg], ...]
      * 
      * @var array<int, array{element: mixed, config: SDTConfig}>
      */
     private array $registry = [];
 
     /**
-     * IDs já utilizados (para evitar colisão)
+     * IDs already used (to avoid collision)
      * 
-     * Estrutura: ['12345678' => true, ...]
+     * Structure: ['12345678' => true, ...]
      * 
      * @var array<int|string, true>
      */
     private array $usedIds = [];
 
     /**
-     * Contador sequencial para fallback quando geração aleatória falhar
+     * Sequential counter for fallback when random generation fails
      * 
-     * Inicia no ID mínimo permitido (10000000)
+     * Starts at minimum allowed ID (10000000)
      * 
      * @var int
      */
     private int $sequentialCounter = 10000000;
 
     /**
-     * Marcadores de elementos (para localização rápida no futuro)
+     * Element markers (for fast lookup in the future)
      * 
-     * Estrutura: [objectId => markerId]
+     * Structure: [objectId => markerId]
      * 
      * @var array<int, string>
      */
     private array $elementMarkers = [];
 
     /**
-     * Gera ID único de 8 dígitos
+     * Generates unique 8-digit ID
      * 
-     * Tenta até 100 vezes gerar um ID aleatório que não esteja em uso.
-     * Se todas as tentativas falharem, usa contador sequencial como fallback.
+     * Tries up to 100 times to generate a random ID that is not in use.
+     * If all attempts fail, uses sequential counter as fallback.
      * 
-     * Probabilidade de colisão em 10.000 IDs: ~0.01%
-     * Fallback garante sucesso mesmo em ranges saturados.
+     * Collision probability in 10,000 IDs: ~0.01%
+     * Fallback ensures success even in saturated ranges.
      * 
-     * IMPORTANTE: O ID retornado NÃO é automaticamente marcado como usado.
-     * Isso ocorre em register() para evitar marcar IDs que nunca serão registrados.
+     * IMPORTANT: The returned ID is NOT automatically marked as used.
+     * This occurs in register() to avoid marking IDs that will never be registered.
      * 
-     * @return string ID único de 8 dígitos
+     * @return string Unique 8-digit ID
      */
     public function generateUniqueId(): string
     {
         $maxAttempts = 100;
         
-        // Tentar geração aleatória
+        // Try random generation
         for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
             $id = IDValidator::generateRandom();
             
@@ -80,11 +80,11 @@ final class SDTRegistry
             }
         }
         
-        // Fallback: usar contador sequencial
+        // Fallback: use sequential counter
         while (isset($this->usedIds[(string) $this->sequentialCounter])) {
             $this->sequentialCounter++;
             
-            // Proteção contra overflow (teoricamente inalcançável)
+            // Overflow protection (theoretically unreachable)
             if ($this->sequentialCounter > IDValidator::getMaxId()) {
                 $maxId = IDValidator::getMaxId();  
                 $minId = IDValidator::getMinId();  
@@ -110,17 +110,17 @@ final class SDTRegistry
     }
 
     /**
-     * Registra elemento com sua configuração SDT (v3.0 - com marcador)
+     * Registers element with its SDT configuration (v3.0 - with marker)
      * 
-     * @param object $element Elemento PHPWord (Section, Table, etc)
-     * @param SDTConfig $config Configuração do Content Control
+     * @param object $element PHPWord Element (Section, Table, etc)
+     * @param SDTConfig $config Content Control Configuration
      * @return void
-     * @throws \InvalidArgumentException Se elemento já registrado
-     * @throws \InvalidArgumentException Se ID da config já está em uso
+     * @throws \InvalidArgumentException If element already registered
+     * @throws \InvalidArgumentException If config ID is already in use
      */
     public function register(object $element, SDTConfig $config): void
     {
-        // 1. Detectar elemento duplicado PRIMEIRO (comparação por identidade)
+        // 1. Detect duplicate element FIRST (identity comparison)
         foreach ($this->registry as $entry) {
             if ($entry['element'] === $element) {
                 throw new \InvalidArgumentException(
@@ -129,9 +129,9 @@ final class SDTRegistry
             }
         }
 
-        // 2. Verificar ID duplicado ANTES de marcar como usado
+        // 2. Verify duplicate ID BEFORE marking as used
         if ($config->id !== '' && isset($this->usedIds[$config->id])) {
-            // Procurar se já existe outro elemento com esse ID no registry
+            // Check if there is another element with this ID in the registry
                 throw new \InvalidArgumentException(
                 sprintf(
                     'SDTRegistry: ID "%s" is already in use and cannot be reused',
@@ -140,22 +140,22 @@ final class SDTRegistry
             );
         }
 
-        // 3. Marcar ID como usado APENAS SE PASSAR nas validações
+        // 3. Mark ID as used ONLY IF validations pass
         if ($config->id !== '') {
             $this->usedIds[$config->id] = true;
         }
 
-        // 4. Gerar marcador (v3.0)
+        // 4. Generate marker (v3.0)
         $marker = ElementIdentifier::generateMarker($element);
         $objectId = spl_object_id($element);
         $this->elementMarkers[$objectId] = $marker;
 
-        // 5. Adicionar ao registry
+        // 5. Add to registry
         $this->registry[] = ['element' => $element, 'config' => $config];
     }
 
     /**
-     * Retorna todas as tuplas (elemento, config) registradas
+     * Returns all registered (element, config) tuples
      * 
      * @return array<int, array{element: mixed, config: SDTConfig}>
      */
@@ -165,10 +165,10 @@ final class SDTRegistry
     }
 
     /**
-     * Retorna configuração de um elemento específico
+     * Returns configuration for a specific element
      * 
-     * @param object $element Elemento a buscar
-     * @return SDTConfig|null Configuração ou null se não encontrado
+     * @param object $element Element to search for
+     * @return SDTConfig|null Configuration or null if not found
      */
     public function getConfig(object $element): ?SDTConfig
     {
@@ -182,10 +182,10 @@ final class SDTRegistry
     }
 
     /**
-     * Verifica se elemento está registrado
+     * Checks if element is registered
      * 
-     * @param object $element Elemento a verificar
-     * @return bool true se registrado, false caso contrário
+     * @param object $element Element to check
+     * @return bool true if registered, false otherwise
      */
     public function has(object $element): bool
     {
@@ -199,10 +199,10 @@ final class SDTRegistry
     }
 
     /**
-     * Verifica se ID está em uso
+     * Checks if ID is in use
      * 
-     * @param string $id ID a verificar
-     * @return bool true se ID em uso, false caso contrário
+     * @param string $id ID to check
+     * @return bool true if ID is in use, false otherwise
      */
     public function isIdUsed(string $id): bool
     {
@@ -210,11 +210,11 @@ final class SDTRegistry
     }
 
     /**
-     * Marca ID como usado (útil para testes)
+     * Marks ID as used (useful for testing)
      * 
-     * @param string $id ID a marcar como usado
+     * @param string $id ID to mark as used
      * @return void
-     * @throws \InvalidArgumentException Se ID inválido
+     * @throws \InvalidArgumentException If ID is invalid
      */
     public function markIdAsUsed(string $id): void
     {
@@ -223,9 +223,9 @@ final class SDTRegistry
     }
 
     /**
-     * Retorna contagem de elementos registrados
+     * Returns count of registered elements
      * 
-     * @return int Número de elementos
+     * @return int Number of elements
      */
     public function count(): int
     {
@@ -233,7 +233,7 @@ final class SDTRegistry
     }
 
     /**
-     * Limpa todos os registros (útil para testes)
+     * Clears all registries (useful for testing)
      * 
      * @return void
      */
@@ -245,10 +245,10 @@ final class SDTRegistry
     }
 
     /**
-     * Retorna marcador de um elemento (v3.0)
+     * Returns element marker (v3.0)
      * 
-     * @param object $element Elemento PHPWord
-     * @return string|null Marcador ou null se não registrado
+     * @param object $element PHPWord Element
+     * @return string|null Marker or null if not registered
      */
     public function getMarkerForElement(object $element): ?string
     {
@@ -257,9 +257,9 @@ final class SDTRegistry
     }
 
     /**
-     * Retorna todos os marcadores registrados (v3.0)
+     * Returns all registered markers (v3.0)
      * 
-     * @return array<int, string> Mapa objectId → markerId
+     * @return array<int, string> Map objectId -> markerId
      */
     public function getAllMarkers(): array
     {
@@ -267,11 +267,11 @@ final class SDTRegistry
     }
 
     /**
-     * Retorna todas as configs registradas (v3.1)
+     * Returns all registered configs (v3.1)
      * 
-     * Útil para testes e debugging.
+     * Useful for testing and debugging.
      * 
-     * @return list<SDTConfig> Array de configs
+     * @return list<SDTConfig> Array of configs
      */
     public function getAllConfigs(): array
     {

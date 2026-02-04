@@ -10,7 +10,7 @@ use PhpOffice\PhpWord\Element\Table;
  * Unit tests for ElementIdentifier::generateTableHash()
  *
  * Tests UUID v5 generation for table identification
- * Introduced in v0.4.2 to replace MD5 hash with deterministic UUID
+ * Introduced to replace MD5 hash with deterministic UUID
  *
  * UUID v5 provides:
  * - Deterministic hashing (same table → same UUID)
@@ -18,7 +18,6 @@ use PhpOffice\PhpWord\Element\Table;
  * - Enables table matching in template injection
  *
  * @covers \MkGrow\ContentControl\ElementIdentifier::generateTableHash
- * @since 0.4.2
  */
 describe('ElementIdentifier::generateTableHash()', function (): void {
     it('generates UUID v5 format string', function (): void {

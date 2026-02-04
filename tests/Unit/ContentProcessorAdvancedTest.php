@@ -7,166 +7,135 @@ use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\Text;
 
 /**
- * Unit Tests for ContentProcessor Advanced Methods (Phase 3)
+ * Unit Tests for ContentProcessor Advanced Methods
  *
  * Tests appendContent(), removeContent(), setValue(), and removeAllControlContents()
  */
 describe('ContentProcessor Advanced Methods', function () {
-    beforeEach(function () {
-        // Helper function to create DOCX with SDT
-        $this->createDocxWithSdt = function (string $tag, string $content): string {
-            $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
+    
+    // Helper to create test file and cleanup
+    $runWithSdt = function(string $tag, string $content, callable $callback) {
+        $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
+        try {
+            createDocxWithSdtContent($tempFile, $tag, $content);
+            $callback($tempFile);
+        } finally {
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+        }
+    };
 
-            $zip = new ZipArchive();
-            $zip->open($tempFile, ZipArchive::CREATE);
+    describe('appendContent()', function () use ($runWithSdt) {
+        it('appends text element to existing content', function () use ($runWithSdt) {
+            $runWithSdt('test-tag', '<w:p><w:r><w:t>Original</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                
+                // Create text element to append
+                $section = (new PhpOffice\PhpWord\PhpWord())->addSection();
+                $textElement = $section->addText('Appended');
 
-            $documentXml = <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:sdt>
-            <w:sdtPr>
-                <w:tag w:val="{$tag}"/>
-            </w:sdtPr>
-            <w:sdtContent>
-                {$content}
-            </w:sdtContent>
-        </w:sdt>
-    </w:body>
-</w:document>
-XML;
+                $result = $processor->appendContent('test-tag', $textElement);
+                expect($result)->toBeTrue();
 
-            $zip->addFromString('word/document.xml', $documentXml);
-            $zip->close();
+                $processor->save();
 
-            return $tempFile;
-        };
-    });
+                // Verify content was appended
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-    describe('appendContent()', function () {
-        it('appends text element to existing content', function () {
-            $tempFile = ($this->createDocxWithSdt)('test-tag', '<w:p><w:r><w:t>Original</w:t></w:r></w:p>');
-
-            $processor = new ContentProcessor($tempFile);
-            
-            // Create text element to append
-            $section = (new PhpOffice\PhpWord\PhpWord())->addSection();
-            $textElement = $section->addText('Appended');
-
-            $result = $processor->appendContent('test-tag', $textElement);
-            expect($result)->toBeTrue();
-
-            $processor->save();
-
-            // Verify content was appended
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->toContain('Original');
-            expect($xml)->toContain('Appended');
-
-            unlink($tempFile);
+                expect($xml)->toContain('Original');
+                expect($xml)->toContain('Appended');
+            });
         });
 
-        it('returns false for non-existent tag', function () {
-            $tempFile = ($this->createDocxWithSdt)('test-tag', '<w:p><w:r><w:t>Text</w:t></w:r></w:p>');
+        it('returns false for non-existent tag', function () use ($runWithSdt) {
+            $runWithSdt('test-tag', '<w:p><w:r><w:t>Text</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                
+                $section = (new PhpOffice\PhpWord\PhpWord())->addSection();
+                $textElement = $section->addText('Test');
 
-            $processor = new ContentProcessor($tempFile);
-            
-            $section = (new PhpOffice\PhpWord\PhpWord())->addSection();
-            $textElement = $section->addText('Test');
-
-            $result = $processor->appendContent('non-existent', $textElement);
-            expect($result)->toBeFalse();
-
-            unset($processor); // Close ZIP via destructor
-            unlink($tempFile);
+                $result = $processor->appendContent('non-existent', $textElement);
+                expect($result)->toBeFalse();
+            });
         });
 
-        it('appends multiple elements sequentially', function () {
-            $tempFile = ($this->createDocxWithSdt)('list', '<w:p><w:r><w:t>Item 1</w:t></w:r></w:p>');
+        it('appends multiple elements sequentially', function () use ($runWithSdt) {
+            $runWithSdt('list', '<w:p><w:r><w:t>Item 1</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                
+                $section = (new PhpOffice\PhpWord\PhpWord())->addSection();
+                $processor->appendContent('list', $section->addText('Item 2'));
+                $processor->appendContent('list', $section->addText('Item 3'));
 
-            $processor = new ContentProcessor($tempFile);
-            
-            $section = (new PhpOffice\PhpWord\PhpWord())->addSection();
-            $processor->appendContent('list', $section->addText('Item 2'));
-            $processor->appendContent('list', $section->addText('Item 3'));
+                $processor->save();
 
-            $processor->save();
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->toContain('Item 1');
-            expect($xml)->toContain('Item 2');
-            expect($xml)->toContain('Item 3');
-
-            unlink($tempFile);
+                expect($xml)->toContain('Item 1');
+                expect($xml)->toContain('Item 2');
+                expect($xml)->toContain('Item 3');
+            });
         });
     });
 
-    describe('removeContent()', function () {
-        it('removes all content from SDT', function () {
-            $tempFile = ($this->createDocxWithSdt)('test-tag', '<w:p><w:r><w:t>Content to remove</w:t></w:r></w:p>');
+    describe('removeContent()', function () use ($runWithSdt) {
+        it('removes all content from SDT', function () use ($runWithSdt) {
+            $runWithSdt('test-tag', '<w:p><w:r><w:t>Content to remove</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $result = $processor->removeContent('test-tag');
 
-            $processor = new ContentProcessor($tempFile);
-            $result = $processor->removeContent('test-tag');
+                expect($result)->toBeTrue();
 
-            expect($result)->toBeTrue();
+                $processor->save();
 
-            $processor->save();
+                // Verify content was removed
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-            // Verify content was removed
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->not->toContain('Content to remove');
-            expect($xml)->toContain('<w:sdtContent/>'); // Empty but present
-
-            unlink($tempFile);
+                expect($xml)->not->toContain('Content to remove');
+                expect($xml)->toContain('<w:sdtContent/>'); // Empty but present
+            });
         });
 
-        it('returns false for non-existent tag', function () {
-            $tempFile = ($this->createDocxWithSdt)('test-tag', '<w:p><w:r><w:t>Text</w:t></w:r></w:p>');
+        it('returns false for non-existent tag', function () use ($runWithSdt) {
+            $runWithSdt('test-tag', '<w:p><w:r><w:t>Text</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $result = $processor->removeContent('non-existent');
 
-            $processor = new ContentProcessor($tempFile);
-            $result = $processor->removeContent('non-existent');
-
-            expect($result)->toBeFalse();
-
-            unset($processor); // Close ZIP via destructor
-            unlink($tempFile);
+                expect($result)->toBeFalse();
+            });
         });
 
-        it('can remove and re-add content', function () {
-            $tempFile = ($this->createDocxWithSdt)('test-tag', '<w:p><w:r><w:t>Original</w:t></w:r></w:p>');
+        it('can remove and re-add content', function () use ($runWithSdt) {
+            $runWithSdt('test-tag', '<w:p><w:r><w:t>Original</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $processor->removeContent('test-tag');
+                $processor->replaceContent('test-tag', 'New Content');
 
-            $processor = new ContentProcessor($tempFile);
-            $processor->removeContent('test-tag');
-            $processor->replaceContent('test-tag', 'New Content');
+                $processor->save();
 
-            $processor->save();
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->not->toContain('Original');
-            expect($xml)->toContain('New Content');
-
-            unlink($tempFile);
+                expect($xml)->not->toContain('Original');
+                expect($xml)->toContain('New Content');
+            });
         });
     });
 
-    describe('setValue()', function () {
-        it('replaces text while preserving formatting', function () {
+    describe('setValue()', function () use ($runWithSdt) {
+        it('replaces text while preserving formatting', function () use ($runWithSdt) {
             $content = <<<XML
 <w:p>
     <w:r>
@@ -178,30 +147,28 @@ XML;
     </w:r>
 </w:p>
 XML;
-            $tempFile = ($this->createDocxWithSdt)('formatted-text', $content);
+            $runWithSdt('formatted-text', $content, function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $result = $processor->setValue('formatted-text', 'New Text');
 
-            $processor = new ContentProcessor($tempFile);
-            $result = $processor->setValue('formatted-text', 'New Text');
+                expect($result)->toBeTrue();
 
-            expect($result)->toBeTrue();
+                $processor->save();
 
-            $processor->save();
+                // Verify text changed but formatting preserved
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-            // Verify text changed but formatting preserved
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->not->toContain('Old Text');
-            expect($xml)->toContain('New Text');
-            expect($xml)->toContain('<w:b/>'); // Bold preserved
-            expect($xml)->toContain('FF0000'); // Color preserved
-
-            unlink($tempFile);
+                expect($xml)->not->toContain('Old Text');
+                expect($xml)->toContain('New Text');
+                expect($xml)->toContain('<w:b/>'); // Bold preserved
+                expect($xml)->toContain('FF0000'); // Color preserved
+            });
         });
 
-        it('consolidates multiple text nodes into first', function () {
+        it('consolidates multiple text nodes into first', function () use ($runWithSdt) {
             $content = <<<XML
 <w:p>
     <w:r><w:t>Part 1</w:t></w:r>
@@ -209,93 +176,64 @@ XML;
     <w:r><w:t>Part 3</w:t></w:r>
 </w:p>
 XML;
-            $tempFile = ($this->createDocxWithSdt)('multi-text', $content);
+            $runWithSdt('multi-text', $content, function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $processor->setValue('multi-text', 'Consolidated');
 
-            $processor = new ContentProcessor($tempFile);
-            $processor->setValue('multi-text', 'Consolidated');
+                $processor->save();
 
-            $processor->save();
+                // Verify only one text node remains
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-            // Verify only one text node remains
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
+                $dom = new DOMDocument();
+                $dom->loadXML($xml);
+                $xpath = new DOMXPath($dom);
+                $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
 
-            $dom = new DOMDocument();
-            $dom->loadXML($xml);
-            $xpath = new DOMXPath($dom);
-            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
-
-            $textNodes = $xpath->query('//w:sdt//w:t');
-            expect($textNodes->length)->toBe(1);
-            expect($textNodes->item(0)->textContent)->toBe('Consolidated');
-
-            unlink($tempFile);
+                $textNodes = $xpath->query('//w:sdt//w:t');
+                expect($textNodes->length)->toBe(1);
+                expect($textNodes->item(0)->textContent)->toBe('Consolidated');
+            });
         });
 
-        it('falls back to replaceContent if no text nodes exist', function () {
-            $tempFile = ($this->createDocxWithSdt)('empty-sdt', '');
+        it('falls back to replaceContent if no text nodes exist', function () use ($runWithSdt) {
+            $runWithSdt('empty-sdt', '', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $result = $processor->setValue('empty-sdt', 'New Text');
 
-            $processor = new ContentProcessor($tempFile);
-            $result = $processor->setValue('empty-sdt', 'New Text');
+                expect($result)->toBeTrue();
 
-            expect($result)->toBeTrue();
+                $processor->save();
 
-            $processor->save();
+                $zip = new ZipArchive();
+                $zip->open($tempFile);
+                $xml = $zip->getFromName('word/document.xml');
+                $zip->close();
 
-            $zip = new ZipArchive();
-            $zip->open($tempFile);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->toContain('New Text');
-
-            unlink($tempFile);
+                expect($xml)->toContain('New Text');
+            });
         });
 
-        it('returns false for non-existent tag', function () {
-            $tempFile = ($this->createDocxWithSdt)('test-tag', '<w:p><w:r><w:t>Text</w:t></w:r></w:p>');
+        it('returns false for non-existent tag', function () use ($runWithSdt) {
+            $runWithSdt('test-tag', '<w:p><w:r><w:t>Text</w:t></w:r></w:p>', function($tempFile) {
+                $processor = new ContentProcessor($tempFile);
+                $result = $processor->setValue('non-existent', 'Test');
 
-            $processor = new ContentProcessor($tempFile);
-            $result = $processor->setValue('non-existent', 'Test');
-
-            expect($result)->toBeFalse();
-
-            unset($processor); // Close ZIP via destructor
-            unlink($tempFile);
+                expect($result)->toBeFalse();
+            });
         });
     });
 
     describe('removeAllControlContents()', function () {
         it('removes all SDT contents from document', function () {
             $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
-
-            $zip = new ZipArchive();
-            $zip->open($tempFile, ZipArchive::CREATE);
-
-            $documentXml = <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:sdt>
-            <w:sdtPr><w:tag w:val="sdt1"/></w:sdtPr>
-            <w:sdtContent><w:p><w:r><w:t>Content 1</w:t></w:r></w:p></w:sdtContent>
-        </w:sdt>
-        <w:sdt>
-            <w:sdtPr><w:tag w:val="sdt2"/></w:sdtPr>
-            <w:sdtContent><w:p><w:r><w:t>Content 2</w:t></w:r></w:p></w:sdtContent>
-        </w:sdt>
-        <w:sdt>
-            <w:sdtPr><w:tag w:val="sdt3"/></w:sdtPr>
-            <w:sdtContent><w:p><w:r><w:t>Content 3</w:t></w:r></w:p></w:sdtContent>
-        </w:sdt>
-    </w:body>
-</w:document>
-XML;
-
-            $zip->addFromString('word/document.xml', $documentXml);
-            $zip->close();
+            $ids = [100, 101, 102];
+            $tags = ['sdt1', 'sdt2', 'sdt3'];
+            
+            createDocxWithMultipleSdts($tempFile, $tags);
 
             $processor = new ContentProcessor($tempFile);
             $count = $processor->removeAllControlContents();
@@ -305,37 +243,21 @@ XML;
             $processor->save();
 
             // Verify all contents removed
+            $zip = new ZipArchive();
             $zip->open($tempFile);
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
 
-            expect($xml)->not->toContain('Content 1');
-            expect($xml)->not->toContain('Content 2');
-            expect($xml)->not->toContain('Content 3');
+            expect($xml)->not->toContain('Content for sdt1');
+            expect($xml)->not->toContain('Content for sdt2');
+            expect($xml)->not->toContain('Content for sdt3');
 
-            unlink($tempFile);
+            if(file_exists($tempFile)) unlink($tempFile);
         });
 
         it('adds document protection when block=true', function () {
             $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
-
-            $zip = new ZipArchive();
-            $zip->open($tempFile, ZipArchive::CREATE);
-
-            $documentXml = <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:sdt>
-            <w:sdtPr><w:tag w:val="test"/></w:sdtPr>
-            <w:sdtContent><w:p><w:r><w:t>Test</w:t></w:r></w:p></w:sdtContent>
-        </w:sdt>
-    </w:body>
-</w:document>
-XML;
-
-            $zip->addFromString('word/document.xml', $documentXml);
-            $zip->close();
+            createDocxWithSdtContent($tempFile, 'test', '<w:p><w:r><w:t>Test</w:t></w:r></w:p>');
 
             $processor = new ContentProcessor($tempFile);
             $count = $processor->removeAllControlContents(true);
@@ -345,6 +267,7 @@ XML;
             $processor->save();
 
             // Verify settings.xml was created with protection
+            $zip = new ZipArchive();
             $zip->open($tempFile);
             $settingsXml = $zip->getFromName('word/settings.xml');
             $zip->close();
@@ -358,21 +281,15 @@ XML;
 
         it('returns 0 for document with no SDTs', function () {
             $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
-
-            $zip = new ZipArchive();
-            $zip->open($tempFile, ZipArchive::CREATE);
-
-            $documentXml = <<<XML
+            createDocxFromXml($tempFile, <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
     <w:body>
         <w:p><w:r><w:t>Regular text</w:t></w:r></w:p>
     </w:body>
 </w:document>
-XML;
-
-            $zip->addFromString('word/document.xml', $documentXml);
-            $zip->close();
+XML
+            );
 
             $processor = new ContentProcessor($tempFile);
             $count = $processor->removeAllControlContents();

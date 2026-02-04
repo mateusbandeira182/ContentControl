@@ -3,7 +3,7 @@
 use MkGrow\ContentControl\Assert;
 
 /**
- * Helper para retornar valores como mixed (evita PHPStan narrowing)
+ * Helper to return values as mixed (avoids PHPStan narrowing)
  * 
  * @template T
  * @param T $value

@@ -12,7 +12,7 @@ use ZipArchive;
  * Tests the replaceGroupContent() method which allows replacing GROUP-type
  * Content Controls with complex structures containing nested SDTs.
  *
- * @since 0.4.2
+
  */
 
 /**

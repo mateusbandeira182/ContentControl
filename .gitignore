@@ -5,6 +5,7 @@ composer.lock
 .PLANS
 .idea
 .vscode
+.antigravity
 .github/prompts
 .github/copilot-instructions.md
 .review

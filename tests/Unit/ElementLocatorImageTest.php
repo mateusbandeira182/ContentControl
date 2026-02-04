@@ -11,11 +11,11 @@ use PhpOffice\PhpWord\Element\Text;
 beforeEach(function () {
     ElementIdentifier::clearCache();
     
-    // Garantir que a imagem de teste existe
+    // Ensure that test image exists
     TestImageHelper::ensureTestImageExists();
 });
 
-test('localizes Image element by VML pict', function () {
+test('locates Image element by VML pict', function () {
     $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -171,7 +171,7 @@ XML;
     expect($found)->not->toBeNull();
 });
 
-test('localizes inline images with centered alignment', function () {
+test('locates inline images with centered alignment', function () {
     $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"

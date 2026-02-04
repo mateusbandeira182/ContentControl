@@ -5,26 +5,26 @@ declare(strict_types=1);
 namespace MkGrow\ContentControl;
 
 /**
- * Value Object para configuração de Content Control (SDT)
+ * Value Object for Content Control (SDT) configuration
  * 
- * Classe imutável que encapsula todas as propriedades de um
- * Structured Document Tag conforme ISO/IEC 29500-1:2016 §17.5.2
+ * Immutable class encapsulating all properties of a
+ * Structured Document Tag according to ISO/IEC 29500-1:2016 §17.5.2
  * 
  * @since 2.0.0
  */
 final class SDTConfig
 {
     /**
-     * Cria configuração imutável de Content Control
+     * Creates immutable Content Control configuration
      * 
-     * @param string $id Identificador único (8 dígitos: 10000000-99999999)
-     * @param string $alias Nome amigável exibido no Word (max 255 chars)
-     * @param string $tag Tag de metadados para identificação programática
-     * @param string $type Tipo do controle (TYPE_RICH_TEXT, TYPE_PLAIN_TEXT, etc)
-     * @param string $lockType Nível de bloqueio (LOCK_NONE, LOCK_SDT_LOCKED, etc)
-     * @param bool $inlineLevel Se true, injeta SDT dentro de célula; se false, no nível de body
+     * @param string $id Unique Identifier (8 digits: 10000000-99999999)
+     * @param string $alias Friendly name displayed in Word (max 255 chars)
+     * @param string $tag Metadata tag for programmatic identification
+     * @param string $type Control type (TYPE_RICH_TEXT, TYPE_PLAIN_TEXT, etc)
+     * @param string $lockType Lock level (LOCK_NONE, LOCK_SDT_LOCKED, etc)
+     * @param bool $inlineLevel If true, injects SDT inside cell; if false, at body level
      * 
-     * @throws \InvalidArgumentException Se algum parâmetro for inválido
+     * @throws \InvalidArgumentException If any parameter is invalid
      */
     public function __construct(
         public readonly string $id,
@@ -42,7 +42,7 @@ final class SDTConfig
     }
 
     /**
-     * Cria SDTConfig a partir de array de opções
+     * Creates SDTConfig from options array
      * 
      * @param array{
      *     id?: string,
@@ -51,10 +51,10 @@ final class SDTConfig
      *     type?: string,
      *     lockType?: string,
      *     inlineLevel?: bool
-     * } $options Configurações do Content Control
+     * } $options Content Control Configuration
      * 
      * @return self
-     * @throws \InvalidArgumentException Se opções inválidas
+     * @throws \InvalidArgumentException If options are invalid
      * 
      * @example
      * ```php
@@ -80,11 +80,11 @@ final class SDTConfig
     }
 
     /**
-     * Retorna nova instância com ID diferente (imutabilidade)
+     * Returns new instance with different ID (immutability)
      * 
-     * @param string $id Novo identificador
-     * @return self Nova instância com ID atualizado
-     * @throws \InvalidArgumentException Se ID inválido
+     * @param string $id New identifier
+     * @return self New instance with updated ID
+     * @throws \InvalidArgumentException If ID is invalid
      */
     public function withId(string $id): self
     {
@@ -99,13 +99,13 @@ final class SDTConfig
     }
 
     /**
-     * Retorna nova instância com inlineLevel diferente (imutabilidade)
+     * Returns new instance with different inlineLevel (immutability)
      * 
-     * Utilizado para alternar entre injeção inline-level (dentro de células)
-     * e block-level (no nível de body do documento).
+     * Used to toggle between inline-level injection (inside cells)
+     * and block-level (document body level).
      * 
-     * @param bool $inlineLevel Se true, injeta SDT dentro de célula
-     * @return self Nova instância com inlineLevel atualizado
+     * @param bool $inlineLevel If true, injects SDT inside cell
+     * @return self New instance with updated inlineLevel
      * 
      * @example
      * ```php
@@ -126,11 +126,11 @@ final class SDTConfig
     }
 
     /**
-     * Retorna nova instância com alias diferente (imutabilidade)
+     * Returns new instance with different alias (immutability)
      * 
-     * @param string $alias Novo nome amigável
-     * @return self Nova instância com alias atualizado
-     * @throws \InvalidArgumentException Se alias inválido
+     * @param string $alias New friendly name
+     * @return self New instance with updated alias
+     * @throws \InvalidArgumentException If alias is invalid
      */
     public function withAlias(string $alias): self
     {
@@ -145,11 +145,11 @@ final class SDTConfig
     }
 
     /**
-     * Retorna nova instância com tag diferente (imutabilidade)
+     * Returns new instance with different tag (immutability)
      * 
-     * @param string $tag Nova tag de metadados
-     * @return self Nova instância com tag atualizada
-     * @throws \InvalidArgumentException Se tag inválida
+     * @param string $tag New metadata tag
+     * @return self New instance with updated tag
+     * @throws \InvalidArgumentException If tag is invalid
      */
     public function withTag(string $tag): self
     {
@@ -164,14 +164,14 @@ final class SDTConfig
     }
 
     /**
-     * Valida e normaliza o ID do Content Control
+     * Validates and normalizes Content Control ID
      * 
-     * O ID deve ser um número de 8 dígitos entre 10000000 e 99999999.
+     * ID must be an 8-digit number between 10000000 and 99999999.
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.14
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.14
      * 
-     * @param string $id Valor a ser validado
-     * @throws \InvalidArgumentException Se ID inválido
+     * @param string $id Value to validate
+     * @throws \InvalidArgumentException If ID is invalid
      * @return void
      */
     private function validateId(string $id): void
@@ -180,24 +180,24 @@ final class SDTConfig
     }
 
     /**
-     * Valida o valor do alias
+     * Validates alias value
      * 
-     * O alias é um nome amigável exibido no Word. Esta validação garante:
-     * - Comprimento máximo de 255 caracteres (limite prático para exibição)
-     * - Não contém caracteres de controle (0x00-0x1F, 0x7F-0x9F)
+     * Alias is a friendly name displayed in Word. This validation ensures:
+     * - Maximum length of 255 characters (practical limit for display)
+     * - No control characters (0x00-0x1F, 0x7F-0x9F)
      * 
-     * @param string $alias Valor a ser validado
-     * @throws \InvalidArgumentException Se alias inválido
+     * @param string $alias Value to validate
+     * @throws \InvalidArgumentException If alias is invalid
      * @return void
      */
     private function validateAlias(string $alias): void
     {
-        // Permitir string vazia
+        // Allow empty string
         if ($alias === '') {
             return;
         }
 
-        // Limite de comprimento razoável para exibição
+        // Reasonable length limit for display
         $length = mb_strlen($alias, 'UTF-8');
         if ($length > 255) {
             throw new \InvalidArgumentException(
@@ -205,17 +205,17 @@ final class SDTConfig
             );
         }
 
-        // Verificar caracteres de controle que podem causar problemas
-        // Bloqueia C0 controls (0x00-0x1F) e C1 controls (0x7F-0x9F)
+        // Check for control characters that can cause issues
+        // Blocks C0 controls (0x00-0x1F) and C1 controls (0x7F-0x9F)
         if (preg_match('/[\x00-\x1F\x7F-\x9F]/u', $alias) === 1) {
-            // Sanitizar alias para exibição segura
+            // Sanitize alias for safe display
             $sanitized = addcslashes($alias, "\x00..\x1F\x7F..\x9F");
             throw new \InvalidArgumentException(
                 sprintf('SDTConfig: Alias "%s" must not contain control characters', $sanitized)
             );
         }
 
-        // Verificar caracteres reservados XML que podem causar problemas de parsing
+        // Check for XML reserved characters which may cause parsing issues
         if (preg_match('/[<>&"\']/', $alias) === 1) {
             throw new \InvalidArgumentException(
                 sprintf('SDTConfig: Alias "%s" contains XML reserved characters', $alias)
@@ -224,25 +224,25 @@ final class SDTConfig
     }
 
     /**
-     * Valida o valor da tag
+     * Validates tag value
      * 
-     * A tag é um identificador de metadados para uso programático. Esta validação garante:
-     * - Comprimento máximo de 255 caracteres
-     * - Apenas caracteres alfanuméricos, hífens, underscores e pontos
-     * - Deve começar com letra ou underscore (convenção de identificadores)
+     * Tag is a metadata identifier for programmatic use. This validation ensures:
+     * - Maximum length of 255 characters
+     * - Only alphanumeric characters, hyphens, underscores and periods
+     * - Must start with a letter or underscore (identifier convention)
      * 
-     * @param string $tag Valor a ser validado
-     * @throws \InvalidArgumentException Se tag inválida
+     * @param string $tag Value to validate
+     * @throws \InvalidArgumentException If tag is invalid
      * @return void
      */
     private function validateTag(string $tag): void
     {
-        // Permitir string vazia
+        // Allow empty string
         if ($tag === '') {
             return;
         }
 
-        // Limite de comprimento
+        // Length limit
         $length = mb_strlen($tag, 'UTF-8');
         if ($length > 255) {
             throw new \InvalidArgumentException(
@@ -250,7 +250,7 @@ final class SDTConfig
             );
         }
 
-        // Tag deve seguir padrão de identificador: começa com letra ou _, depois alfanumérico, -, _, .
+        // Tag must follow identifier pattern: starts with letter or _, then alphanumeric, -, _, .
         if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_.-]*$/', $tag) !== 1) {
             throw new \InvalidArgumentException(
                 sprintf('SDTConfig: Tag "%s" must start with a letter or underscore and contain only alphanumeric characters, hyphens, underscores, and periods', $tag)
@@ -259,10 +259,10 @@ final class SDTConfig
     }
 
     /**
-     * Valida tipo do Content Control
+     * Validates Content Control Type
      * 
-     * @param string $type Valor a ser validado
-     * @throws \InvalidArgumentException Se tipo inválido
+     * @param string $type Value to validate
+     * @throws \InvalidArgumentException If type is invalid
      * @return void
      */
     private function validateType(string $type): void
@@ -286,10 +286,10 @@ final class SDTConfig
     }
 
     /**
-     * Valida nível de bloqueio do Content Control
+     * Validates Content Control Lock Level
      * 
-     * @param string $lockType Valor a ser validado
-     * @throws \InvalidArgumentException Se lockType inválido
+     * @param string $lockType Value to validate
+     * @throws \InvalidArgumentException If lockType is invalid
      * @return void
      */
     private function validateLockType(string $lockType): void

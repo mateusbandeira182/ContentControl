@@ -5,43 +5,43 @@ declare(strict_types=1);
 namespace MkGrow\ContentControl;
 
 /**
- * Helper class para validação e geração de IDs de Content Control
+ * Helper class for Content Control ID validation and generation
  * 
- * Centraliza a lógica de validação de IDs para evitar duplicação
- * entre SDTConfig e SDTRegistry.
+ * Centralizes ID validation logic to avoid duplication
+ * between SDTConfig and SDTRegistry.
  * 
- * IDs devem ser números de 8 dígitos no range 10000000-99999999
- * conforme ISO/IEC 29500-1:2016 §17.5.2.14
+ * IDs must be 8-digit numbers in the range 10000000-99999999
+ * according to ISO/IEC 29500-1:2016 §17.5.2.14
  * 
  * @since 2.0.0
  */
 final class IDValidator
 {
     /**
-     * ID mínimo permitido (8 dígitos)
+     * Minimum allowed ID (8 digits)
      */
     private const MIN_ID = 10000000;
 
     /**
-     * ID máximo permitido (8 dígitos)
+     * Maximum allowed ID (8 digits)
      */
     private const MAX_ID = 99999999;
 
     /**
-     * Valida formato e range de um ID
+     * Validates ID format and range
      * 
-     * @param string $id ID a ser validado
+     * @param string $id ID to validate
      * @return void
-     * @throws \InvalidArgumentException Se ID inválido
+     * @throws \InvalidArgumentException If ID is invalid
      */
     public static function validate(string $id): void
     {
-        // Permitir string vazia (será preenchido pelo Registry)
+        // Allow empty string (will be filled by Registry)
         if ($id === '') {
             return;
         }
 
-        // Validar formato (8 dígitos)
+        // Validate format (8 digits)
         if (preg_match('/^\d{8}$/', $id) !== 1) {
             throw new \InvalidArgumentException(
                 sprintf(
@@ -51,7 +51,7 @@ final class IDValidator
             );
         }
 
-        // Validar range (10000000 - 99999999)
+        // Validate range (10000000 - 99999999)
         $idInt = (int) $id;
         if ($idInt < self::MIN_ID || $idInt > self::MAX_ID) {
             throw new \InvalidArgumentException(
@@ -66,9 +66,9 @@ final class IDValidator
     }
 
     /**
-     * Gera ID aleatório no range válido
+     * Generates random ID in valid range
      * 
-     * @return string ID de 8 dígitos (10000000-99999999)
+     * @return string 8-digit ID (10000000-99999999)
      */
     public static function generateRandom(): string
     {
@@ -76,7 +76,7 @@ final class IDValidator
     }
 
     /**
-     * Retorna o ID mínimo permitido
+     * Returns minimum allowed ID
      * 
      * @return int
      */
@@ -86,7 +86,7 @@ final class IDValidator
     }
 
     /**
-     * Retorna o ID máximo permitido
+     * Returns maximum allowed ID
      * 
      * @return int
      */
