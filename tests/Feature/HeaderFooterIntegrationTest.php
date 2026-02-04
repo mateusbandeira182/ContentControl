@@ -62,7 +62,7 @@ test('wraps Text in Header with Content Control', function () {
     expect(substr_count($headerXml, 'Company Logo'))->toBe(1);
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('wraps Text in Footer with Content Control', function () {
@@ -112,7 +112,7 @@ test('wraps Text in Footer with Content Control', function () {
     expect(substr_count($footerXml, 'Confidential Information'))->toBe(1);
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('processes body, header, and footer simultaneously', function () {
@@ -176,7 +176,7 @@ test('processes body, header, and footer simultaneously', function () {
         ->and($footerXml)->toContain('Footer Content');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('wraps Table in Header with Content Control', function () {
@@ -223,7 +223,7 @@ test('wraps Table in Header with Content Control', function () {
     expect($headerXml)->toContain('<w:sdtContent><w:tbl>');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('wraps Image in Footer with Content Control', function () {
@@ -277,8 +277,8 @@ test('wraps Image in Footer with Content Control', function () {
         ->and($footerXml)->toContain('<w:pict>');  // VML image
     
     $zip->close();
-    unlink($tempFile);
-    unlink($tempImage);
+    safeUnlink($tempFile);
+    safeUnlink($tempImage);
 });
 
 test('handles multiple sections with independent headers and footers', function () {
@@ -351,7 +351,7 @@ test('handles multiple sections with independent headers and footers', function 
     }
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('mixed content: Text in body, Table in header, Image in footer', function () {
@@ -430,8 +430,8 @@ test('mixed content: Text in body, Table in header, Image in footer', function (
         ->and($footerXml)->toContain('<w:picture/>');
     
     $zip->close();
-    unlink($tempFile);
-    unlink($tempImage);
+    safeUnlink($tempFile);
+    safeUnlink($tempImage);
 });
 
 test('validates OOXML structure after SDT injection in headers', function () {
@@ -476,7 +476,7 @@ test('validates OOXML structure after SDT injection in headers', function () {
     expect($loaded)->toBeTrue();
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('does not process empty headers or footers', function () {
@@ -511,7 +511,7 @@ test('does not process empty headers or footers', function () {
     expect($headerXml)->not->toContain('<w:sdt>');
     
     $zip->close();
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });
 
 test('performance: processes 100 elements across body, header, and footer efficiently', function () {
@@ -552,5 +552,5 @@ test('performance: processes 100 elements across body, header, and footer effici
     // Performance: Should complete in < 500ms for 100 elements across 3 files
     expect($elapsed)->toBeLessThan(500);
     
-    unlink($tempFile);
+    safeUnlink($tempFile);
 });

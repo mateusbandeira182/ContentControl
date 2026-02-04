@@ -6,6 +6,7 @@ namespace MkGrow\ContentControl\Bridge;
 
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ContentProcessor;
+use MkGrow\ContentControl\ElementIdentifier;
 use MkGrow\ContentControl\Exception\ContentControlException;
 use PhpOffice\PhpWord\Element\Table;
 
@@ -66,6 +67,26 @@ final class TableBuilder
     private ?string $tempFile = null;
 
     /**
+     * Current PHPWord Table instance for fluent API
+     *
+     * Created on first addRow() call. Null when using legacy createTable() API.
+     *
+     * @var Table|null
+     * @since 0.4.2
+     */
+    private ?Table $table = null;
+
+    /**
+     * Pending table-level Content Control configuration
+     *
+     * Stored when addContentControl() is called, applied before extraction/injection.
+     *
+     * @var array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string}|null
+     * @since 0.4.2
+     */
+    private ?array $tableSdtConfig = null;
+
+    /**
      * TableBuilder Constructor
      *
      * Initializes the builder with a ContentControl instance.
@@ -116,6 +137,264 @@ final class TableBuilder
     public function getContentControl(): ContentControl
     {
         return $this->contentControl;
+    }
+
+    /**
+     * Register Content Control for an element (internal use by fluent API)
+     *
+     * This method is called internally by CellBuilder to register SDTs
+     * for elements added via the fluent interface. It delegates to
+     * ContentControl::addContentControl() for the actual registration.
+     *
+     * @internal Used by CellBuilder, not part of public API
+     *
+     * @param \PhpOffice\PhpWord\Element\AbstractElement $element The element to wrap with SDT
+     * @param array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string, inlineLevel?: bool} $config SDT configuration
+     * @return void
+     *
+     * @since 0.4.2
+     */
+    public function registerSdt(\PhpOffice\PhpWord\Element\AbstractElement $element, array $config): void
+    {
+        $this->contentControl->addContentControl($element, $config);
+    }
+
+    /**
+     * Add row to table with fluent interface
+     *
+     * Creates a new row in the table and returns a RowBuilder for configuring cells.
+     * If the table doesn't exist yet, it will be created automatically.
+     *
+     * This is part of the fluent API introduced in v0.4.2, providing a more
+     * developer-friendly alternative to the legacy createTable() method.
+     *
+     * @param int|null $height Optional row height in twips (1/20 point)
+     *                         Common values: 360 twips (0.25 inch), 720 twips (0.5 inch)
+     * @param array<string, mixed> $style Optional row style configuration
+     *                                     Supported properties (PhpWord Row style):
+     *                                     - 'tblHeader': bool - Repeat as header row
+     *                                     - 'cantSplit': bool - Keep row together on page
+     *                                     - 'exactHeight': bool - Use exact height vs minimum
+     *
+     * @return RowBuilder Row builder for chaining cell configuration
+     *
+     * @since 0.4.2
+     *
+     * @example Basic usage
+     * ```php
+     * $builder = new TableBuilder();
+     * $builder->addRow()
+     *     ->addCell(3000)->addText('Name')->end()
+     *     ->addCell(5000)->addText('Description')->end()
+     *     ->end();
+     * ```
+     *
+     * @example With row styling
+     * ```php
+     * $builder->addRow(720, ['tblHeader' => true])
+     *     ->addCell(3000)->addText('Column 1')->end()
+     *     ->addCell(3000)->addText('Column 2')->end()
+     *     ->end();
+     * ```
+     */
+    public function addRow(?int $height = null, array $style = []): RowBuilder
+    {
+        // Lazy create table on first addRow() call
+        if ($this->table === null) {
+            $section = $this->contentControl->addSection();
+            $this->table = $section->addTable();
+        }
+
+        $row = $this->table->addRow($height, $style);
+        return new RowBuilder($row, $this);
+    }
+
+    /**
+     * Add Content Control to entire table
+     *
+     * Wraps the table with a GROUP SDT. The configuration is stored and applied
+     * when injectInto() is called. This is primarily intended for template injection workflows.
+     *
+     * **Important:** Table-level SDTs via addContentControl() are only reliably applied
+     * when using injectInto(). For direct ContentControl::save(), the timing of SDT application
+     * may conflict with cell-level SDTs. This limitation will be addressed in a future version.
+     *
+     * This allows creating a table-level SDT that contains all cell SDTs,
+     * useful for template scenarios where the entire table needs to be replaceable.
+     *
+     * @param array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string} $config SDT configuration
+     *                                                                                                    - tag: string (required for injectInto)
+     *                                                                                                    - alias: string (optional, display name)
+     *                                                                                                    - type: string (optional, defaults to TYPE_GROUP)
+     *                                                                                                    - lockType: string (optional, defaults to LOCK_NONE)
+     *
+     * @return self For method chaining
+     *
+     * @since 0.4.2
+     *
+     * @example
+     * ```php
+     * $builder = new TableBuilder();
+     * $builder->addContentControl(['tag' => 'invoice-table', 'alias' => 'Invoice Items'])
+     *     ->addRow()
+     *         ->addCell(3000)->addText('Product')->end()
+     *         ->addCell(2000)->addText('Price')->end()
+     *         ->end();
+     * 
+     * // Use with injectInto() for reliable table-level SDT
+     * $processor = new ContentProcessor('template.docx');
+     * $builder->injectInto($processor, 'invoice-table');
+     * $processor->save('output.docx');
+     * ```
+     */
+    public function addContentControl(array $config): self
+    {
+        $this->tableSdtConfig = $config;
+        return $this;
+    }
+
+    /**
+     * Inject table into ContentProcessor template
+     *
+     * Simplified injection workflow that:
+     * 1. Applies table-level SDT if configured
+     * 2. Saves table to temporary file
+     * 3. Extracts table XML with nested SDTs
+     * 4. Replaces target SDT in template using the existing injectTable() logic
+     *
+     * This is a convenience method that wraps the existing inject workflow but
+     * works with ContentProcessor instead of file paths.
+     *
+     * @param ContentProcessor $processor Template processor with target SDT
+     * @param string $targetTag Tag of SDT to replace in template
+     *
+     * @return void
+     *
+     * @throws ContentControlException If table not created, extraction fails, or SDT not found
+     *
+     * @since 0.4.2
+     *
+     * @example
+     * ```php
+     * $builder = new TableBuilder();
+     * $builder->addRow()
+     *     ->addCell(3000)->addText('Product A')->end()
+     *     ->addCell(2000)->addText('$99.99')->end()
+     *     ->end();
+     *
+     * $processor = new ContentProcessor('template.docx');
+     * $builder->injectInto($processor, 'invoice-items');
+     * $processor->save('output.docx');
+     * ```
+     */
+    public function injectInto(ContentProcessor $processor, string $targetTag): void
+    {
+        if ($this->table === null) {
+            throw new ContentControlException(
+                'Cannot inject table: no table created. Call addRow() first to create a table.'
+            );
+        }
+
+        // Apply pending table-level SDT if not yet applied
+        // (This handles edge case where user calls injectInto() without creating rows first,
+        // though that would be unusual since $table is null without rows)
+        if ($this->tableSdtConfig !== null) {
+            $this->contentControl->addContentControl($this->table, $this->tableSdtConfig);
+            $this->tableSdtConfig = null;
+        }
+
+        // Save to temp file and extract XML
+        $tempPath = $this->getTempFilePath();
+        $this->contentControl->save($tempPath);
+
+        $tableXml = $this->extractTableXmlWithSdts($tempPath, $this->table);
+
+        // Use ContentProcessor to inject
+        // We need to use internal DOM manipulation like injectTable() does
+        // because replaceContent() escapes XML strings
+        $this->injectTableXmlIntoProcessor($processor, $targetTag, $tableXml);
+
+        // Cleanup
+        if (file_exists($tempPath)) {
+            unlink($tempPath);
+        }
+    }
+
+    /**
+     * Inject table XML into ContentProcessor using DOM manipulation
+     *
+     * Internal method that replicates the DOM injection logic from injectTable()
+     * but works with ContentProcessor instance instead of file paths.
+     *
+     * @param ContentProcessor $processor Template processor
+     * @param string $targetTag SDT tag to replace
+     * @param string $tableXml Extracted table XML
+     *
+     * @return void
+     *
+     * @throws ContentControlException If SDT not found or injection fails
+     *
+     * @since 0.4.2
+     */
+    private function injectTableXmlIntoProcessor(
+        ContentProcessor $processor,
+        string $targetTag,
+        string $tableXml
+    ): void {
+        // Find the SDT element (returns ['sdt' => DOMElement, 'dom' => DOMDocument, 'file' => string])
+        $result = $processor->findSdt($targetTag);
+        
+        if ($result === null) {
+            throw new ContentControlException(
+                "SDT with tag '{$targetTag}' not found in template"
+            );
+        }
+
+        $sdtElement = $result['sdt'];
+        $doc = $result['dom'];
+        $filePath = $result['file']; // Use the actual file path from search result
+
+        // Find w:sdtContent
+        $xpath = $processor->createXPathForDom($doc);
+        $sdtContentNodes = $xpath->query('.//w:sdtContent', $sdtElement);
+        
+        if ($sdtContentNodes === false || $sdtContentNodes->length === 0) {
+            throw new ContentControlException(
+                "SDT '{$targetTag}' has no w:sdtContent element"
+            );
+        }
+
+        $sdtContent = $sdtContentNodes->item(0);
+        if ($sdtContent === null) {
+            throw new ContentControlException(
+                "Failed to retrieve w:sdtContent element"
+            );
+        }
+
+        // Clear existing content
+        while ($sdtContent->firstChild !== null) {
+            $sdtContent->removeChild($sdtContent->firstChild);
+        }
+
+        // Create fragment from table XML
+        $tempDoc = new \DOMDocument();
+        $tempDoc->loadXML(
+            '<w:root xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' .
+            $tableXml .
+            '</w:root>'
+        );
+
+        // Import table nodes
+        $tempRoot = $tempDoc->documentElement;
+        if ($tempRoot !== null) {
+            foreach ($tempRoot->childNodes as $node) {
+                $imported = $doc->importNode($node, true);
+                $sdtContent->appendChild($imported);
+            }
+        }
+
+        // Mark the correct file as modified (use result from findSdt, not hardcoded)
+        $processor->markModified($filePath);
     }
 
     /**
@@ -175,6 +454,9 @@ final class TableBuilder
      *
      * @throws ContentControlException If configuration is invalid or element is used
      *
+     * @deprecated Since v0.4.2. Use fluent API instead: $builder->addRow()->addCell()->end()
+     *             This method will be removed in v1.0.0. Migration guide available in docs/MIGRATION-v042.md
+     *
      * @since 0.4.0
      *
      * @example
@@ -206,6 +488,14 @@ final class TableBuilder
      */
     public function createTable(array $config): Table
     {
+        // Deprecation warning
+        trigger_error(
+            'TableBuilder::createTable() is deprecated since v0.4.2. ' .
+            'Use fluent API instead: $builder->addRow()->addCell()->end(). ' .
+            'Will be removed in v1.0.0. See docs/MIGRATION-v042.md for migration guide.',
+            E_USER_DEPRECATED
+        );
+
         // 1. Validate configuration structure
         $this->validateTableConfig($config);
         
@@ -568,6 +858,8 @@ final class TableBuilder
      *
      * @throws ContentControlException If reflection fails or table has no rows
      *
+     * @deprecated since 0.4.2, use ElementIdentifier::generateTableHash() instead.
+     *             This method will be removed in v1.0.0.
      * @since 0.4.0
      *
      * @example
@@ -582,7 +874,7 @@ final class TableBuilder
      * // Returns: md5("2x3") = "a87ff679a2f3e71d9181a67b7542122c"
      * ```
      */
-    private function generateTableHash(Table $table): string
+    private function generateTableHash(Table $table): string // @phpstan-ignore-line method.unused
     {
         try {
             // Use Reflection to access private $rows property
@@ -702,7 +994,15 @@ final class TableBuilder
             $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
 
             // 6. Generate hash for target table
-            $targetHash = $this->generateTableHash($table);
+            try {
+                $targetHash = ElementIdentifier::generateTableHash($table);
+            } catch (\RuntimeException $e) {
+                throw new ContentControlException(
+                    "Failed to generate table hash: " . $e->getMessage(),
+                    0,
+                    $e
+                );
+            }
 
             // 7. Locate all tables in document
             $tables = $xpath->query('//w:tbl');
@@ -730,7 +1030,11 @@ final class TableBuilder
                         $cells = $xpath->query('.//w:tc', $firstRow);
                         if ($cells !== false) {
                             $cellCount = $cells->length;
-                            $currentHash = md5("{$rowCount}x{$cellCount}");
+                            
+                            // Generate UUID v5 hash using same algorithm as ElementIdentifier
+                            $dimensionString = "{$rowCount}x{$cellCount}";
+                            $namespace = \Ramsey\Uuid\Uuid::NAMESPACE_DNS;
+                            $currentHash = \Ramsey\Uuid\Uuid::uuid5($namespace, "contentcontrol:table:{$dimensionString}")->toString();
 
                             if ($currentHash === $targetHash) {
                                 $matchingTable = $tableNode;
@@ -747,15 +1051,29 @@ final class TableBuilder
                 );
             }
 
-            // 9. Serialize table to XML
-            $tableXml = $dom->saveXML($matchingTable);
+            // 9. Check if table is wrapped in SDT - if so, serialize the SDT instead
+            $elementToSerialize = $matchingTable;
+            $parent = $matchingTable->parentNode;
+            
+            // Check if parent is w:sdtContent (table is wrapped in SDT)
+            if ($parent instanceof \DOMElement && $parent->localName === 'sdtContent') {
+                // Get the w:sdt grandparent
+                $sdtElement = $parent->parentNode;
+                if ($sdtElement instanceof \DOMElement && $sdtElement->localName === 'sdt') {
+                    // Serialize the entire SDT structure instead of just the table
+                    $elementToSerialize = $sdtElement;
+                }
+            }
+
+            // 10. Serialize element (table or wrapping SDT) to XML
+            $tableXml = $dom->saveXML($elementToSerialize);
             if ($tableXml === false) {
                 throw new ContentControlException(
                     "Failed to serialize table XML"
                 );
             }
 
-            // 10. Clean redundant namespace declarations
+            // 11. Clean redundant namespace declarations
             // Remove xmlns:w (inherited from root element)
             $tableXml = preg_replace('/\s+xmlns:w="[^"]+"/', '', $tableXml);
             if ($tableXml === null) {
@@ -786,6 +1104,31 @@ final class TableBuilder
         if ($this->tempFile !== null && file_exists($this->tempFile)) {
             @unlink($this->tempFile);
         }
+    }
+
+    /**
+     * Get temporary file path for intermediate processing
+     *
+     * Generates a unique temporary file path with .docx extension.
+     * Used for saving table before extraction.
+     *
+     * @return string Absolute path to temporary file
+     *
+     * @throws ContentControlException If temp file creation fails
+     *
+     * @since 0.4.2
+     */
+    private function getTempFilePath(): string
+    {
+        $tempPath = tempnam(sys_get_temp_dir(), 'tbl_');
+        
+        if ($tempPath === false) {
+            throw new ContentControlException(
+                'Failed to create temporary file for table extraction'
+            );
+        }
+
+        return $tempPath . '.docx';
     }
 
     /**

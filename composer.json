@@ -18,6 +18,7 @@
     "require": {
         "php": ">=8.2",
         "phpoffice/phpword": "^1.4",
+        "ramsey/uuid": "^4.7",
         "ext-dom": "*",
         "ext-mbstring": "*",
         "ext-zip": "*"

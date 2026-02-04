@@ -303,3 +303,57 @@ describe('SDTConfig - Propriedades readonly', function () {
         expect($idProperty->isReadOnly())->toBeTrue();
     });
 });
+
+describe('SDTConfig - inlineLevel Property', function () {
+    test('SDTConfig accepts inlineLevel flag', function () {
+        $config = new SDTConfig(
+            id: '12345678',
+            inlineLevel: true
+        );
+        
+        expect($config->inlineLevel)->toBeTrue();
+    });
+
+    test('SDTConfig defaults inlineLevel to false', function () {
+        $config = new SDTConfig(id: '12345678');
+        
+        expect($config->inlineLevel)->toBeFalse();
+    });
+
+    test('SDTConfig fromArray accepts inlineLevel', function () {
+        $config = SDTConfig::fromArray([
+            'id' => '12345678',
+            'inlineLevel' => true
+        ]);
+        
+        expect($config->inlineLevel)->toBeTrue();
+        
+        // Test default when not provided
+        $configDefault = SDTConfig::fromArray([
+            'id' => '87654321'
+        ]);
+        
+        expect($configDefault->inlineLevel)->toBeFalse();
+    });
+
+    test('withInlineLevel returns new instance with updated inlineLevel', function () {
+        $original = new SDTConfig(
+            id: '12345678',
+            inlineLevel: false
+        );
+        
+        $modified = $original->withInlineLevel(true);
+        
+        // Verify original is unchanged (immutability)
+        expect($original->inlineLevel)->toBeFalse();
+        
+        // Verify new instance has updated value
+        expect($modified->inlineLevel)->toBeTrue();
+        
+        // Verify other properties preserved
+        expect($modified->id)->toBe('12345678');
+        
+        // Verify they are different instances
+        expect($original)->not->toBe($modified);
+    });
+});

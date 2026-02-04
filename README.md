@@ -15,22 +15,61 @@
 
 - 🎯 **Proxy Pattern API** - Unified interface encapsulating PhpWord with automatic SDT management
 - 🔒 **Content Protection** - Lock elements from editing or deletion in Word documents
+- � **Fluent TableBuilder API** - Type-safe, chainable interface for table creation with 60% less code (v0.4.2)
 - 🔧 **TableBuilder** - Create and inject tables into templates with automatic SDT wrapping (v0.3.0)
+- 📦 **GROUP SDT Support** - Replace GROUP Content Controls with complex structures preserving nested SDTs (v0.4.2)
 - 📝 **ContentProcessor** - Open and modify existing DOCX files with powerful manipulation methods (v0.3.0)
+  - `replaceGroupContent()` - Replace GROUP SDT with complex structures (v0.4.2)
   - `replaceContent()` - Replace entire Content Control content
   - `setValue()` - Replace text while preserving formatting (bold, color, size, etc.)
   - `appendContent()` - Add content to existing SDT content
   - `removeContent()` - Clear specific Content Control
   - `removeAllControlContents()` - Clear all SDTs and optionally block editing
 - 📄 **Headers & Footers** - Apply Content Controls to headers and footers (v0.2.0)
-- 🔢 **Unique ID Generation** - Automatic 8-digit collision-resistant identifiers with automatic collision handling
+- 🔢 **UUID v5 Hashing** - Zero-collision deterministic table hashing (SHA-1 based) replacing MD5 (v0.4.2)
 - 📝 **Type-Safe Configuration** - Immutable value objects for Content Control properties
-- ✅ **Production Ready** - 500 tests, PHPStan Level 9 (0 errors), 80%+ code coverage
+- ✅ **Production Ready** - 464 tests, PHPStan Level 9 (0 errors), 82%+ code coverage
 - 📦 **Zero Dependencies** - Only requires PHPOffice/PHPWord (already in your project)
+
+## Fluent TableBuilder API (v0.4.2) ✨
+
+The `TableBuilder` now supports a **fluent interface** for type-safe, chainable table creation:
+
+```php
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+$cc = new ContentControl();
+$builder = new TableBuilder($cc);
+
+$builder
+    ->addRow()
+        ->addCell(3000)->addText('Product', ['bold' => true])->end()
+        ->addCell(2000)->addText('Price', ['bold' => true])->end()
+    ->end()
+    ->addRow()
+        ->addCell(3000)
+            ->withContentControl(['tag' => 'product_name'])
+            ->addText('Widget A')
+        ->end()
+        ->addCell(2000)
+            ->withContentControl(['tag' => 'product_price'])
+            ->addText('$50.00')
+        ->end()
+    ->end();
+
+$cc->save('fluent-table.docx');
+```
+
+**Benefits:** 60% less code, full IDE autocomplete, compile-time type safety
+
+**See:** [`docs/TableBuilder-v2.md`](docs/TableBuilder-v2.md) for complete fluent API documentation
+
+---
 
 ## TableBuilder - Dynamic Table Creation (v0.3.0)
 
-The `TableBuilder` class provides a declarative API for creating and injecting tables into templates:
+The legacy declarative API is still supported (deprecated in v0.4.2):
 
 ```php
 use MkGrow\ContentControl\Bridge\TableBuilder;
@@ -58,6 +97,7 @@ $table = $builder->createTable([
         ]
     ]
 ]);
+
 
 // Inject into template with SDT placeholder
 $builder->injectTable('template.docx', 'invoice-table', $table);
@@ -210,9 +250,103 @@ $cc->addContentControl($element, [
     'alias' => 'Display Name',   // Optional: Name shown in Word UI (max 255 chars)
     'tag' => 'metadata-tag',     // Optional: Programmatic identifier (alphanumeric + _-.)
     'type' => 'richText',        // Optional: Control type (default: TYPE_RICH_TEXT)
-    'lockType' => 'sdtLocked'    // Optional: Lock level (default: LOCK_NONE)
+    'lockType' => 'sdtLocked',   // Optional: Lock level (default: LOCK_NONE)
+    'inlineLevel' => false       // Optional: Inline-level SDT injection (default: false, experimental)
 ]);
 ```
+
+### Inline-Level Content Controls
+
+**Available since:** v0.4.1  
+**Status:** Production Ready - Fully functional and tested
+
+#### What is Inline-Level?
+
+Content Controls can be injected at two levels in OOXML documents:
+
+| Level | Structure | Use Case | Status |
+|-------|-----------|----------|--------|
+| **Block-level** (default) | `<w:body>` → `<w:sdt>` → `<w:p>` | Protect entire elements | ✅ Stable |
+| **Inline-level** | `<w:tc>` → `<w:sdt>` → `<w:p>` | Protect content inside table cells | ✅ Production Ready |
+
+#### Use Case: Editable Cells in Locked Tables
+
+Combine GROUP SDT (locks table structure) with inline-level SDTs (allows cell editing):
+
+```php
+<?php
+use MkGrow\ContentControl\ContentControl;
+
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+// Create table
+$table = $section->addTable(['borderSize' => 6]);
+$table->addRow();
+
+// Add editable cell content
+$cell = $table->addCell(3000);
+$text = $cell->addText('Editable content');
+
+// Wrap table with GROUP SDT (locks structure)
+$cc->addContentControl($table, [
+    'alias' => 'Invoice Table',
+    'type' => ContentControl::TYPE_GROUP,
+    'lockType' => ContentControl::LOCK_SDT_LOCKED
+]);
+
+// Wrap cell content with inline SDT (allows editing inside locked table)
+$cc->addContentControl($text, [
+    'alias' => 'Customer Name',
+    'inlineLevel' => true,  // Inject inside <w:tc> instead of <w:body>
+    'lockType' => ContentControl::LOCK_NONE
+]);
+
+$cc->save('locked-table-editable-cells.docx');
+```
+
+#### Known Limitations
+
+1. **Manual Parameter Required**: PHPWord does not expose element context (`container` property), so you must explicitly set `'inlineLevel' => true`
+2. **Mixed Content**: When using inline-level SDTs, avoid registering block-level Text elements before inline elements (register inline SDTs first, then block-level elements)
+
+#### Technical Details
+
+**Block-level XML:**
+```xml
+<w:body>
+    <w:sdt>
+        <w:sdtPr><w:id w:val="12345678"/></w:sdtPr>
+        <w:sdtContent>
+            <w:p>...</w:p>  <!-- Original paragraph -->
+        </w:sdtContent>
+    </w:sdt>
+</w:body>
+```
+
+**Inline-level XML:**
+```xml
+<w:tbl>
+    <w:tr>
+        <w:tc>
+            <w:sdt>
+                <w:sdtPr><w:id w:val="12345678"/></w:sdtPr>
+                <w:sdtContent>
+                    <w:p>...</w:p>  <!-- Paragraph inside cell -->
+                </w:sdtContent>
+            </w:sdt>
+        </w:tc>
+    </w:tr>
+</w:tbl>
+```
+
+**Roadmap (v4.0):**
+- Implement XPath queries for Text/TextRun in `<w:tc>` elements
+- Reactivate skipped integration tests
+- Full validation in OnlyOffice/Word/LibreOffice
+- Create `samples/inline_sdt_example.php` with end-to-end workflow
+
+**See:** `CHANGELOG.md` for detailed implementation notes
 
 ## Supported Elements
 

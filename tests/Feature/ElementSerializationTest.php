@@ -29,7 +29,7 @@ describe('Element Serialization - Text', function () {
             expect($xml)->toContain('Texto de teste');
         } finally {
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         }
     });
@@ -60,7 +60,7 @@ describe('Element Serialization - TextRun', function () {
             expect($xml)->toContain('Parte 2');
         } finally {
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         }
     });
@@ -92,7 +92,7 @@ describe('Element Serialization - Table', function () {
             expect($xml)->toContain('Célula 2');
         } finally {
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         }
     });
@@ -131,7 +131,7 @@ describe('Element Serialization - Múltiplos Elementos', function () {
             expect($xml)->toContain('Parágrafo depois da tabela');
         } finally {
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         }
     });
@@ -158,7 +158,7 @@ test('lida com Content Control vazio', function () {
         expect($xml)->toContain('w:sdtContent');
     } finally {
         if (file_exists($tempFile)) {
-            unlink($tempFile);
+            safeUnlink($tempFile);
         }
     }
 });

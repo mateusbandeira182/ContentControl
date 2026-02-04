@@ -42,7 +42,7 @@ describe('PHPWord Integration - Documento Completo', function () {
             expect(@$dom->loadXML($xml))->toBeTrue();
         } finally {
             if (file_exists($tempFile)) {
-                unlink($tempFile);
+                safeUnlink($tempFile);
             }
         }
     });
@@ -74,7 +74,7 @@ describe('PHPWord Integration - Documento Completo', function () {
             expect($xml1)->toContain('<w:group');
         } finally {
             if (file_exists($tempFile1)) {
-                unlink($tempFile1);
+                safeUnlink($tempFile1);
             }
         }
         
@@ -107,7 +107,7 @@ describe('PHPWord Integration - Documento Completo', function () {
             expect($xml2)->toContain('R2C1');
         } finally {
             if (file_exists($tempFile2)) {
-                unlink($tempFile2);
+                safeUnlink($tempFile2);
             }
         }
     });

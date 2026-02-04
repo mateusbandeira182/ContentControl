@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace MkGrow\ContentControl;
 
-use PhpOffice\Math\Element\AbstractElement;
-use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\IOFactory as PHPWordIOFactory;
@@ -224,10 +222,11 @@ final class ContentControl
      *     alias?: string,
      *     tag?: string,
      *     type?: string,
-     *     lockType?: string
-     * } $options Content Control configuration
-     * @return object The same element (for fluent API)
-     * @throws \InvalidArgumentException If element type is not supported
+     *     lockType?: string,
+     *     inlineLevel?: bool
+     * } $options Configurações do Content Control
+     * @return object O mesmo elemento (para fluent API)
+     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
      * 
      * @example
      * ```php
@@ -247,8 +246,18 @@ final class ContentControl
      */
     public function addContentControl(object $element, array $options = []): object
     {
-        // Create config from options
-        $config = SDTConfig::fromArray($options);
+        // NOVA LÓGICA: Detecção automática de inline-level
+        $isInlineLevel = $this->shouldUseInlineLevel($element);
+        
+        // Merge com opções do usuário (usuário pode forçar com 'inlineLevel' => false)
+        // Ordem: auto-detection primeiro, depois user options (user override)
+        $mergedOptions = array_merge(
+            ['inlineLevel' => $isInlineLevel],
+            $options
+        );
+        
+        // Criar config a partir das opções mergeadas
+        $config = SDTConfig::fromArray($mergedOptions);
 
         // Generate ID if not provided
         if ($config->id === '') {
@@ -263,7 +272,29 @@ final class ContentControl
     }
 
     /**
-     * Returns encapsulated PhpWord instance (for advanced use cases)
+     * Determina se elemento deve usar SDT inline-level
+     * 
+     * NOTA v3.1: Auto-detecção desabilitada devido à limitação do PHPWord.
+     * A propriedade 'container' não está disponível em AbstractElement,
+     * impedindo a detecção automática de contexto (Cell vs Section).
+     * 
+     * Solução: Usuários devem especificar explicitamente 'inlineLevel' => true
+     * nas opções de addContentControl() para elementos dentro de células.
+     * 
+     * @param object $element Elemento PHPWord
+     * @return bool Sempre retorna false (auto-detecção desabilitada)
+     * 
+     * @see https://github.com/PHPOffice/PHPWord/issues - Feature request: expose container property
+     */
+    private function shouldUseInlineLevel(object $element): bool
+    {
+        // Auto-detection disabled - PHPWord does not expose 'container' property
+        // Users must explicitly set 'inlineLevel' => true in options
+        return false;
+    }
+
+    /**
+     * Retorna instância PhpWord encapsulada (para casos avançados)
      * 
      * @return PhpWord
      */
