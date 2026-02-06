@@ -334,4 +334,78 @@ describe('TableBuilder Integration', function (): void {
                 @safeUnlink($templatePath);
             }
         }
-    });});
+    });
+
+    it('generates DOCX with table borders using setStyles', function (): void {
+        $cc = new ContentControl();
+        $builder = new TableBuilder($cc);
+        
+        $builder->setStyles([
+                'borderSize' => 6,
+                'borderColor' => '1F4788',
+            ])
+            ->addRow()
+                ->addCell(3000)->addText('Header 1')->end()
+                ->addCell(2000)->addText('Header 2')->end()
+                ->end()
+            ->addRow()
+                ->addCell(3000)->addText('Data 1')->end()
+                ->addCell(2000)->addText('Data 2')->end()
+                ->end();
+        
+        $tempFile = tempnam(sys_get_temp_dir(), 'test_borders_') . '.docx';
+        
+        try {
+            $cc->save($tempFile);
+            
+            expect(file_exists($tempFile))->toBeTrue();
+            
+            $zip = new ZipArchive();
+            $zip->open($tempFile);
+            $xml = $zip->getFromName('word/document.xml');
+            $zip->close();
+            
+            // Type guard for PHPStan
+            if ($xml === false) {
+                throw new \RuntimeException('Failed to read word/document.xml');
+            }
+            
+            // Verify XML is valid
+            expect($xml)->toBeValidXml();
+            
+            // Verify table structure exists
+            expect($xml)->toHaveXmlElement('w:tblPr');
+            expect($xml)->toHaveXmlElement('w:tblBorders');
+            
+            // Parse and validate border properties via XPath
+            $doc = new DOMDocument();
+            if ($doc->loadXML($xml) === false) {
+                throw new \RuntimeException('Failed to load XML');
+            }
+            
+            $xpath = new DOMXPath($doc);
+            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+            
+            // Validate border size (w:sz attribute in table borders)
+            $topBorder = $xpath->query('//w:tbl/w:tblPr/w:tblBorders/w:top')->item(0);
+            expect($topBorder)->not->toBeNull();
+            
+            $borderSize = $topBorder?->getAttribute('w:sz');
+            expect($borderSize)->toBe('6');
+            
+            // Validate border color (w:color attribute)
+            $borderColor = $topBorder?->getAttribute('w:color');
+            expect($borderColor)->toBe('1F4788');
+            
+            // Verify table content is preserved
+            expect($xml)->toContain('Header 1');
+            expect($xml)->toContain('Header 2');
+            expect($xml)->toContain('Data 1');
+            expect($xml)->toContain('Data 2');
+        } finally {
+            if (file_exists($tempFile)) {
+                @safeUnlink($tempFile);
+            }
+        }
+    });
+});
