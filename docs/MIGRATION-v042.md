@@ -15,10 +15,10 @@
 ## Overview
 
 ContentControl v0.4.2 introduces:
-- ✅ **Fluent API** for TableBuilder (60% less code)
-- ✅ **GROUP SDT Support** via `replaceGroupContent()`
-- ✅ **UUID v5 Hashing** (zero collisions vs ~42% with MD5)
-- ✅ **100% Backward Compatibility** (no breaking changes)
+- **Fluent API** for TableBuilder (60% less code)
+- **GROUP SDT Support** via `replaceGroupContent()`
+- **UUID v5 Hashing** (zero collisions vs ~42% with MD5)
+- **100% Backward Compatibility** (no breaking changes)
 
 **Upgrade Time:** ~15 minutes for typical projects
 
@@ -129,9 +129,9 @@ $processor->save('output.docx');
 ### 3. UUID v5 Deterministic Hashing
 
 **Replaces MD5 for table matching:**
-- ✅ Zero collisions (tested up to 500 tables)
-- ✅ Deterministic (same table = same hash)
-- ✅ Secure (SHA-1 vs deprecated MD5)
+- Zero collisions (tested up to 500 tables)
+- Deterministic (same table = same hash)
+- Secure (SHA-1 vs deprecated MD5)
 
 **Performance:** <1ms overhead vs MD5 (negligible)
 
@@ -252,13 +252,13 @@ Error: Call to undefined method TableBuilder::save()
 // Before (wrong)
 $builder = new TableBuilder();
 $builder->addRow()->end();
-$builder->save('output.docx'); // ❌ No save() method
+$builder->save('output.docx'); // WRONG: No save() method
 
 // After (correct)
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
 $builder->addRow()->end();
-$cc->save('output.docx'); // ✅ Correct
+$cc->save('output.docx'); // Correct
 ```
 
 ---
