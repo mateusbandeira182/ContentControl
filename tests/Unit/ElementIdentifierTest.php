@@ -288,3 +288,70 @@ describe('ElementIdentifier Cache', function () {
     });
 
 });
+
+describe('ElementIdentifier::generateImageHash()', function () {
+
+    test('generates valid UUID v5 format', function () {
+        $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+        $image = new \PhpOffice\PhpWord\Element\Image($testImagePath, ['width' => 100, 'height' => 100]);
+        
+        $hash = ElementIdentifier::generateImageHash($image);
+        
+        // Verify UUID v5 format: xxxxxxxx-xxxx-5xxx-yxxx-xxxxxxxxxxxx
+        expect($hash)->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i');
+    });
+
+    test('different sources produce different hashes with same dimensions', function () {
+        $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+        
+        // Create temporary second image with different content
+        $tempImagePath = sys_get_temp_dir() . '/test_image_2_' . uniqid() . '.png';
+        $imageResource = imagecreatetruecolor(1, 1);
+        $blue = imagecolorallocate($imageResource, 0, 0, 255);
+        imagefilledrectangle($imageResource, 0, 0, 1, 1, $blue);
+        imagepng($imageResource, $tempImagePath);
+        imagedestroy($imageResource);
+        
+        try {
+            // Both images have identical dimensions (100x100) but different sources
+            $image1 = new \PhpOffice\PhpWord\Element\Image($testImagePath, ['width' => 100, 'height' => 100]);
+            $image2 = new \PhpOffice\PhpWord\Element\Image($tempImagePath, ['width' => 100, 'height' => 100]);
+            
+            $hash1 = ElementIdentifier::generateImageHash($image1);
+            $hash2 = ElementIdentifier::generateImageHash($image2);
+            
+            // CRITICAL: UUID v5 includes basename(source), so hashes MUST be different
+            expect($hash1)->not->toBe($hash2)
+                ->and($hash1)->not->toBeEmpty()
+                ->and($hash2)->not->toBeEmpty();
+        } finally {
+            // Cleanup temporary file
+            if (file_exists($tempImagePath)) {
+                unlink($tempImagePath);
+            }
+        }
+    });
+
+    test('same image produces identical hash (determinism)', function () {
+        $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+        
+        $hashes = [];
+        
+        // Generate hash 100 times for same image
+        for ($i = 0; $i < 100; $i++) {
+            $image = new \PhpOffice\PhpWord\Element\Image($testImagePath, ['width' => 200, 'height' => 200]);
+            $hashes[] = ElementIdentifier::generateImageHash($image);
+        }
+        
+        // All hashes must be identical (deterministic algorithm)
+        $uniqueHashes = array_unique($hashes);
+        
+        expect($uniqueHashes)->toHaveCount(1)
+            ->and($hashes[0])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i');
+    });
+
+    // NOTE: Exception test for image without style requires mocking (Mockery not available in test suite)
+    // The defensive check in generateImageHash() verifies $style === null and !is_string($source)
+    // These scenarios are highly unlikely in production code (PHPWord always creates ImageStyle objects)
+
+});
