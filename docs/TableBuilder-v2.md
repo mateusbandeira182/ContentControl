@@ -330,6 +330,310 @@ Finalizes the cell and returns to RowBuilder.
 
 ---
 
+## Content Control Flags
+
+### Overview
+
+When wrapping elements with Content Controls, the `inlineLevel` flag determines the XPath search strategy used to locate elements in the XML DOM. Understanding when to use this flag prevents common "element not found" errors.
+
+### The inlineLevel Flag
+
+#### Technical Background
+
+Word documents have a hierarchical XML structure:
+
+```
+word/document.xml Structure:
+<w:document>
+  <w:body>
+    <w:p>...</w:p>              ← Body-level paragraph (inlineLevel: false)
+    <w:tbl>
+      <w:tr>
+        <w:tc>
+          <w:p>...</w:p>        ← Cell-level paragraph (inlineLevel: true)
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+  </w:body>
+</w:document>
+```
+
+#### When to Use inlineLevel: true
+
+**Required for elements inside `<w:tc>` (table cells):**
+- Text elements in cells
+- TextRun elements in cells
+- Image elements in cells
+
+**XPath Query (inlineLevel: true):**
+```xpath
+//w:tc//w:p[position()=1]  ← Searches within table cells first
+```
+
+#### When to Use inlineLevel: false (or omit)
+
+**For elements in `<w:body>` (document body):**
+- Text elements at document level
+- Table elements (entire tables)
+- Title elements (headings)
+
+**XPath Query (inlineLevel: false or default):**
+```xpath
+//w:body/w:p[position()=1]  ← Searches within document body
+```
+
+### Element Decision Matrix
+
+| Element Type | Location | inlineLevel Required | Example |
+|--------------|----------|---------------------|---------|
+| Text | Document body | No | `$section->addText('Body text')` |
+| Text | Inside table cell | **Yes** | `$cell->addText('Cell text')` |
+| TextRun | Document body | No | `$section->addTextRun()` |
+| TextRun | Inside table cell | **Yes** | `$cell->addTextRun()` |
+| Image | Document body | No | `$section->addImage('logo.png')` |
+| Image | Inside table cell | **Yes** | `$cell->addImage('logo.png')` |
+| Table | Document body | No | `$section->addTable()` |
+| Title | Document body | No | `$section->addTitle('Heading')` |
+
+### Correct Usage Examples
+
+#### Document Body Elements (No Flag)
+
+```php
+use MkGrow\ContentControl\ContentControl;
+
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+// Text at body level - no flag needed
+$text = $section->addText('Document Title');
+$cc->addContentControl($text, ['tag' => 'doc-title']);
+
+// Table at body level - no flag needed
+$table = $section->addTable();
+$cc->addContentControl($table, ['tag' => 'invoice-table']);
+```
+
+#### Cell-Level Elements (Flag Required)
+
+```php
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+$cc = new ContentControl();
+$section = $cc->addSection();
+$table = $section->addTable();
+$row = $table->addRow();
+
+// Text inside cell - FLAG REQUIRED
+$cell = $row->addCell(3000);
+$text = $cell->addText('Customer Name');
+$cc->addContentControl($text, [
+    'tag' => 'customer-name',
+    'inlineLevel' => true,  // REQUIRED
+]);
+
+// Image inside cell - FLAG REQUIRED
+$cell2 = $row->addCell(2000);
+$image = $cell2->addImage('logo.png');
+$cc->addContentControl($image, [
+    'tag' => 'company-logo',
+    'inlineLevel' => true,  // REQUIRED
+]);
+```
+
+#### Fluent API with Cells
+
+```php
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+$builder = new TableBuilder();
+
+$builder
+    ->addRow()
+        ->addCell(3000)
+            ->withContentControl([
+                'tag' => 'product-name',
+                'inlineLevel' => true,  // REQUIRED for cell content
+            ])
+            ->addText('Product A')
+        ->end()
+        ->addCell(2000)
+            ->withContentControl([
+                'tag' => 'price',
+                'inlineLevel' => true,  // REQUIRED for cell content
+            ])
+            ->addText('$99.99')
+        ->end()
+    ->end();
+```
+
+### Common Mistakes
+
+#### Mistake 1: Missing inlineLevel Flag in Cell
+
+```php
+// WRONG: Will fail with "element not found"
+$cell = $row->addCell(3000);
+$text = $cell->addText('Data');
+$cc->addContentControl($text, ['tag' => 'cell-data']);
+// ERROR: ElementLocator searches body, not cells
+
+// CORRECT: Add inlineLevel flag
+$cc->addContentControl($text, [
+    'tag' => 'cell-data',
+    'inlineLevel' => true,  // Fix
+]);
+```
+
+#### Mistake 2: Incorrect Flag for Body Element
+
+```php
+// WRONG: Body element with inlineLevel true
+$section = $cc->addSection();
+$text = $section->addText('Title');
+$cc->addContentControl($text, [
+    'tag' => 'title',
+    'inlineLevel' => true,  // WRONG: not in a cell
+]);
+// May work accidentally, but incorrect
+
+// CORRECT: Omit or set to false
+$cc->addContentControl($text, ['tag' => 'title']);
+// No flag needed for body elements
+```
+
+### Troubleshooting
+
+#### Symptom: "Could not locate element" Exception
+
+**Diagnostic Steps:**
+
+1. **Check Element Location:**
+   - Is the element inside a table cell? → Use `inlineLevel => true`
+   - Is the element in document body? → Omit `inlineLevel` or set to `false`
+
+2. **Extract and Inspect XML:**
+
+```powershell
+# PowerShell - Extract DOCX
+Expand-Archive generated.docx -DestinationPath temp -Force
+
+# View paragraph locations
+Get-Content temp/word/document.xml | Select-String '<w:p'
+
+# Check if <w:p> is inside <w:tc> (cell) or <w:body>
+[xml]$xml = Get-Content temp/word/document.xml
+$xml.document.body.tbl.tr.tc.p  # Cell paragraphs
+$xml.document.body.p            # Body paragraphs
+```
+
+```bash
+# Bash/Linux - Extract DOCX
+unzip -q generated.docx -d temp/
+
+# View paragraph hierarchy
+xmllint --format temp/word/document.xml | grep -A 2 '<w:p'
+
+# Count cell vs body paragraphs
+xmllint --xpath '//w:tc//w:p' temp/word/document.xml | grep -c '<w:p'
+xmllint --xpath '//w:body/w:p' temp/word/document.xml | grep -c '<w:p'
+```
+
+3. **Quick Test Script:**
+
+```php
+<?php
+require 'vendor/autoload.php';
+
+use MkGrow\ContentControl\ContentControl;
+use MkGrow\ContentControl\Bridge\TableBuilder;
+
+$cc = new ContentControl();
+$section = $cc->addSection();
+
+// Test 1: Body paragraph (should work without flag)
+$bodyText = $section->addText('Body Text');
+try {
+    $cc->addContentControl($bodyText, ['tag' => 'body-test']);
+    echo "[OK] Body text: OK (no inlineLevel)\n";
+} catch (\Exception $e) {
+    echo "[ERROR] Body text: FAIL - " . $e->getMessage() . "\n";
+}
+
+// Test 2: Cell paragraph WITHOUT flag (should fail)
+$table = $section->addTable();
+$row = $table->addRow();
+$cell = $row->addCell(3000);
+$cellText = $cell->addText('Cell Text');
+try {
+    $cc->addContentControl($cellText, ['tag' => 'cell-test']);
+    echo "[ERROR] Cell text (no flag): UNEXPECTED SUCCESS\n";
+} catch (\Exception $e) {
+    echo "[OK] Cell text (no flag): Expected failure\n";
+}
+
+// Test 3: Cell paragraph WITH flag (should work)
+$cell2 = $row->addCell(3000);
+$cellText2 = $cell2->addText('Cell Text 2');
+try {
+    $cc->addContentControl($cellText2, [
+        'tag' => 'cell-test-2',
+        'inlineLevel' => true,
+    ]);
+    echo "[OK] Cell text (with inlineLevel): OK\n";
+} catch (\Exception $e) {
+    echo "[ERROR] Cell text (with inlineLevel): FAIL - " . $e->getMessage() . "\n";
+}
+
+$cc->save('test-inlinelevel.docx');
+echo "\nTest document saved: test-inlinelevel.docx\n";
+```
+
+**Expected Output:**
+```
+[OK] Body text: OK (no inlineLevel)
+[OK] Cell text (no flag): Expected failure
+[OK] Cell text (with inlineLevel): OK
+
+Test document saved: test-inlinelevel.docx
+```
+
+### Visual Diagram
+
+```
+Document Structure & inlineLevel Flag:
+
+┌─────────────────────────────────────────────────────────┐
+│ <w:body>                                                │
+│                                                         │
+│  <w:p>...</w:p>  ← inlineLevel: false (or omit)       │
+│                                                         │
+│  <w:tbl>                                                │
+│    <w:tr>                                               │
+│      <w:tc> ──────────────┐                            │
+│        <w:p>...</w:p>  ← inlineLevel: true REQUIRED    │
+│      </w:tc>              │                            │
+│                           │                            │
+│      <w:tc>               │ Cell boundary              │
+│        <w:p>...</w:p>  ← inlineLevel: true REQUIRED    │
+│      </w:tc> ─────────────┘                            │
+│    </w:tr>                                              │
+│  </w:tbl>                                               │
+│                                                         │
+│  <w:p>...</w:p>  ← inlineLevel: false (or omit)       │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+Search Priority with inlineLevel: true
+1. //w:tc//w:p         ← Cells checked first
+2. //w:body//w:p       ← Body checked as fallback
+
+Search Priority with inlineLevel: false (default)
+1. //w:body//w:p       ← Body only
+```
+
+---
+
 ## Advanced Examples
 
 ### Complex Nested Structure
