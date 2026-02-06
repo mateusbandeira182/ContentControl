@@ -1,67 +1,44 @@
 ## Description
 
-<!-- Provide a clear and concise description of the changes in this pull request -->
+<!-- Clear description of what this PR does and why -->
 
 ## Type of Change
 
-<!-- Check all that apply -->
-
-- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📝 Documentation update
-- [ ] ♻️ Code refactoring (no functional changes)
-- [ ] ⚡ Performance improvement
-- [ ] ✅ Test coverage improvement
-- [ ] 🔧 Build/CI configuration change
+- [ ] Bug fix (non-breaking)
+- [ ] New feature (non-breaking)
+- [ ] Breaking change
+- [ ] Documentation update
+- [ ] Refactoring (no functional changes)
+- [ ] Performance improvement
 
 ## Related Issues
-
-<!-- Link to related issues using #issue_number -->
 
 Fixes #
 Relates to #
 
-## Changes Made
+## Changes
 
-<!-- List the main changes in bullet points -->
+<!-- Key changes made in this PR -->
 
-- 
 - 
 - 
 
 ## Testing
 
-<!-- Describe the testing you've done -->
-
-- [ ] All existing tests pass (`composer test`)
-- [ ] Added new tests for new functionality
-- [ ] Manual testing performed
-- [ ] PHPStan Level 9 passes (`composer analyse`)
-
-### Test Output
-
-```
-# Paste relevant test output here
-```
+- [ ] `composer test` passes
+- [ ] `composer analyse` passes (PHPStan Level 9)
+- [ ] New tests added for new functionality
+- [ ] Manual testing completed
 
 ## Checklist
 
-<!-- Check all items before submitting -->
+- [ ] Code follows PHPStan Level 9 strict standards
+- [ ] All classes remain `final`
+- [ ] Used readonly properties where applicable
+- [ ] Documentation updated (README/docs/PHPDoc)
+- [ ] CHANGELOG.md updated
+- [ ] No breaking changes (or documented if necessary)
 
-- [ ] Code follows project coding standards (PHPStan Level 9, strict types)
-- [ ] Self-reviewed my own code
-- [ ] Commented complex/hard-to-understand areas
-- [ ] Updated documentation (README, docs/, PHPDoc)
-- [ ] Added tests that prove the fix/feature works
-- [ ] New and existing tests pass locally
-- [ ] No breaking changes (or documented in CHANGELOG.md)
-- [ ] Updated CHANGELOG.md with changes
+## Notes
 
-## Additional Context
-
-<!-- Add any other context, screenshots, or information about the PR -->
-
-## Reviewer Notes
-
-<!-- Any specific areas you'd like reviewers to focus on? -->
+<!-- Additional context or areas requiring reviewer attention -->

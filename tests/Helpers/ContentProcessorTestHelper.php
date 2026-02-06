@@ -44,6 +44,38 @@ XML;
 }
 
 /**
+ * Create DOCX with single SDT and custom content
+ *
+ * @param string $path File path
+ * @param string $tag SDT tag value
+ * @param string $content Inner XML content for SDT
+ * @return void
+ */
+function createDocxWithSdtContent(string $path, string $tag, string $content): void
+{
+    $escapedTag = htmlspecialchars($tag, ENT_XML1, 'UTF-8');
+    
+    $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:sdt>
+            <w:sdtPr>
+                <w:id w:val="12345678"/>
+                <w:tag w:val="{$escapedTag}"/>
+            </w:sdtPr>
+            <w:sdtContent>
+                {$content}
+            </w:sdtContent>
+        </w:sdt>
+    </w:body>
+</w:document>
+XML;
+
+    createDocxFromXml($path, $xml);
+}
+
+/**
  * Create DOCX with multiple SDTs
  *
  * @param string $path File path

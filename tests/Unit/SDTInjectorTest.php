@@ -9,8 +9,8 @@ use MkGrow\ContentControl\Exception\ZipArchiveException;
 use MkGrow\ContentControl\Exception\DocumentNotFoundException;
 use PhpOffice\PhpWord\PhpWord;
 
-describe('SDTInjector - Geração de XML SDT', function () {
-    test('cria elemento <w:sdt> completo', function () {
+describe('SDTInjector - SDT XML Generation', function () {
+    test('creates complete <w:sdt> element', function () {
         $injector = new SDTInjector();
         $section = createSectionWithText('Test content');
         $config = new SDTConfig(
@@ -20,7 +20,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
             type: ContentControl::TYPE_RICH_TEXT
         );
 
-        // Usar reflexão para chamar método privado
+        // Use reflection to call private method
         $reflection = new ReflectionClass($injector);
         $method = $reflection->getMethod('createSDTElement');
         $method->setAccessible(true);
@@ -32,7 +32,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('<w:sdtContent>');
     });
 
-    test('inclui ID no XML', function () {
+    test('includes ID in XML', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '87654321');
@@ -47,7 +47,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('w:val="87654321"');
     });
 
-    test('inclui alias quando fornecido', function () {
+    test('includes alias when provided', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', alias: 'Test Alias');
@@ -62,7 +62,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('w:val="Test Alias"');
     });
 
-    test('omite alias quando vazio', function () {
+    test('omits alias when empty', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', alias: '');
@@ -76,7 +76,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->not->toContain('<w:alias');
     });
 
-    test('inclui tag quando fornecida', function () {
+    test('includes tag when provided', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', tag: 'test-tag');
@@ -91,7 +91,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('w:val="test-tag"');
     });
 
-    test('inclui tipo richText', function () {
+    test('includes richText type', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', type: ContentControl::TYPE_RICH_TEXT);
@@ -105,7 +105,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('<w:richText');
     });
 
-    test('inclui tipo plainText', function () {
+    test('includes plainText type', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', type: ContentControl::TYPE_PLAIN_TEXT);
@@ -119,7 +119,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('<w:text');
     });
 
-    test('inclui lockType quando fornecido', function () {
+    test('includes lockType when provided', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', lockType: ContentControl::LOCK_SDT_LOCKED);
@@ -134,7 +134,7 @@ describe('SDTInjector - Geração de XML SDT', function () {
         expect($xml)->toContain('w:val="sdtLocked"');
     });
 
-    test('omite lock quando LOCK_NONE', function () {
+    test('omits lock when LOCK_NONE', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $config = new SDTConfig(id: '12345678', lockType: ContentControl::LOCK_NONE);
@@ -149,8 +149,8 @@ describe('SDTInjector - Geração de XML SDT', function () {
     });
 });
 
-describe('SDTInjector - Serialização de elementos', function () {
-    test('serializa Text element', function () {
+describe('SDTInjector - Element Serialization', function () {
+    test('serializes Text element', function () {
         $injector = new SDTInjector();
         $section = createSectionWithText('Test text content');
         $config = new SDTConfig(id: '12345678');
@@ -165,7 +165,7 @@ describe('SDTInjector - Serialização de elementos', function () {
         expect($xml)->toContain('<w:t');
     });
 
-    test('serializa Table element', function () {
+    test('serializes Table element', function () {
         $injector = new SDTInjector();
         $section = createSection();
         $table = $section->addTable();
@@ -185,9 +185,9 @@ describe('SDTInjector - Serialização de elementos', function () {
     });
 });
 
-describe('SDTInjector - Injeção em DOCX', function () {
-    test('injeta SDT em arquivo DOCX', function () {
-        // Criar DOCX base com elemento Text
+describe('SDTInjector - Injection into DOCX', function () {
+    test('injects SDT into DOCX file', function () {
+        // Create base DOCX with Text element
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $textElement = $section->addText('SDT content to protect');
@@ -196,18 +196,18 @@ describe('SDTInjector - Injeção em DOCX', function () {
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tempFile);
 
-        // Criar SDT para injetar (usando elemento Text, não Section)
+        // Create SDT to inject (using Text element, not Section)
         $config = new SDTConfig(id: '12345678', alias: 'Test SDT');
 
         $tuples = [
             ['element' => $textElement, 'config' => $config]
         ];
 
-        // Injetar
+        // Inject
         $injector = new SDTInjector();
         $injector->inject($tempFile, $tuples);
 
-        // Verificar resultado
+        // Verify result
         $zip = new \ZipArchive();
         $zip->open($tempFile);
         $xml = $zip->getFromName('word/document.xml');
@@ -220,8 +220,8 @@ describe('SDTInjector - Injeção em DOCX', function () {
         unlink($tempFile);
     });
 
-    test('injeta múltiplos SDTs', function () {
-        // Criar DOCX base com múltiplos elementos Text
+    test('injects multiple SDTs', function () {
+        // Create base DOCX with multiple Text elements
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $text1 = $section->addText('SDT 1 content');
@@ -231,7 +231,7 @@ describe('SDTInjector - Injeção em DOCX', function () {
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tempFile);
 
-        // Criar múltiplos SDTs (usando elementos Text)
+        // Create multiple SDTs (using Text elements)
         $tuples = [
             [
                 'element' => $text1,
@@ -243,11 +243,11 @@ describe('SDTInjector - Injeção em DOCX', function () {
             ],
         ];
 
-        // Injetar
+        // Inject
         $injector = new SDTInjector();
         $injector->inject($tempFile, $tuples);
 
-        // Verificar resultado
+        // Verify result
         $zip = new \ZipArchive();
         $zip->open($tempFile);
         $xml = $zip->getFromName('word/document.xml');
@@ -258,7 +258,7 @@ describe('SDTInjector - Injeção em DOCX', function () {
         expect($xml)->toContain('SDT 1');
         expect($xml)->toContain('SDT 2');
 
-        // Contar ocorrências de <w:sdt>
+        // Count <w:sdt> occurrences
         expect($xml)->toBeString();
         assert(is_string($xml)); // PHPStan type narrowing
         $count = substr_count($xml, '<w:sdt>');
@@ -267,15 +267,15 @@ describe('SDTInjector - Injeção em DOCX', function () {
         unlink($tempFile);
     });
 
-    test('lança ZipArchiveException se arquivo não existe', function () {
+    test('throws ZipArchiveException if file does not exist', function () {
         $injector = new SDTInjector();
 
         expect(fn() => $injector->inject('/path/nonexistent.docx', []))
             ->toThrow(ZipArchiveException::class);
     });
 
-    test('injeta antes de </w:body>', function () {
-        // Criar DOCX base com elemento Text
+    test('injects before </w:body>', function () {
+        // Create base DOCX with Text element
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $section->addText('Before SDT');
@@ -285,7 +285,7 @@ describe('SDTInjector - Injeção em DOCX', function () {
         $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tempFile);
 
-        // Injetar SDT (envolvendo elemento existente)
+        // Inject SDT (wrapping existing element)
         $tuples = [
             [
                 'element' => $textToProtect,
@@ -296,7 +296,7 @@ describe('SDTInjector - Injeção em DOCX', function () {
         $injector = new SDTInjector();
         $injector->inject($tempFile, $tuples);
 
-        // Verificar posição
+        // Verify position
         $zip = new \ZipArchive();
         $zip->open($tempFile);
         $xml = $zip->getFromName('word/document.xml');
@@ -316,9 +316,9 @@ describe('SDTInjector - Injeção em DOCX', function () {
     });
 });
 
-describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
+describe('SDTInjector - Methods (DOM Inline Wrapping)', function () {
 
-    test('wrapElementInline move elemento sem duplicar', function () {
+    test('wrapElementInline moves element without duplicating', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -331,34 +331,34 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
         
         $paragraph = $xpath->query('//w:p')->item(0);
         
-        // Debug: validar que encontrou o parágrafo
+        // Debug: validate that paragraph was found
         expect($paragraph)->not->toBeNull();
 
         $injector = new SDTInjector();
         $config = new SDTConfig(id: '12345678', alias: 'Test');
 
-        // Chamar método privado via Reflection
+        // Call private method via Reflection
         $reflection = new ReflectionClass($injector);
         $method = $reflection->getMethod('wrapElementInline');
         $method->setAccessible(true);
         $method->invoke($injector, $paragraph, $config);
         
-        // Validar estrutura
+        // Validate structure
         $sdt = $xpath->query('//w:sdt')->item(0);
         expect($sdt)->not->toBeNull();
 
-        // Validar conteúdo dentro de SDT
+        // Validate content inside SDT
         $wrappedParagraph = $xpath->query('//w:sdt/w:sdtContent/w:p')->item(0);
         expect($wrappedParagraph)->not->toBeNull();
         assert($wrappedParagraph !== null);
         expect($wrappedParagraph->textContent)->toBe('Original');
 
-        // Validar NÃO há parágrafo órfão fora do SDT
+        // Validate that there is NO orphan paragraph outside SDT
         $orphanParagraphs = $xpath->query('//w:body/w:p');
         expect($orphanParagraphs->length)->toBe(0);
     });
 
-    test('wrapElementInline cria propriedades SDT corretas', function () {
+    test('wrapElementInline creates correct SDT properties', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -384,7 +384,7 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
         $method->setAccessible(true);
         $method->invoke($injector, $paragraph, $config);
 
-        // Validar propriedades
+        // Validate properties
         $idNode = $xpath->query('//w:sdt/w:sdtPr/w:id')->item(0);
         assert($idNode instanceof DOMElement);
         expect($idNode->getAttribute('w:val'))->toBe('87654321');
@@ -402,7 +402,7 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
         expect($lockNode->getAttribute('w:val'))->toBe('sdtLocked');
     });
 
-    test('isElementProcessed detecta elementos já processados', function () {
+    test('isElementProcessed detects already processed elements', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -419,12 +419,12 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
 
         $reflection = new ReflectionClass($injector);
         
-        // Marcar como processado
+        // Mark as processed
         $markMethod = $reflection->getMethod('markElementAsProcessed');
         $markMethod->setAccessible(true);
         $markMethod->invoke($injector, $paragraph);
 
-        // Verificar
+        // Verify
         $isProcessedMethod = $reflection->getMethod('isElementProcessed');
         $isProcessedMethod->setAccessible(true);
         $isProcessed = $isProcessedMethod->invoke($injector, $paragraph);
@@ -432,16 +432,16 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
         expect($isProcessed)->toBeTrue();
     });
 
-    test('wrapElementInline lança exceção se elemento sem owner document', function () {
+    test('wrapElementInline throws exception if element without owner document', function () {
         $injector = new SDTInjector();
         $config = new SDTConfig(id: '12345678');
 
-        // Criar documento mas não adicionar o elemento ao documento
+        // Create document but do not add the element to the document
         $doc = new DOMDocument();
         $element = $doc->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
-        // NÃO adicionar ao documento, deixar órfão
+        // DO NOT add to document, leave orphan
         
-        // Elemento tem ownerDocument mas não tem parent
+        // Element has ownerDocument but no parent
         $reflection = new ReflectionClass($injector);
         $method = $reflection->getMethod('wrapElementInline');
         $method->setAccessible(true);
@@ -451,9 +451,9 @@ describe('SDTInjector - Métodos v3.0 (DOM Inline Wrapping)', function () {
     });
 
 });
-describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
-    test('ordena Cell antes de Table', function () {
-        // Criar elementos PHPWord
+describe('SDTInjector - Depth Sorting', function () {
+    test('sorts Cell before Table', function () {
+        // Create PHPWord elements
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $table = $section->addTable();
@@ -461,17 +461,17 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
         $cell = $table->addCell(2000);
         $cell->addText('Cell content');
 
-        // Criar configs
+        // Create configs
         $cellConfig = new SDTConfig(id: '11111111', alias: 'Cell Control');
         $tableConfig = new SDTConfig(id: '22222222', alias: 'Table Control');
 
-        // Array desordenado (Table primeiro)
+        // Unsorted array (Table first)
         $sdtTuples = [
             ['element' => $table, 'config' => $tableConfig],
             ['element' => $cell, 'config' => $cellConfig],
         ];
 
-        // Usar reflexão para chamar sortElementsByDepth
+        // Use reflection to call sortElementsByDepth
         $injector = new SDTInjector();
         $reflection = new ReflectionClass($injector);
         $method = $reflection->getMethod('sortElementsByDepth');
@@ -482,12 +482,12 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
         assert(is_array($sorted));
         /** @var array<int, array{element: mixed, config: SDTConfig}> $sorted */
 
-        // Verificar ordem: Cell (depth 3) deve vir antes de Table (depth 1)
+        // Check order: Cell (depth 3) should come before Table (depth 1)
         expect($sorted[0]['element'])->toBe($cell);
         expect($sorted[1]['element'])->toBe($table);
     });
 
-    test('getElementDepth retorna valores corretos', function () {
+    test('getElementDepth returns correct values', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $table = $section->addTable();
@@ -506,7 +506,7 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
         expect($method->invoke($injector, $text))->toBe(1);
     });
 
-    test('ordena múltiplos elementos corretamente', function () {
+    test('sorts multiple elements correctly', function () {
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $table1 = $section->addTable();
@@ -517,7 +517,7 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
         $cell2 = $table2->addCell(2000);
         $text = $section->addText('Text');
 
-        // Array desordenado
+        // Unsorted array
         $sdtTuples = [
             ['element' => $table1, 'config' => new SDTConfig(id: '11111111')],
             ['element' => $cell1, 'config' => new SDTConfig(id: '22222222')],
@@ -536,12 +536,12 @@ describe('SDTInjector - Ordenação por Profundidade (v3.0)', function () {
         assert(is_array($sorted));
         /** @var array<int, array{element: mixed, config: SDTConfig}> $sorted */
 
-        // Primeiros elementos devem ser Cells (depth 3)
+        // First elements should be Cells (depth 3)
         expect($sorted[0]['element'])->toBeInstanceOf(\PhpOffice\PhpWord\Element\Cell::class);
         expect($sorted[1]['element'])->toBeInstanceOf(\PhpOffice\PhpWord\Element\Cell::class);
         
-        // Últimos 3 elementos devem ser Tables ou Text (depth 1)
-        // Ordem entre eles não é garantida (mesma profundidade)
+        // Last 3 elements should be Tables or Text (depth 1)
+        // Order among them is not guaranteed (same depth)
         $depths = [
             $sorted[2]['element'] instanceof \PhpOffice\PhpWord\Element\Table ||
             $sorted[2]['element'] instanceof \PhpOffice\PhpWord\Element\Text,

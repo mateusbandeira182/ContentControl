@@ -5,25 +5,25 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 use PhpOffice\PhpWord\IOFactory as PHPWordIOFactory;
 
-describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function () {
-    test('não duplica conteúdo ao envolver Text com SDT', function () {
-        // Criar ContentControl
+describe('No Duplication (DOM Inline Wrapping)', function () {
+    test('does not duplicate content when wrapping Text with SDT', function () {
+        // Create ContentControl
         $cc = new ContentControl();
         $section = $cc->addSection();
-        $text = $section->addText('Texto único que não deve duplicar');
+        $text = $section->addText('Unique text that should not duplicate');
         
-        // Adicionar Content Control no elemento Text
+        // Add Content Control to Text element
         $cc->addContentControl($text, [
             'id' => '12345678',
-            'alias' => 'Texto Principal',
+            'alias' => 'Main Text',
             'tag' => 'main-text'
         ]);
         
-        // Salvar DOCX
+        // Save DOCX
         $outputPath = sys_get_temp_dir() . '/test_no_duplication_text.docx';
         $cc->save($outputPath);
         
-        // Verificar estrutura do DOCX
+        // Verify DOCX structure
         $zip = new ZipArchive();
         $zip->open($outputPath);
         $documentXml = $zip->getFromName('word/document.xml');
@@ -32,20 +32,20 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         expect($documentXml)->toBeString();
         assert(is_string($documentXml));
         
-        // Contar ocorrências do texto
-        $textOccurrences = substr_count($documentXml, 'Texto único que não deve duplicar');
+        // Count text occurrences
+        $textOccurrences = substr_count($documentXml, 'Unique text that should not duplicate');
         expect($textOccurrences)->toBe(1, 'Text should appear exactly once in document.xml');
         
-        // Verificar presença de SDT
+        // Verify SDT presence
         expect($documentXml)->toContain('<w:sdt>');
         expect($documentXml)->toContain('<w:sdtPr>');
         expect($documentXml)->toContain('w:val="12345678"');
         
-        // Limpar arquivo
+        // Cleanup file
         @safeUnlink($outputPath);
     });
 
-    test('não duplica conteúdo ao envolver Table com SDT', function () {
+    test('does not duplicate content when wrapping Table with SDT', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         
@@ -54,10 +54,10 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         $table->addCell(2000)->addText('Cell R0C0');
         $table->addCell(2000)->addText('Cell R0C1');
         
-        // Adicionar Content Control na tabela
+        // Add Content Control to table
         $cc->addContentControl($table, [
             'id' => '87654321',
-            'alias' => 'Tabela Principal'
+            'alias' => 'Main Table'
         ]);
         
         $outputPath = sys_get_temp_dir() . '/test_no_duplication_table.docx';
@@ -70,35 +70,35 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         
         assert(is_string($documentXml));
         
-        // Verificar não duplicação
+        // Verify no duplication
         $cellR0C0Count = substr_count($documentXml, 'Cell R0C0');
         $cellR0C1Count = substr_count($documentXml, 'Cell R0C1');
         
         expect($cellR0C0Count)->toBe(1, 'Cell R0C0 should appear exactly once');
         expect($cellR0C1Count)->toBe(1, 'Cell R0C1 should appear exactly once');
         
-        // Verificar SDT
+        // Verify SDT
         expect($documentXml)->toContain('<w:sdt>');
         expect($documentXml)->toContain('w:val="87654321"');
         
         @safeUnlink($outputPath);
     });
 
-    test('não duplica conteúdo ao envolver Cell aninhada', function () {
+    test('does not duplicate content when wrapping nested Cell', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         
         $table = $section->addTable();
         $table->addRow();
         $cell1 = $table->addCell(2000);
-        $cell1->addText('Conteúdo da célula protegida');
+        $cell1->addText('Protected cell content');
         $cell2 = $table->addCell(2000);
-        $cell2->addText('Célula normal');
+        $cell2->addText('Normal cell');
         
-        // Adicionar Content Control APENAS na primeira célula
+        // Add Content Control ONLY to first cell
         $cc->addContentControl($cell1, [
             'id' => '11111111',
-            'alias' => 'Célula Protegida',
+            'alias' => 'Protected Cell',
             'lockType' => ContentControl::LOCK_SDT_LOCKED
         ]);
         
@@ -112,14 +112,14 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         
         assert(is_string($documentXml));
         
-        // Verificar não duplicação
-        $protectedCellCount = substr_count($documentXml, 'Conteúdo da célula protegida');
-        $normalCellCount = substr_count($documentXml, 'Célula normal');
+        // Verify no duplication
+        $protectedCellCount = substr_count($documentXml, 'Protected cell content');
+        $normalCellCount = substr_count($documentXml, 'Normal cell');
         
         expect($protectedCellCount)->toBe(1, 'Protected cell content should appear exactly once');
         expect($normalCellCount)->toBe(1, 'Normal cell content should appear exactly once');
         
-        // Verificar SDT apenas na célula protegida
+        // Verify SDT only on protected cell
         expect($documentXml)->toContain('<w:sdt>');
         expect($documentXml)->toContain('w:val="11111111"');
         expect($documentXml)->toContain('w:val="sdtLocked"');
@@ -127,25 +127,25 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         @safeUnlink($outputPath);
     });
 
-    test('não duplica ao envolver múltiplos elementos diferentes', function () {
+    test('does not duplicate when wrapping multiple different elements', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         
-        // Adicionar texto
-        $section->addText('Texto antes da tabela');
+        // Add text
+        $section->addText('Text before table');
         
-        // Adicionar tabela
+        // Add table
         $table = $section->addTable();
         $table->addRow();
-        $table->addCell(2000)->addText('Dados da tabela');
+        $table->addCell(2000)->addText('Table data');
         
-        // Adicionar outro texto
-        $section->addText('Texto depois da tabela');
+        // Add another text
+        $section->addText('Text after table');
         
-        // Adicionar Content Controls
+        // Add Content Controls
         $cc->addContentControl($table, [
             'id' => '22222222',
-            'alias' => 'Tabela de Dados'
+            'alias' => 'Data Table'
         ]);
         
         $outputPath = sys_get_temp_dir() . '/test_no_duplication_multiple.docx';
@@ -158,12 +158,12 @@ describe('v3.0 - Eliminação de Duplicação (DOM Inline Wrapping)', function (
         
         assert(is_string($documentXml));
         
-        // Verificar não duplicação de TODOS os conteúdos
-        expect(substr_count($documentXml, 'Texto antes da tabela'))->toBe(1);
-        expect(substr_count($documentXml, 'Dados da tabela'))->toBe(1);
-        expect(substr_count($documentXml, 'Texto depois da tabela'))->toBe(1);
+        // Verify no duplication of ALL content
+        expect(substr_count($documentXml, 'Text before table'))->toBe(1);
+        expect(substr_count($documentXml, 'Table data'))->toBe(1);
+        expect(substr_count($documentXml, 'Text after table'))->toBe(1);
         
-        // Verificar SDT
+        // Verify SDT
         expect($documentXml)->toContain('<w:sdt>');
         expect($documentXml)->toContain('w:val="22222222"');
         

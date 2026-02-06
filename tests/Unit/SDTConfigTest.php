@@ -5,8 +5,8 @@ declare(strict_types=1);
 use MkGrow\ContentControl\SDTConfig;
 use MkGrow\ContentControl\ContentControl;
 
-describe('SDTConfig - Construtor', function () {
-    test('cria instância com ID válido', function () {
+describe('SDTConfig - Constructor', function () {
+    test('creates instance with valid ID', function () {
         $config = new SDTConfig(id: '12345678');
         
         expect($config->id)->toBe('12345678');
@@ -16,7 +16,7 @@ describe('SDTConfig - Construtor', function () {
         expect($config->lockType)->toBe(ContentControl::LOCK_NONE);
     });
 
-    test('cria instância com todos parâmetros', function () {
+    test('creates instance with all parameters', function () {
         $config = new SDTConfig(
             id: '87654321',
             alias: 'Test Control',
@@ -32,69 +32,69 @@ describe('SDTConfig - Construtor', function () {
         expect($config->lockType)->toBe(ContentControl::LOCK_SDT_LOCKED);
     });
 
-    test('aceita ID vazio (será preenchido pelo Registry)', function () {
+    test('accepts empty ID (will be filled by Registry)', function () {
         $config = new SDTConfig(id: '');
         
         expect($config->id)->toBe('');
     });
 });
 
-describe('SDTConfig - Validação de ID', function () {
-    test('rejeita ID com menos de 8 dígitos', function () {
+describe('SDTConfig - ID Validation', function () {
+    test('rejects ID with less than 8 digits', function () {
         expect(fn() => new SDTConfig(id: '123'))
             ->toThrow(InvalidArgumentException::class, 'Must be 8 digits');
     });
 
-    test('rejeita ID com mais de 8 dígitos', function () {
+    test('rejects ID with more than 8 digits', function () {
         expect(fn() => new SDTConfig(id: '123456789'))
             ->toThrow(InvalidArgumentException::class, 'Must be 8 digits');
     });
 
-    test('rejeita ID com caracteres não numéricos', function () {
+    test('rejects ID with non-numeric characters', function () {
         expect(fn() => new SDTConfig(id: '1234567a'))
             ->toThrow(InvalidArgumentException::class, 'Must be 8 digits');
     });
 
-    test('rejeita ID abaixo do range mínimo', function () {
+    test('rejects ID below minimum range', function () {
         expect(fn() => new SDTConfig(id: '09999999'))
             ->toThrow(InvalidArgumentException::class, 'Must be between 10000000 and 99999999');
     });
 
-    test('aceita ID no limite inferior', function () {
+    test('accepts ID at lower limit', function () {
         $config = new SDTConfig(id: '10000000');
         expect($config->id)->toBe('10000000');
     });
 
-    test('aceita ID no limite superior', function () {
+    test('accepts ID at upper limit', function () {
         $config = new SDTConfig(id: '99999999');
         expect($config->id)->toBe('99999999');
     });
 });
 
-describe('SDTConfig - Validação de Alias', function () {
-    test('aceita alias vazio', function () {
+describe('SDTConfig - Alias Validation', function () {
+    test('accepts empty alias', function () {
         $config = new SDTConfig(id: '12345678', alias: '');
         expect($config->alias)->toBe('');
     });
 
-    test('aceita alias com 255 caracteres', function () {
+    test('accepts alias with 255 characters', function () {
         $alias = str_repeat('a', 255);
         $config = new SDTConfig(id: '12345678', alias: $alias);
         expect($config->alias)->toBe($alias);
     });
 
-    test('rejeita alias com 256 caracteres', function () {
+    test('rejects alias with 256 characters', function () {
         $alias = str_repeat('a', 256);
         expect(fn() => new SDTConfig(id: '12345678', alias: $alias))
             ->toThrow(InvalidArgumentException::class, 'must not exceed 255 characters');
     });
 
-    test('rejeita alias com caracteres de controle', function () {
+    test('rejects alias with control characters', function () {
         expect(fn() => new SDTConfig(id: '12345678', alias: "Test\x00Control"))
             ->toThrow(InvalidArgumentException::class, 'must not contain control characters');
     });
 
-    test('rejeita alias com caracteres XML reservados', function () {
+    test('rejects alias with reserved XML characters', function () {
         expect(fn() => new SDTConfig(id: '12345678', alias: 'Test<Control'))
             ->toThrow(InvalidArgumentException::class, 'XML reserved characters');
         
@@ -105,29 +105,29 @@ describe('SDTConfig - Validação de Alias', function () {
             ->toThrow(InvalidArgumentException::class, 'XML reserved characters');
     });
 
-    test('aceita alias com UTF-8', function () {
+    test('accepts alias with UTF-8', function () {
         $config = new SDTConfig(id: '12345678', alias: 'Contrôle çñá');
         expect($config->alias)->toBe('Contrôle çñá');
     });
 });
 
-describe('SDTConfig - Validação de Tag', function () {
-    test('aceita tag vazia', function () {
+describe('SDTConfig - Tag Validation', function () {
+    test('accepts empty tag', function () {
         $config = new SDTConfig(id: '12345678', tag: '');
         expect($config->tag)->toBe('');
     });
 
-    test('aceita tag válida', function () {
+    test('accepts valid tag', function () {
         $config = new SDTConfig(id: '12345678', tag: 'customer_name');
         expect($config->tag)->toBe('customer_name');
     });
 
-    test('aceita tag com hífens e pontos', function () {
+    test('accepts tag with hyphens and dots', function () {
         $config = new SDTConfig(id: '12345678', tag: 'customer-name.v1');
         expect($config->tag)->toBe('customer-name.v1');
     });
 
-    test('rejeita tag que não começa com letra ou underscore', function () {
+    test('rejects tag that does not start with letter or underscore', function () {
         expect(fn() => new SDTConfig(id: '12345678', tag: '1invalid'))
             ->toThrow(InvalidArgumentException::class, 'must start with a letter or underscore');
         
@@ -135,7 +135,7 @@ describe('SDTConfig - Validação de Tag', function () {
             ->toThrow(InvalidArgumentException::class, 'must start with a letter or underscore');
     });
 
-    test('rejeita tag com caracteres inválidos', function () {
+    test('rejects tag with invalid characters', function () {
         expect(fn() => new SDTConfig(id: '12345678', tag: 'invalid tag'))
             ->toThrow(InvalidArgumentException::class, 'must start with a letter or underscore');
         
@@ -143,69 +143,69 @@ describe('SDTConfig - Validação de Tag', function () {
             ->toThrow(InvalidArgumentException::class, 'must start with a letter or underscore');
     });
 
-    test('rejeita tag com mais de 255 caracteres', function () {
+    test('rejects tag with more than 255 characters', function () {
         $tag = 'a' . str_repeat('b', 255);
         expect(fn() => new SDTConfig(id: '12345678', tag: $tag))
             ->toThrow(InvalidArgumentException::class, 'must not exceed 255 characters');
     });
 });
 
-describe('SDTConfig - Validação de Type', function () {
-    test('aceita TYPE_RICH_TEXT', function () {
+describe('SDTConfig - Type Validation', function () {
+    test('accepts TYPE_RICH_TEXT', function () {
         $config = new SDTConfig(id: '12345678', type: ContentControl::TYPE_RICH_TEXT);
         expect($config->type)->toBe(ContentControl::TYPE_RICH_TEXT);
     });
 
-    test('aceita TYPE_PLAIN_TEXT', function () {
+    test('accepts TYPE_PLAIN_TEXT', function () {
         $config = new SDTConfig(id: '12345678', type: ContentControl::TYPE_PLAIN_TEXT);
         expect($config->type)->toBe(ContentControl::TYPE_PLAIN_TEXT);
     });
 
-    test('aceita TYPE_GROUP', function () {
+    test('accepts TYPE_GROUP', function () {
         $config = new SDTConfig(id: '12345678', type: ContentControl::TYPE_GROUP);
         expect($config->type)->toBe(ContentControl::TYPE_GROUP);
     });
 
-    test('aceita TYPE_PICTURE', function () {
+    test('accepts TYPE_PICTURE', function () {
         $config = new SDTConfig(id: '12345678', type: ContentControl::TYPE_PICTURE);
         expect($config->type)->toBe(ContentControl::TYPE_PICTURE);
     });
 
-    test('rejeita tipo inválido', function () {
+    test('rejects invalid type', function () {
         expect(fn() => new SDTConfig(id: '12345678', type: 'invalidType'))
             ->toThrow(InvalidArgumentException::class, 'Invalid type');
     });
 });
 
-describe('SDTConfig - Validação de LockType', function () {
-    test('aceita LOCK_NONE', function () {
+describe('SDTConfig - LockType Validation', function () {
+    test('accepts LOCK_NONE', function () {
         $config = new SDTConfig(id: '12345678', lockType: ContentControl::LOCK_NONE);
         expect($config->lockType)->toBe(ContentControl::LOCK_NONE);
     });
 
-    test('aceita LOCK_SDT_LOCKED', function () {
+    test('accepts LOCK_SDT_LOCKED', function () {
         $config = new SDTConfig(id: '12345678', lockType: ContentControl::LOCK_SDT_LOCKED);
         expect($config->lockType)->toBe(ContentControl::LOCK_SDT_LOCKED);
     });
 
-    test('aceita LOCK_CONTENT_LOCKED', function () {
+    test('accepts LOCK_CONTENT_LOCKED', function () {
         $config = new SDTConfig(id: '12345678', lockType: ContentControl::LOCK_CONTENT_LOCKED);
         expect($config->lockType)->toBe(ContentControl::LOCK_CONTENT_LOCKED);
     });
 
-    test('aceita LOCK_UNLOCKED', function () {
+    test('accepts LOCK_UNLOCKED', function () {
         $config = new SDTConfig(id: '12345678', lockType: ContentControl::LOCK_UNLOCKED);
         expect($config->lockType)->toBe(ContentControl::LOCK_UNLOCKED);
     });
 
-    test('rejeita lockType inválido', function () {
+    test('rejects invalid lockType', function () {
         expect(fn() => new SDTConfig(id: '12345678', lockType: 'invalidLock'))
             ->toThrow(InvalidArgumentException::class, 'Invalid lock type');
     });
 });
 
 describe('SDTConfig - fromArray factory method', function () {
-    test('cria com defaults quando array vazio', function () {
+    test('creates with defaults when array is empty', function () {
         $config = SDTConfig::fromArray([]);
         
         expect($config->id)->toBe('');
@@ -215,7 +215,7 @@ describe('SDTConfig - fromArray factory method', function () {
         expect($config->lockType)->toBe(ContentControl::LOCK_NONE);
     });
 
-    test('cria com todos valores fornecidos', function () {
+    test('creates with all values provided', function () {
         $config = SDTConfig::fromArray([
             'id' => '12345678',
             'alias' => 'Test',
@@ -231,7 +231,7 @@ describe('SDTConfig - fromArray factory method', function () {
         expect($config->lockType)->toBe(ContentControl::LOCK_SDT_LOCKED);
     });
 
-    test('usa defaults para valores omitidos', function () {
+    test('uses defaults for omitted values', function () {
         $config = SDTConfig::fromArray(['id' => '12345678']);
         
         expect($config->id)->toBe('12345678');
@@ -240,8 +240,8 @@ describe('SDTConfig - fromArray factory method', function () {
     });
 });
 
-describe('SDTConfig - Métodos with* (imutabilidade)', function () {
-    test('withId retorna nova instância', function () {
+describe('SDTConfig - with* methods (immutability)', function () {
+    test('withId returns new instance', function () {
         $original = new SDTConfig(id: '12345678', alias: 'Test');
         $modified = $original->withId('87654321');
         
@@ -251,7 +251,7 @@ describe('SDTConfig - Métodos with* (imutabilidade)', function () {
         expect($original)->not->toBe($modified);
     });
 
-    test('withAlias retorna nova instância', function () {
+    test('withAlias returns new instance', function () {
         $original = new SDTConfig(id: '12345678', alias: 'Original');
         $modified = $original->withAlias('Modified');
         
@@ -261,7 +261,7 @@ describe('SDTConfig - Métodos with* (imutabilidade)', function () {
         expect($original)->not->toBe($modified);
     });
 
-    test('withTag retorna nova instância', function () {
+    test('withTag returns new instance', function () {
         $original = new SDTConfig(id: '12345678', tag: 'original-tag');
         $modified = $original->withTag('modified-tag');
         
@@ -271,21 +271,21 @@ describe('SDTConfig - Métodos with* (imutabilidade)', function () {
         expect($original)->not->toBe($modified);
     });
 
-    test('withId valida novo ID', function () {
+    test('withId validates new ID', function () {
         $original = new SDTConfig(id: '12345678');
         
         expect(fn() => $original->withId('invalid'))
             ->toThrow(InvalidArgumentException::class, 'Must be 8 digits');
     });
 
-    test('withAlias valida novo alias', function () {
+    test('withAlias validates new alias', function () {
         $original = new SDTConfig(id: '12345678');
         
         expect(fn() => $original->withAlias(str_repeat('a', 256)))
             ->toThrow(InvalidArgumentException::class, 'must not exceed 255 characters');
     });
 
-    test('withTag valida nova tag', function () {
+    test('withTag validates new tag', function () {
         $original = new SDTConfig(id: '12345678');
         
         expect(fn() => $original->withTag('invalid tag'))
@@ -293,8 +293,8 @@ describe('SDTConfig - Métodos with* (imutabilidade)', function () {
     });
 });
 
-describe('SDTConfig - Propriedades readonly', function () {
-    test('propriedades são imutáveis via reflexão', function () {
+describe('SDTConfig - Readonly properties', function () {
+    test('properties are immutable via reflection', function () {
         $config = new SDTConfig(id: '12345678');
         
         $reflection = new ReflectionClass($config);

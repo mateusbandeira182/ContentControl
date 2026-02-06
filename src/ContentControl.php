@@ -4,106 +4,104 @@ declare(strict_types=1);
 
 namespace MkGrow\ContentControl;
 
-use PhpOffice\Math\Element\AbstractElement;
-use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\IOFactory as PHPWordIOFactory;
 
 /**
- * ContentControl v2.0 - Proxy Pattern para PhpWord com suporte a SDTs
+ * ContentControl v0.2 - Proxy Pattern for PhpWord with SDT support
  * 
- * Esta classe encapsula PhpWord e fornece API unificada para:
- * - Criar documentos Word
- * - Adicionar Content Controls (Structured Document Tags)
- * - Gerenciar IDs únicos automaticamente
- * - Salvar documentos com SDTs injetados
+ * This class encapsulates PhpWord and provides a unified API for:
+ * - Creating Word documents
+ * - Adding Content Controls (Structured Document Tags)
+ * - Managing unique IDs automatically
+ * - Saving documents with injected SDTs
  * 
- * @since 2.0.0
+ * @since 0.2.0
  */
 final class ContentControl
 {
-    // ==================== CONSTANTES DE TIPO ====================
+    // ==================== TYPE CONSTANTS ====================
     /**
-     * Content Control tipo Group - Agrupa elementos sem permitir edição
+     * Group Content Control - Groups elements without allowing editing
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.15
-     * Elemento XML: <w:group/>
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.15
+     * XML Element: <w:group/>
      */
     public const TYPE_GROUP = 'group';
 
     /**
-     * Content Control tipo Plain Text - Texto simples sem formatação
+     * Plain Text Content Control - Simple text without formatting
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.34
-     * Elemento XML: <w:text/>
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.34
+     * XML Element: <w:text/>
      */
     public const TYPE_PLAIN_TEXT = 'plainText';
 
     /**
-     * Content Control tipo Rich Text - Texto com formatação completa
+     * Rich Text Content Control - Text with full formatting
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.31
-     * Elemento XML: <w:richText/>
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.31
+     * XML Element: <w:richText/>
      */
     public const TYPE_RICH_TEXT = 'richText';
 
     /**
-     * Content Control tipo Picture - Controle para imagens
+     * Picture Content Control - Control for images
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.27
-     * Elemento XML: <w:picture/>
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.27
+     * XML Element: <w:picture/>
      */
     public const TYPE_PICTURE = 'picture';
 
-    // ==================== CONSTANTES DE LOCK ====================
+    // ==================== LOCK CONSTANTS ====================
     /**
-     * Sem bloqueio - Content Control pode ser editado e deletado
+     * No lock - Content Control can be edited and deleted
      * 
-     * Especificação: Valor padrão quando <w:lock> ausente
+     * Specification: Default value when <w:lock> is absent
      */
     public const LOCK_NONE = '';
 
     /**
-     * Content Control bloqueado - Não pode ser deletado, mas conteúdo é editável
+     * Content Control locked - Cannot be deleted, but content is editable
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
-     * Valor: sdtLocked
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
+     * Value: sdtLocked
      */
     public const LOCK_SDT_LOCKED = 'sdtLocked';
 
     /**
-     * Conteúdo bloqueado - Content Control pode ser deletado, mas conteúdo não é editável
+     * Content locked - Content Control can be deleted, but content is not editable
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
-     * Valor: sdtContentLocked
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
+     * Value: sdtContentLocked
      */
     public const LOCK_CONTENT_LOCKED = 'sdtContentLocked';
 
     /**
-     * Desbloqueado explicitamente
+     * Explicitly unlocked
      * 
-     * Especificação: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
-     * Valor: unlocked
+     * Specification: ISO/IEC 29500-1:2016 §17.5.2.23 Table 17-21
+     * Value: unlocked
      */
     public const LOCK_UNLOCKED = 'unlocked';
 
-    // ==================== PROPRIEDADES ====================
+    // ==================== PROPERTIES ====================
     
     /**
-     * Instância PhpWord encapsulada
+     * Encapsulated PhpWord instance
      */
     private PhpWord $phpWord;
 
     /**
-     * Registry de Content Controls
+     * Content Controls registry
      */
     private SDTRegistry $sdtRegistry;
 
     /**
-     * Cria novo ContentControl (Proxy para PhpWord)
+     * Creates new ContentControl (Proxy for PhpWord)
      * 
-     * @param PhpWord|null $phpWord Instância PhpWord existente ou null para criar nova
+     * @param PhpWord|null $phpWord Existing PhpWord instance or null to create new one
      */
     public function __construct(?PhpWord $phpWord = null)
     {
@@ -111,12 +109,12 @@ final class ContentControl
         $this->sdtRegistry = new SDTRegistry();
     }
 
-    // ==================== DELEGAÇÃO PHPWORD ====================
+    // ==================== PHPWORD DELEGATION ====================
 
     /**
-     * Adiciona Section ao documento
+     * Adds Section to document
      * 
-     * @param mixed[] $style Estilo da seção
+     * @param mixed[] $style Section style
      * @return Section
      */
     public function addSection(array $style = []): Section
@@ -125,7 +123,7 @@ final class ContentControl
     }
 
     /**
-     * Retorna propriedades do documento
+     * Returns document properties
      * 
      * @return \PhpOffice\PhpWord\Metadata\DocInfo
      */
@@ -135,7 +133,7 @@ final class ContentControl
     }
 
     /**
-     * Retorna configurações do documento
+     * Returns document settings
      * 
      * @return \PhpOffice\PhpWord\Metadata\Settings
      */
@@ -145,10 +143,10 @@ final class ContentControl
     }
 
     /**
-     * Adiciona estilo de fonte
+     * Adds font style
      * 
-     * @param string $name Nome do estilo
-     * @param mixed[] $style Configuração do estilo
+     * @param string $name Style name
+     * @param mixed[] $style Style configuration
      * @return void
      */
     public function addFontStyle(string $name, array $style): void
@@ -157,10 +155,10 @@ final class ContentControl
     }
 
     /**
-     * Adiciona estilo de parágrafo
+     * Adds paragraph style
      * 
-     * @param string $name Nome do estilo
-     * @param mixed[] $style Configuração do estilo
+     * @param string $name Style name
+     * @param mixed[] $style Style configuration
      * @return void
      */
     public function addParagraphStyle(string $name, array $style): void
@@ -169,11 +167,11 @@ final class ContentControl
     }
 
     /**
-     * Adiciona estilo de tabela
+     * Adds table style
      * 
-     * @param string $name Nome do estilo
-     * @param mixed[] $styleTable Estilo da tabela
-     * @param mixed[]|null $styleFirstRow Estilo da primeira linha
+     * @param string $name Style name
+     * @param mixed[] $styleTable Table style
+     * @param mixed[]|null $styleFirstRow First row style
      * @return void
      */
     public function addTableStyle(string $name, array $styleTable, ?array $styleFirstRow = null): void
@@ -182,11 +180,11 @@ final class ContentControl
     }
 
     /**
-     * Adiciona estilo de título
+     * Adds title style
      * 
-     * @param int $level Nível do título (1-9)
-     * @param mixed[] $fontStyle Estilo da fonte
-     * @param mixed[] $paragraphStyle Estilo do parágrafo
+     * @param int $level Title level (1-9)
+     * @param mixed[] $fontStyle Font style
+     * @param mixed[] $paragraphStyle Paragraph style
      * @return void
      */
     public function addTitleStyle(int $level, array $fontStyle, array $paragraphStyle = []): void
@@ -195,7 +193,7 @@ final class ContentControl
     }
 
     /**
-     * Retorna todas as seções do documento
+     * Returns all document sections
      * 
      * @return Section[]
      */
@@ -207,18 +205,18 @@ final class ContentControl
     // ==================== CONTENT CONTROL API ====================
 
     /**
-     * Adiciona Content Control envolvendo um elemento
+     * Adds Content Control wrapping an element
      * 
-     * Tipos de elementos suportados em v3.0:
-     * - Text: Elementos de texto simples
-     * - TextRun: Elementos de texto com formatação
-     * - Table: Tabelas completas
-     * - Cell: Células individuais de tabela
+     * Supported element types in v3.0:
+     * - Text: Simple text elements
+     * - TextRun: Text elements with formatting
+     * - Table: Complete tables
+     * - Cell: Individual table cells
      * 
-     * Nota: Section não é suportado em v3.0. Para envolver seções,
-     * envolva os elementos filhos da seção individualmente.
+     * Note: Section is not supported in v3.0. To wrap sections,
+     * wrap the section's child elements individually.
      * 
-     * @param object $element Elemento PHPWord (Text, TextRun, Table, Cell)
+     * @param object $element PHPWord element (Text, TextRun, Table, Cell)
      * @param array{
      *     id?: string,
      *     alias?: string,
@@ -226,65 +224,65 @@ final class ContentControl
      *     type?: string,
      *     lockType?: string,
      *     inlineLevel?: bool
-     * } $options Configurações do Content Control
-     * @return object O mesmo elemento (para fluent API)
-     * @throws \InvalidArgumentException Se tipo de elemento não é suportado
+     * } $options Content Control Options
+     * @return object The same element (for fluent API)
+     * @throws \InvalidArgumentException If element type is not supported
      * 
      * @example
      * ```php
      * $cc = new ContentControl();
      * $section = $cc->addSection();
-     * $text = $section->addText('Conteúdo protegido');
+     * $text = $section->addText('Protected content');
      * 
      * $cc->addContentControl($text, [
-     *     'alias' => 'Cliente',
+     *     'alias' => 'Customer',
      *     'tag' => 'customer-name',
      *     'type' => ContentControl::TYPE_RICH_TEXT,
      *     'lockType' => ContentControl::LOCK_SDT_LOCKED
      * ]);
      * 
-     * $cc->save('documento.docx');
+     * $cc->save('document.docx');
      * ```
      */
     public function addContentControl(object $element, array $options = []): object
     {
-        // NOVA LÓGICA: Detecção automática de inline-level
+        // NEW LOGIC: Automatic inline-level detection
         $isInlineLevel = $this->shouldUseInlineLevel($element);
         
-        // Merge com opções do usuário (usuário pode forçar com 'inlineLevel' => false)
-        // Ordem: auto-detection primeiro, depois user options (user override)
+        // Merge with user options (user can force with 'inlineLevel' => false)
+        // Order: auto-detection first, then user options (user override)
         $mergedOptions = array_merge(
             ['inlineLevel' => $isInlineLevel],
             $options
         );
         
-        // Criar config a partir das opções mergeadas
+        // Create config from merged options
         $config = SDTConfig::fromArray($mergedOptions);
 
-        // Gerar ID se não fornecido
+        // Generate ID if not provided
         if ($config->id === '') {
             $config = $config->withId($this->sdtRegistry->generateUniqueId());
         }
 
-        // Registrar elemento com config
+        // Register element with config
         $this->sdtRegistry->register($element, $config);
 
-        // Retornar elemento para fluent API
+        // Return element for fluent API
         return $element;
     }
 
     /**
-     * Determina se elemento deve usar SDT inline-level
+     * Determines if element should use inline-level SDT
      * 
-     * NOTA v3.1: Auto-detecção desabilitada devido à limitação do PHPWord.
-     * A propriedade 'container' não está disponível em AbstractElement,
-     * impedindo a detecção automática de contexto (Cell vs Section).
+     * NOTE v3.1: Auto-detection disabled due to PHPWord limitation.
+     * The 'container' property is not exposed in AbstractElement,
+     * preventing automatic context detection (Cell vs Section).
      * 
-     * Solução: Usuários devem especificar explicitamente 'inlineLevel' => true
-     * nas opções de addContentControl() para elementos dentro de células.
+     * Solution: Users must explicitly specify 'inlineLevel' => true
+     * in addContentControl() options for elements inside cells.
      * 
-     * @param object $element Elemento PHPWord
-     * @return bool Sempre retorna false (auto-detecção desabilitada)
+     * @param object $element PHPWord Element
+     * @return bool Always returns false (auto-detection disabled)
      * 
      * @see https://github.com/PHPOffice/PHPWord/issues - Feature request: expose container property
      */
@@ -296,7 +294,7 @@ final class ContentControl
     }
 
     /**
-     * Retorna instância PhpWord encapsulada (para casos avançados)
+     * Returns encapsulated PhpWord instance (for advanced cases)
      * 
      * @return PhpWord
      */
@@ -306,7 +304,7 @@ final class ContentControl
     }
 
     /**
-     * Retorna registry de SDTs (para casos avançados)
+     * Returns SDT registry (for advanced use cases)
      * 
      * @return SDTRegistry
      */
@@ -318,31 +316,31 @@ final class ContentControl
     // ==================== SAVE ====================
 
     /**
-     * Salva documento com Content Controls
+     * Saves document with Content Controls
      * 
      * Workflow:
-     * 1. Gera DOCX base com PhpWord
-     * 2. Injeta SDTs no document.xml via SDTInjector
-     * 3. Move para destino final
+     * 1. Generates base DOCX with PhpWord
+     * 2. Injects SDTs into document.xml via SDTInjector
+     * 3. Moves to final destination
      * 
-     * @param string $filename Caminho do arquivo de saída
-     * @param string $format Formato do documento (padrão: 'Word2007')
+     * @param string $filename Output file path
+     * @param string $format Document format (default: 'Word2007')
      * @return void
-     * @throws \RuntimeException Se diretório não gravável
-     * @throws \PhpOffice\PhpWord\Exception\Exception Se erro no PHPWord
-     * @throws Exception\ContentControlException Se erro na injeção de SDTs
+     * @throws \RuntimeException If directory is not writable
+     * @throws \PhpOffice\PhpWord\Exception\Exception If PHPWord error occurs
+     * @throws Exception\ContentControlException If SDT injection error occurs
      * 
      * @example
      * ```php
      * $cc = new ContentControl();
      * $section = $cc->addSection();
      * $section->addText('Hello World');
-     * $cc->save('documento.docx');
+     * $cc->save('document.docx');
      * ```
      */
     public function save(string $filename, string $format = 'Word2007'): void
     {
-        // 1. Validar diretório
+        // 1. Validate directory
         try {
             $dir = dirname($filename);
             
@@ -352,34 +350,34 @@ final class ContentControl
                 );
             }
         } catch (\ValueError $e) {
-            // PHP 8.2+: dirname(), is_dir() ou is_writable() podem lançar ValueError para caminhos inválidos
+            // PHP 8.2+: dirname(), is_dir() or is_writable() may throw ValueError for invalid paths
             throw new \RuntimeException(
                 'ContentControl: Invalid file path: ' . $e->getMessage()
             );
         }
 
-        // 2. Gerar DOCX base
+        // 2. Generate base DOCX
         $tempFile = sys_get_temp_dir() . '/phpword_' . uniqid() . '.docx';
 
         try {
             $writer = PHPWordIOFactory::createWriter($this->phpWord, $format);
             $writer->save($tempFile);
 
-            // 3. Injetar SDTs se houver
+            // 3. Inject SDTs if any
             $sdts = $this->sdtRegistry->getAll();
             if (count($sdts) > 0) {
                 $injector = new SDTInjector();
                 $injector->inject($tempFile, $sdts);
             }
 
-            // 4. Mover para destino
+            // 4. Move to destination
             if (!rename($tempFile, $filename)) {
                 throw new \RuntimeException(
                     'ContentControl: Failed to move file from ' . $tempFile . ' to ' . $filename
                 );
             }
         } finally {
-            // Limpar arquivo temporário se ainda existir
+            // Clean up temporary file if it still exists
             if (file_exists($tempFile)) {
                 $this->unlinkWithRetry($tempFile);
             }
@@ -387,14 +385,14 @@ final class ContentControl
     }
 
     /**
-     * Tenta deletar arquivo com múltiplas tentativas
+     * Attempts to delete file with multiple retries
      * 
-     * Em Windows, arquivos podem estar brevemente bloqueados após operações de ZIP.
+     * On Windows, files may be briefly locked after ZIP operations.
      * 
-     * @param string $filePath Caminho do arquivo a deletar
-     * @param int $maxAttempts Número máximo de tentativas
+     * @param string $filePath Path to file to delete
+     * @param int $maxAttempts Maximum number of attempts
      * @return void
-     * @throws Exception\TemporaryFileException Se todas tentativas falharem
+     * @throws Exception\TemporaryFileException If all attempts fail
      */
     private function unlinkWithRetry(string $filePath, int $maxAttempts = 3): void
     {
@@ -402,20 +400,20 @@ final class ContentControl
             clearstatcache(true, $filePath);
 
             if (@unlink($filePath)) {
-                return; // Sucesso
+                return; // Success
             }
 
             if (!file_exists($filePath)) {
-                return; // Arquivo já não existe
+                return; // File no longer exists
             }
 
-            // Esperar antes de próxima tentativa (exceto na última)
+            // Wait before next attempt (except on last attempt)
             if ($attempt < $maxAttempts) {
                 usleep(100000); // 100ms
             }
         }
 
-        // Todas tentativas falharam
+        // All attempts failed
         throw new Exception\TemporaryFileException($filePath);
     }
 }

@@ -8,19 +8,19 @@ use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\Exception\DocumentNotFoundException;
 
 /**
- * Testes de cenários de erro no SDTInjector
+ * Tests for SDTInjector error scenarios
  * 
- * Cobertura de linhas: 127, 167-174, 228, 275-292, 309, 321, 386
+ * Line coverage: 127, 167-174, 228, 275-292, 309, 321, 386
  */
 
-test('inject lança DocumentNotFoundException se word/document.xml ausente', function () {
-    // Criar DOCX inválido sem word/document.xml
+test('inject throws DocumentNotFoundException if word/document.xml missing', function () {
+    // Create invalid DOCX without word/document.xml
     $tempFile = sys_get_temp_dir() . '/invalid_no_document_' . uniqid() . '.docx';
     
     $zip = new ZipArchive();
     $zip->open($tempFile, ZipArchive::CREATE);
     
-    // Adicionar apenas [Content_Types].xml para parecer um DOCX
+    // Add only [Content_Types].xml to look like a DOCX
     $zip->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="..."></Types>');
     $zip->addFromString('_rels/.rels', '<?xml version="1.0"?><Relationships xmlns="..."></Relationships>');
     
@@ -32,7 +32,7 @@ test('inject lança DocumentNotFoundException se word/document.xml ausente', fun
     
     try {
         $injector->inject($tempFile, [['element' => $section, 'config' => $config]]);
-        expect(false)->toBeTrue(); // Não deve chegar aqui
+        expect(false)->toBeTrue(); // Should not reach here
     } catch (DocumentNotFoundException $e) {
         expect($e->getMessage())->toContain('word/document.xml');
         expect($e->getMessage())->toContain($tempFile);
@@ -41,7 +41,7 @@ test('inject lança DocumentNotFoundException se word/document.xml ausente', fun
     }
 });
 
-test('loadDocumentAsDom lança RuntimeException se XML malformado', function () {
+test('loadDocumentAsDom throws RuntimeException if XML malformed', function () {
     $injector = new SDTInjector();
     $malformedXml = '<?xml version="1.0"?><w:body xmlns:w="..."><w:p unclosed>';
     
@@ -53,10 +53,10 @@ test('loadDocumentAsDom lança RuntimeException se XML malformado', function () 
         ->toThrow(\RuntimeException::class, 'Failed to load document.xml');
 });
 
-test('loadDocumentAsDom captura erros libxml', function () {
+test('loadDocumentAsDom captures libxml errors', function () {
     $injector = new SDTInjector();
     
-    // XML com múltiplos erros
+    // XML with multiple errors
     $badXml = '<?xml version="1.0"?><root><unclosed><invalid attr=noQuotes></root>';
     
     $reflection = new ReflectionClass($injector);
@@ -65,21 +65,21 @@ test('loadDocumentAsDom captura erros libxml', function () {
     
     try {
         $method->invoke($injector, $badXml);
-        expect(false)->toBeTrue(); // Não deve chegar aqui
+        expect(false)->toBeTrue(); // Should not reach here
     } catch (\RuntimeException $e) {
-        // Verificar que mensagem contém erro de libxml
+        // Verify that message contains libxml error
         expect($e->getMessage())->toContain('Failed to load document.xml');
     }
 });
 
-test('serializeDocument lança RuntimeException se saveXML falhar', function () {
+test('serializeDocument throws RuntimeException if saveXML fails', function () {
     $injector = new SDTInjector();
     
-    // Criar DOM mock que falha ao serializar
+    // Create mock DOM that fails to serialize
     $dom = new class extends DOMDocument {
         public function saveXML(?DOMNode $node = null, int $options = 0): string|false
         {
-            return false; // Simular falha
+            return false; // Simulate failure
         }
     };
     
@@ -91,7 +91,7 @@ test('serializeDocument lança RuntimeException se saveXML falhar', function () 
         ->toThrow(\RuntimeException::class, 'Failed to serialize DOM to XML');
 });
 
-test('getTypeElementName retorna w:picture para TYPE_PICTURE', function () {
+test('getTypeElementName returns w:picture for TYPE_PICTURE', function () {
     $injector = new SDTInjector();
     
     $reflection = new ReflectionClass($injector);
@@ -103,7 +103,7 @@ test('getTypeElementName retorna w:picture para TYPE_PICTURE', function () {
     expect($result)->toBe('w:picture');
 });
 
-test('getTypeElementName retorna w:text para TYPE_PLAIN_TEXT', function () {
+test('getTypeElementName returns w:text for TYPE_PLAIN_TEXT', function () {
     $injector = new SDTInjector();
     
     $reflection = new ReflectionClass($injector);
@@ -115,7 +115,7 @@ test('getTypeElementName retorna w:text para TYPE_PLAIN_TEXT', function () {
     expect($result)->toBe('w:text');
 });
 
-test('getTypeElementName retorna w:group para TYPE_GROUP', function () {
+test('getTypeElementName returns w:group for TYPE_GROUP', function () {
     $injector = new SDTInjector();
     
     $reflection = new ReflectionClass($injector);
@@ -127,14 +127,14 @@ test('getTypeElementName retorna w:group para TYPE_GROUP', function () {
     expect($result)->toBe('w:group');
 });
 
-test('wrapElementInline lança RuntimeException se elemento sem owner document', function () {
+test('wrapElementInline throws RuntimeException if element without owner document', function () {
     $injector = new SDTInjector();
     
-    // Criar elemento com documento temporário, depois descartar documento
+    // Create element with temporary document, then discard document
     $tempDom = new DOMDocument();
     $orphanElement = $tempDom->createElement('w:p');
-    // NÃO adicionar ao documento, deixar órfão
-    unset($tempDom); // Destruir documento
+    // DO NOT add to document, leave orphan
+    unset($tempDom); // Destroy document
     
     $config = new SDTConfig(id: '12345678');
     
@@ -142,27 +142,27 @@ test('wrapElementInline lança RuntimeException se elemento sem owner document',
     $method = $reflection->getMethod('wrapElementInline');
     $method->setAccessible(true);
     
-    // Elemento ainda tem ownerDocument (PHP mantém referência)
-    // Vamos testar com elemento importado sem parent ao invés
+    // Element still has ownerDocument (PHP keeps reference)
+    // Let's test with imported element without parent instead
     $newDom = new DOMDocument();
     $bodyElement = $newDom->createElement('w:body');
     $newDom->appendChild($bodyElement);
     $pElement = $newDom->createElement('w:p');
-    // NÃO adicionar ao body (sem parent)
+    // DO NOT add to body (no parent)
     
-    // Este elemento TEM ownerDocument mas NÃO tem parent
-    // Então testar com o segundo teste de parent
+    // This element HAS ownerDocument but NO parent
+    // So test with the second parent check
     expect(fn() => $method->invoke($injector, $pElement, $config))
         ->toThrow(\RuntimeException::class, 'Target element has no parent node');
 });
 
-test('wrapElementInline lança RuntimeException se elemento sem parent node', function () {
+test('wrapElementInline throws RuntimeException if element without parent node', function () {
     $injector = new SDTInjector();
     
-    // Criar elemento com documento mas sem parent
+    // Create element with document but without parent
     $dom = new DOMDocument();
     $element = $dom->createElement('w:p');
-    // NÃO adicionar ao DOM (sem parent)
+    // DO NOT add to DOM (no parent)
     
     $config = new SDTConfig(id: '12345678');
     
@@ -174,7 +174,7 @@ test('wrapElementInline lança RuntimeException se elemento sem parent node', fu
         ->toThrow(\RuntimeException::class, 'Target element has no parent node');
 });
 
-test('processElement lança RuntimeException se elemento não for object', function () {
+test('processElement throws RuntimeException if element is not object', function () {
     $injector = new SDTInjector();
     
     $dom = new DOMDocument();
@@ -186,12 +186,12 @@ test('processElement lança RuntimeException se elemento não for object', funct
     $method = $reflection->getMethod('processElement');
     $method->setAccessible(true);
     
-    // Passar string ao invés de objeto
+    // Pass string instead of object
     expect(fn() => $method->invoke($injector, $dom, 'not-an-object', $config, 0))
         ->toThrow(\RuntimeException::class, 'Element must be an object');
 });
 
-test('serializeElement retorna string vazia para elemento não-AbstractElement', function () {
+test('serializeElement returns empty string for non-AbstractElement element', function () {
     $injector = new SDTInjector();
     
     $notPhpWordElement = new stdClass();
@@ -205,7 +205,7 @@ test('serializeElement retorna string vazia para elemento não-AbstractElement',
     expect($result)->toBe('');
 });
 
-test('writeElement ignora containers (Section, Header, Footer, Cell)', function () {
+test('writeElement ignores containers (Section, Header, Footer, Cell)', function () {
     $injector = new SDTInjector();
     
     $xmlWriter = new \PhpOffice\PhpWord\Shared\XMLWriter(
@@ -215,7 +215,7 @@ test('writeElement ignora containers (Section, Header, Footer, Cell)', function 
     );
     $xmlWriter->openMemory();
     
-    // Criar Section (container que deve ser ignorado)
+    // Create Section (container that should be ignored)
     $phpWord = new \PhpOffice\PhpWord\PhpWord();
     $section = $phpWord->addSection();
     
@@ -223,16 +223,16 @@ test('writeElement ignora containers (Section, Header, Footer, Cell)', function 
     $method = $reflection->getMethod('writeElement');
     $method->setAccessible(true);
     
-    // writeElement deve retornar void sem escrever nada
+    // writeElement should return void without writing anything
     $method->invoke($injector, $xmlWriter, $section);
     
     $output = $xmlWriter->getData();
     
-    // Não deve ter escrito nada (Section é container)
+    // Should not have written anything (Section is container)
     expect($output)->toBe('');
 });
 
-test('writeElement ignora elemento com Writer inexistente', function () {
+test('writeElement ignores element with nonexistent Writer', function () {
     $injector = new SDTInjector();
     
     $xmlWriter = new \PhpOffice\PhpWord\Shared\XMLWriter(
@@ -242,28 +242,28 @@ test('writeElement ignora elemento com Writer inexistente', function () {
     );
     $xmlWriter->openMemory();
     
-    // Criar elemento mock sem Writer correspondente
+    // Create mock element without corresponding Writer
     $mockElement = new class extends \PhpOffice\PhpWord\Element\AbstractElement {
-        // Classe sem Writer em PhpOffice\PhpWord\Writer\Word2007\Element
+        // Class without Writer in PhpOffice\PhpWord\Writer\Word2007\Element
     };
     
     $reflection = new ReflectionClass($injector);
     $method = $reflection->getMethod('writeElement');
     $method->setAccessible(true);
     
-    // writeElement deve retornar void sem lançar exceção
+    // writeElement should return void without throwing exception
     $method->invoke($injector, $xmlWriter, $mockElement);
     
     $output = $xmlWriter->getData();
     
-    // Não deve ter escrito nada (Writer inexistente)
+    // Should not have written anything (Writer nonexistent)
     expect($output)->toBe('');
 });
 
-test('createSDTElement com fragmento XML inválido (teste de robustez)', function () {
+test('createSDTElement with invalid XML fragment (robustness test)', function () {
     $injector = new SDTInjector();
     
-    // Criar elemento com conteúdo que gera XML inválido
+    // Create element with content that generates invalid XML
     $phpWord = new \PhpOffice\PhpWord\PhpWord();
     $section = $phpWord->addSection();
     $text = $section->addText('Conteúdo válido');
@@ -278,7 +278,7 @@ test('createSDTElement com fragmento XML inválido (teste de robustez)', functio
     $method = $reflection->getMethod('createSDTElement');
     $method->setAccessible(true);
     
-    // Deve criar SDT sem lançar exceção
+    // Should create SDT without throwing exception
     $xml = $method->invoke($injector, $text, $config);
     
     expect($xml)->toContain('<w:sdt');

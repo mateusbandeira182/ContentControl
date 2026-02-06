@@ -5,7 +5,7 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * Performance Tests for Header/Footer Processing (v0.2.0)
+ * Performance Tests for Header/Footer Processing
  * 
  * Validates that header/footer processing maintains acceptable performance:
  * - Single section with body + header + footer: < 250ms

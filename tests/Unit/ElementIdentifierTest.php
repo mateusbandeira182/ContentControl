@@ -7,7 +7,7 @@ use Tests\Fixtures\SampleElements;
 
 describe('ElementIdentifier', function () {
 
-    test('generateMarker cria marcador único por objeto', function () {
+    test('generateMarker creates unique marker per object', function () {
         $section1 = createSection();
         $section2 = createSection();
         
@@ -19,7 +19,7 @@ describe('ElementIdentifier', function () {
         expect($marker1)->not->toBe($marker2);
     });
 
-    test('generateContentHash é consistente para conteúdo idêntico', function () {
+    test('generateContentHash is consistent for identical content', function () {
         $section1 = SampleElements::createSectionWithText('Teste');
         $section2 = SampleElements::createSectionWithText('Teste');
         
@@ -31,7 +31,7 @@ describe('ElementIdentifier', function () {
         expect($hash1)->toMatch('/^[a-f0-9]{8}$/');
     });
 
-    test('generateContentHash diferencia conteúdos diferentes', function () {
+    test('generateContentHash differentiates different content', function () {
         $section1 = SampleElements::createSectionWithText('Texto A');
         $section2 = SampleElements::createSectionWithText('Texto B');
         
@@ -41,7 +41,7 @@ describe('ElementIdentifier', function () {
         expect($hash1)->not->toBe($hash2);
     });
 
-    test('generateContentHash funciona com Table', function () {
+    test('generateContentHash works with Table', function () {
         $table1 = createSimpleTable(2, 2);
         $table2 = createSimpleTable(3, 3);
         
@@ -51,24 +51,24 @@ describe('ElementIdentifier', function () {
         expect($hash1)->not->toBe($hash2);
     });
 
-    test('generateMarker usa object_id diferente para elementos idênticos', function () {
+    test('generateMarker uses different object_id for identical elements', function () {
         $text1 = SampleElements::createSectionWithText('Mesmo texto');
         $text2 = SampleElements::createSectionWithText('Mesmo texto');
         
         $marker1 = ElementIdentifier::generateMarker($text1);
         $marker2 = ElementIdentifier::generateMarker($text2);
         
-        // Marcadores devem ser diferentes (object_id diferente)
+        // Markers should be different (different object_id)
         expect($marker1)->not->toBe($marker2);
         
-        // Mas hashes devem ser iguais (conteúdo idêntico)
+        // But hashes should be equal (identical content)
         $hash1 = ElementIdentifier::generateContentHash($text1);
         $hash2 = ElementIdentifier::generateContentHash($text2);
         expect($hash1)->toBe($hash2);
     });
 
-    test('generateContentHash processa TextRun como elemento principal', function () {
-        // Criar Section com TextRun (não Text)
+    test('generateContentHash processes TextRun as main element', function () {
+        // Create Section with TextRun (not Text)
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $textRun = $section->addTextRun();
@@ -81,8 +81,8 @@ describe('ElementIdentifier', function () {
         expect($hash)->toMatch('/^[a-f0-9]{8}$/');
     });
 
-    test('generateContentHash para TextRun inclui tipo paragraph', function () {
-        // TextRun deve gerar hash similar a Text (ambos viram w:p)
+    test('generateContentHash for TextRun includes paragraph type', function () {
+        // TextRun should generate hash similar to Text (both become w:p)
         $phpWord1 = new \PhpOffice\PhpWord\PhpWord();
         $section1 = $phpWord1->addSection();
         $textRun = $section1->addTextRun();
@@ -95,12 +95,12 @@ describe('ElementIdentifier', function () {
         $hashTextRun = ElementIdentifier::generateContentHash($textRun);
         $hashText = ElementIdentifier::generateContentHash($text);
         
-        // Hashes devem ser iguais (mesmo conteúdo, mesmo tipo de parágrafo)
+        // Hashes should be equal (same content, same paragraph type)
         expect($hashTextRun)->toBe($hashText);
     });
 
-    test('generateContentHash para Cell com TextRun interno', function () {
-        // Criar Table com Cell contendo TextRun
+    test('generateContentHash for Cell with internal TextRun', function () {
+        // Create Table with Cell containing TextRun
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $table = $section->addTable();
@@ -117,15 +117,15 @@ describe('ElementIdentifier', function () {
         expect($hash)->toMatch('/^[a-f0-9]{8}$/');
     });
 
-    test('generateContentHash para Cell com Table aninhada', function () {
-        // Criar Table com Cell contendo outra Table
+    test('generateContentHash for Cell with nested Table', function () {
+        // Create Table with Cell containing another Table
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $table = $section->addTable();
         $table->addRow();
         $cell = $table->addCell(4000);
         
-        // Tabela aninhada dentro da célula
+        // Nested table inside cell
         $nestedTable = $cell->addTable();
         $nestedTable->addRow();
         $nestedTable->addCell(2000)->addText('Nested R1C1');
@@ -136,8 +136,8 @@ describe('ElementIdentifier', function () {
         expect($hash)->toMatch('/^[a-f0-9]{8}$/');
     });
 
-    test('generateContentHash para Section com TextRun como filho', function () {
-        // Section contendo TextRun
+    test('generateContentHash for Section with TextRun as child', function () {
+        // Section containing TextRun
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         
@@ -158,19 +158,19 @@ describe('ElementIdentifier', function () {
 describe('ElementIdentifier Cache', function () {
 
     beforeEach(function () {
-        // Limpar cache antes de cada teste
+        // Clear cache before each test
         ElementIdentifier::clearCache();
     });
 
     afterEach(function () {
-        // Limpar cache após cada teste
+        // Clear cache after each test
         ElementIdentifier::clearCache();
     });
 
-    test('clearCache limpa todos os caches', function () {
+    test('clearCache clears all caches', function () {
         $section = createSection();
         
-        // Gerar marcador e hash (popula cache)
+        // Generate marker and hash (populates cache)
         ElementIdentifier::generateMarker($section);
         ElementIdentifier::generateContentHash($section);
         
@@ -178,7 +178,7 @@ describe('ElementIdentifier Cache', function () {
         expect($stats['markers'])->toBe(1);
         expect($stats['hashes'])->toBe(1);
         
-        // Limpar cache
+        // Clear cache
         ElementIdentifier::clearCache();
         
         $stats = ElementIdentifier::getCacheStats();
@@ -186,7 +186,7 @@ describe('ElementIdentifier Cache', function () {
         expect($stats['hashes'])->toBe(0);
     });
 
-    test('generateMarker usa cache para elemento já processado', function () {
+    test('generateMarker uses cache for already processed element', function () {
         $section = createSection();
         
         // Primeira chamada - popula cache
@@ -198,10 +198,10 @@ describe('ElementIdentifier Cache', function () {
         expect($marker1)->toBe($marker2);
         
         $stats = ElementIdentifier::getCacheStats();
-        expect($stats['markers'])->toBe(1); // Apenas 1 entrada
+        expect($stats['markers'])->toBe(1); // Only 1 entry
     });
 
-    test('generateContentHash usa cache para elemento já processado', function () {
+    test('generateContentHash uses cache for already processed element', function () {
         $section = createSection();
         
         // Primeira chamada - popula cache
@@ -213,32 +213,32 @@ describe('ElementIdentifier Cache', function () {
         expect($hash1)->toBe($hash2);
         
         $stats = ElementIdentifier::getCacheStats();
-        expect($stats['hashes'])->toBe(1); // Apenas 1 entrada
+        expect($stats['hashes'])->toBe(1); // Only 1 entry
     });
 
-    test('cache não interfere com elementos diferentes', function () {
+    test('cache does not interfere with different elements', function () {
         $section1 = SampleElements::createSectionWithText('Texto 1');
         $section2 = SampleElements::createSectionWithText('Texto 2');
         
-        // Gerar marcadores para ambos
+        // Generate markers for both
         $marker1 = ElementIdentifier::generateMarker($section1);
         $marker2 = ElementIdentifier::generateMarker($section2);
         
         expect($marker1)->not->toBe($marker2);
         
         $stats = ElementIdentifier::getCacheStats();
-        expect($stats['markers'])->toBe(2); // 2 entradas diferentes
-        expect($stats['hashes'])->toBe(2);  // Hashes também cachados
+        expect($stats['markers'])->toBe(2); // 2 different entries
+        expect($stats['hashes'])->toBe(2);  // Hashes also cached
     });
 
-    test('getCacheStats retorna contadores corretos', function () {
+    test('getCacheStats returns correct counters', function () {
         ElementIdentifier::clearCache();
         
         $section1 = createSection();
         $section2 = createSection();
         $section3 = createSection();
         
-        // Gerar apenas marcadores (que também geram hashes internamente)
+        // Generate only markers (which also generate hashes internally)
         ElementIdentifier::generateMarker($section1);
         ElementIdentifier::generateMarker($section2);
         ElementIdentifier::generateMarker($section3);
@@ -248,43 +248,110 @@ describe('ElementIdentifier Cache', function () {
         expect($stats['hashes'])->toBe(3);
     });
 
-    test('cache persiste entre chamadas de generateMarker e generateContentHash', function () {
+    test('cache persists between generateMarker and generateContentHash calls', function () {
         $section = createSection();
         
-        // Gerar hash primeiro
+        // Generate hash first
         $hash = ElementIdentifier::generateContentHash($section);
         
         $stats1 = ElementIdentifier::getCacheStats();
         expect($stats1['hashes'])->toBe(1);
         expect($stats1['markers'])->toBe(0);
         
-        // Gerar marcador depois (deve reutilizar hash do cache)
+        // Generate marker later (should reuse hash from cache)
         $marker = ElementIdentifier::generateMarker($section);
         
         $stats2 = ElementIdentifier::getCacheStats();
-        expect($stats2['hashes'])->toBe(1);  // Ainda 1 (reusado)
-        expect($stats2['markers'])->toBe(1); // Agora 1
+        expect($stats2['hashes'])->toBe(1);  // Still 1 (reused)
+        expect($stats2['markers'])->toBe(1); // Now 1
         
-        // Verificar que marcador contém o hash
+        // Verify that marker contains the hash
         expect($marker)->toContain($hash);
     });
 
-    test('cache melhora performance em chamadas repetidas', function () {
-        $section = SampleElements::createSectionWithTable(10, 5); // Tabela grande
+    test('cache improves performance on repeated calls', function () {
+        $section = SampleElements::createSectionWithTable(10, 5); // Large table
         
-        // Medir primeira chamada (sem cache)
+        // Measure first call (no cache)
         $start1 = microtime(true);
         $hash1 = ElementIdentifier::generateContentHash($section);
         $time1 = microtime(true) - $start1;
         
-        // Medir segunda chamada (com cache)
+        // Measure second call (with cache)
         $start2 = microtime(true);
         $hash2 = ElementIdentifier::generateContentHash($section);
         $time2 = microtime(true) - $start2;
         
-        // Segunda chamada deve ser significativamente mais rápida
+        // Second call should be significantly faster
         expect($hash1)->toBe($hash2);
-        expect($time2)->toBeLessThan($time1); // Cache é mais rápido
+        expect($time2)->toBeLessThan($time1); // Cache is faster
     });
+
+});
+
+describe('ElementIdentifier::generateImageHash()', function () {
+
+    test('generates valid UUID v5 format', function () {
+        $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+        $image = new \PhpOffice\PhpWord\Element\Image($testImagePath, ['width' => 100, 'height' => 100]);
+        
+        $hash = ElementIdentifier::generateImageHash($image);
+        
+        // Verify UUID v5 format: xxxxxxxx-xxxx-5xxx-yxxx-xxxxxxxxxxxx
+        expect($hash)->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i');
+    });
+
+    test('different sources produce different hashes with same dimensions', function () {
+        $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+        
+        // Create temporary second image with different content
+        $tempImagePath = sys_get_temp_dir() . '/test_image_2_' . uniqid() . '.png';
+        $imageResource = imagecreatetruecolor(1, 1);
+        $blue = imagecolorallocate($imageResource, 0, 0, 255);
+        imagefilledrectangle($imageResource, 0, 0, 1, 1, $blue);
+        imagepng($imageResource, $tempImagePath);
+        imagedestroy($imageResource);
+        
+        try {
+            // Both images have identical dimensions (100x100) but different sources
+            $image1 = new \PhpOffice\PhpWord\Element\Image($testImagePath, ['width' => 100, 'height' => 100]);
+            $image2 = new \PhpOffice\PhpWord\Element\Image($tempImagePath, ['width' => 100, 'height' => 100]);
+            
+            $hash1 = ElementIdentifier::generateImageHash($image1);
+            $hash2 = ElementIdentifier::generateImageHash($image2);
+            
+            // CRITICAL: UUID v5 includes basename(source), so hashes MUST be different
+            expect($hash1)->not->toBe($hash2)
+                ->and($hash1)->not->toBeEmpty()
+                ->and($hash2)->not->toBeEmpty();
+        } finally {
+            // Cleanup temporary file
+            if (file_exists($tempImagePath)) {
+                unlink($tempImagePath);
+            }
+        }
+    });
+
+    test('same image produces identical hash (determinism)', function () {
+        $testImagePath = __DIR__ . '/../Fixtures/test_image.png';
+        
+        $hashes = [];
+        
+        // Generate hash 100 times for same image
+        for ($i = 0; $i < 100; $i++) {
+            $image = new \PhpOffice\PhpWord\Element\Image($testImagePath, ['width' => 200, 'height' => 200]);
+            $hashes[] = ElementIdentifier::generateImageHash($image);
+        }
+        
+        // All hashes must be identical (deterministic algorithm)
+        $uniqueHashes = array_unique($hashes);
+        
+        expect($uniqueHashes)->toHaveCount(1)
+            ->and($hashes[0])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i');
+    });
+
+    // NOTE: Exception test for image without style requires mocking (Mockery not available in test suite)
+    // The defensive check in generateImageHash() verifies $style === null and !is_string($source)
+    // These scenarios are highly unlikely in production code (PHPWord always creates ImageStyle objects)
 
 });

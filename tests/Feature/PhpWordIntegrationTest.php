@@ -5,32 +5,32 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 use Tests\Fixtures\SampleElements;
 
-describe('PHPWord Integration - Documento Completo', function () {
+describe('PHPWord Integration - Full Document', function () {
     
-    test('gera documento válido com Content Control', function () {
+    test('generates valid document with Content Control', function () {
         $cc = new ContentControl();
         
-        // Criar section com conteúdo
+        // Create section with content
         $section = $cc->addSection();
-        $textElement = $section->addText('Este é um Content Control funcional', ['bold' => true]);
+        $textElement = $section->addText('This is a functional Content Control', ['bold' => true]);
         
-        // Envolver elemento Text em Content Control (v3.0 não suporta Section)
+        // Wrap Text element in Content Control (v3.0 does not support Section)
         $cc->addContentControl($textElement, [
-            'alias' => 'Campo de Teste',
+            'alias' => 'Test Field',
             'tag' => 'test-field',
             'type' => ContentControl::TYPE_RICH_TEXT,
             'lockType' => ContentControl::LOCK_SDT_LOCKED,
         ]);
         
-        // Gerar arquivo temporário
+        // Generate temporary file
         $tempFile = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {
             $cc->save($tempFile);
             
-            // Validar arquivo criado
+            // Validate created file
             expect(file_exists($tempFile))->toBeTrue();
             
-            // Abrir e validar XML
+            // Open and validate XML
             $zip = new ZipArchive();
             $zip->open($tempFile);
             $xml = $zip->getFromName('word/document.xml');
@@ -47,15 +47,15 @@ describe('PHPWord Integration - Documento Completo', function () {
         }
     });
 
-    test('integra com fixtures de elementos', function () {
-        // Table (elemento complexo)
+    test('integrates with element fixtures', function () {
+        // Table (complex element)
         $cc1 = new ContentControl();
         $section1 = $cc1->addSection();
         
         $table = $section1->addTable();
         $table->addRow();
-        $table->addCell(2000)->addText('Célula 1');
-        $table->addCell(2000)->addText('Célula 2');
+        $table->addCell(2000)->addText('Cell 1');
+        $table->addCell(2000)->addText('Cell 2');
         
         $cc1->addContentControl($table, ['type' => ContentControl::TYPE_GROUP]);
         
@@ -68,9 +68,9 @@ describe('PHPWord Integration - Documento Completo', function () {
             $xml1 = $zip->getFromName('word/document.xml');
             $zip->close();
             
-            // Validar Table protegida
-            expect($xml1)->toContain('Célula 1');
-            expect($xml1)->toContain('Célula 2');
+            // Validate Protected Table
+            expect($xml1)->toContain('Cell 1');
+            expect($xml1)->toContain('Cell 2');
             expect($xml1)->toContain('<w:group');
         } finally {
             if (file_exists($tempFile1)) {
@@ -78,7 +78,7 @@ describe('PHPWord Integration - Documento Completo', function () {
             }
         }
         
-        // Test adicional: proteger apenas uma célula da tabela
+        // Additional test: protect only one table cell
         $cc2 = new ContentControl();
         $section2 = $cc2->addSection();
         
@@ -90,7 +90,7 @@ describe('PHPWord Integration - Documento Completo', function () {
             }
         }
         
-        // Proteger Table inteiro (não Section)
+        // Protect entire Table (not Section)
         $cc2->addContentControl($table, ['type' => ContentControl::TYPE_GROUP]);
         
         $tempFile2 = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';

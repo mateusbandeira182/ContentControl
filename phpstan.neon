@@ -23,6 +23,9 @@ parameters:
         # Pest-specific: Propriedades dinâmicas em closures de testes
         - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$tempDir#'
         - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$createDocxWithSdt#'
+        - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$fixtureDir#'
+        - '#Access to an undefined property PHPUnit\\Framework\\TestCase::\$testImagePath#'
+        - '#Call to an undefined method PHPUnit\\Framework\\TestCase::setUpImageFixtures\(\)#'
         
         # Pest-specific: Uso de $this em closures de expect extensions
         -
@@ -48,6 +51,16 @@ parameters:
         # Test-specific: Offset access em arrays de preg_split
         -
             message: '#Offset 1 might not exist on array#'
+        
+        # Test-specific: WithTempFile trait methods
+        -
+            message: '#Call to an undefined method PHPUnit\\Framework\\TestCase::tearDownTempFile\(\)#'
+            path: tests/
+        -
+            message: '#Call to an undefined method PHPUnit\\Framework\\TestCase::setUpTempFile\(\)#'
+            path: tests/
+        -
+            message: '#Call to an undefined method PHPUnit\\Framework\\TestCase::getTempFile\(\)#'
             path: tests/
         
         # Test-specific: IOFactory agora retorna void

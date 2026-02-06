@@ -67,9 +67,9 @@ composer require mkgrow/content-control
 ### Breaking Changes from Pre-Release
 
 This is the first public release. Internal architecture iterations (v1.x, v2.x, v3.x) are deprecated:
-- ❌ `IOFactory::saveWithContentControls()` (v1.x) - Use `ContentControl::save()` instead
-- ❌ Extending `AbstractContainer` (v1.x) - Use Proxy Pattern with `addContentControl()`
-- ❌ Manual ID management - IDs now auto-generated via `SDTRegistry`
+- `IOFactory::saveWithContentControls()` (v1.x) - Use `ContentControl::save()` instead
+- Extending `AbstractContainer` (v1.x) - Use Proxy Pattern with `addContentControl()`
+- Manual ID management - IDs now auto-generated via `SDTRegistry`
 
 ### Known Limitations
 

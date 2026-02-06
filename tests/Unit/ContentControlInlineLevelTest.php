@@ -5,12 +5,12 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * Test suite for ContentControl inline-level (v3.1)
+ * Test suite for ContentControl inline-level
  * 
- * NOTA v3.1: Auto-detecção DESABILITADA devido à limitação do PHPWord
- * (propriedade 'container' não disponível em AbstractElement).
+ * NOTE: Auto-detection DISABLED due to PhpWord limitation
+ * ('container' property not available in AbstractElement).
  * 
- * Usuários devem especificar explicitamente 'inlineLevel' => true.
+ * Users must explicitly specify 'inlineLevel' => true.
  */
 describe('ContentControl - Explicit inlineLevel Parameter', function () {
     test('addContentControl accepts explicit inlineLevel => true', function () {
@@ -22,13 +22,13 @@ describe('ContentControl - Explicit inlineLevel Parameter', function () {
         $cell = $row->addCell(2000);
         $text = $cell->addText('Test');
         
-        // EXPLÍCITO: usuário especifica inlineLevel
+        // EXPLICIT: user specifies inlineLevel
         $cc->addContentControl($text, [
             'alias' => 'TestCell',
-            'inlineLevel' => true  // ← EXPLÍCITO
+            'inlineLevel' => true  // EXPLICIT
         ]);
         
-        // Verificar que SDTRegistry recebeu config correta
+        // Verify that SDTRegistry received correct config
         $registry = $cc->getSDTRegistry();
         $configs = $registry->getAllConfigs();
         
@@ -42,7 +42,7 @@ describe('ContentControl - Explicit inlineLevel Parameter', function () {
         
         $text = $section->addText('Test');
         
-        // SEM especificar inlineLevel
+        // WITHOUT specifying inlineLevel
         $cc->addContentControl($text, [
             'alias' => 'TestParagraph'
         ]);
@@ -62,7 +62,7 @@ describe('ContentControl - Explicit inlineLevel Parameter', function () {
         
         $cc->addContentControl($text, [
             'alias' => 'TestParagraph',
-            'inlineLevel' => false  // ← EXPLÍCITO false
+            'inlineLevel' => false  // EXPLICIT false
         ]);
         
         $registry = $cc->getSDTRegistry();

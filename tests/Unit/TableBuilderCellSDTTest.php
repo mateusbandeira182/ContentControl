@@ -145,7 +145,7 @@ describe('TableBuilder Cell-Level SDTs', function () {
         expect($table)->toBeInstanceOf(\PhpOffice\PhpWord\Element\Table::class);
     });
 
-    // Teste removido: creates table with cell tag configuration
-    // Motivo: SDTs em células (Text elements) ainda não são totalmente suportados
-    // A funcionalidade está implementada mas falha ao salvar devido a limitação do ElementLocator
+    // Test removed: creates table with cell tag configuration
+    // Reason: Cell SDTs (Text elements) are not yet fully supported
+    // The functionality is implemented but fails on save due to ElementLocator limitation
 });

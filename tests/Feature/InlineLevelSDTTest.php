@@ -5,17 +5,17 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * Feature tests for inline-level Content Controls (v4.0)
+ * Feature tests for inline-level Content Controls
  * 
- * ElementLocator agora suporta localização de Text/TextRun dentro de células (<w:tc>).
+ * ElementLocator now supports locating Text/TextRun inside cells (<w:tc>).
  * 
- * Veja: INLINE_SDT_ANALYSIS.md para detalhes técnicos.
+ * See: INLINE_SDT_ANALYSIS.md for technical details.
  */
 describe('Feature - Inline-Level SDTs', function () {
     /**
      * FT01: Wrap Text in Cell with inline-level SDT
      * 
-     * ElementLocator suporta XPath:
+     * ElementLocator supports XPath:
      * //w:body//w:tbl//w:tc/w:p[not(ancestor::w:sdtContent)][1]
      */
     test('wraps Text in Cell with inline-level SDT', function () {
@@ -28,7 +28,7 @@ describe('Feature - Inline-Level SDTs', function () {
         
         $text = $cell->addText('Editable Content');
         
-        // COM inlineLevel = true
+        // WITH inlineLevel = true
         $cc->addContentControl($text, [
             'alias' => 'EditableField',
             'inlineLevel' => true,
@@ -42,11 +42,11 @@ describe('Feature - Inline-Level SDTs', function () {
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
         
-        // Verificar SDT inline (dentro de <w:tc>)
+        // Verify inline SDT (inside <w:tc>)
         expect($xml)->toContain('<w:alias w:val="EditableField"/>');
         expect($xml)->toContain('Editable Content');
         
-        // Verificar que SDT está DENTRO de <w:tc> (inline)
+        // Verify that SDT is INSIDE <w:tc> (inline)
         expect($xml)->toMatch('/<w:tc>.*<w:sdt>.*<w:alias w:val="EditableField".*<\/w:sdt>.*<\/w:tc>/s');
         
         safeUnlink($tempFile);
@@ -61,18 +61,18 @@ describe('Feature - Inline-Level SDTs', function () {
         
         $table = $section->addTable();
         
-        // Células editáveis dentro da tabela (criar ANTES de registrar o GROUP)
+        // Editable cells inside table (create BEFORE registering GROUP)
         $row = $table->addRow();
         $cell1 = $row->addCell();
         $text1 = $cell1->addText('Item 1');
         
-        // Primeiro registrar inline SDTs
+        // First register inline SDTs
         $cc->addContentControl($text1, [
             'alias' => 'ItemName',
             'inlineLevel' => true,
         ]);
         
-        // Depois registrar GROUP SDT envolvendo table
+        // Then register GROUP SDT wrapping table
         $cc->addContentControl($table, [
             'alias' => 'InvoiceTable',
             'type' => ContentControl::TYPE_GROUP,
@@ -87,11 +87,11 @@ describe('Feature - Inline-Level SDTs', function () {
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
         
-        // Verificar GROUP SDT
+        // Verify GROUP SDT
         expect($xml)->toContain('<w:alias w:val="InvoiceTable"/>');
         expect($xml)->toContain('<w:group/>');
         
-        // Verificar inline SDT DENTRO do GROUP
+        // Verify inline SDT INSIDE GROUP
         expect($xml)->toContain('<w:alias w:val="ItemName"/>');
         
         safeUnlink($tempFile);
@@ -123,7 +123,7 @@ describe('Feature - Inline-Level SDTs', function () {
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
         
-        // Verificar que o conteúdo aparece apenas 1 vez
+        // Verify content appears exactly once
         $count = substr_count($xml, 'Unique Content');
         expect($count)->toBe(1, 'Content should appear exactly once (no duplication)');
         
@@ -131,9 +131,9 @@ describe('Feature - Inline-Level SDTs', function () {
     });
 
     /**
-     * FT04: Backward compatibility SEMPRE funciona (block-level)
+     * FT04: Backward compatibility ALWAYS works (block-level)
      * 
-     * Este teste valida que a mudança não quebrou funcionalidade existente.
+     * This test validates that the change didn't break existing functionality.
      */
     test('maintains backward compatibility for block-level SDTs', function () {
         $cc = new ContentControl();
@@ -141,7 +141,7 @@ describe('Feature - Inline-Level SDTs', function () {
         
         $text = $section->addText('Paragraph Content');
         
-        // SEM inlineLevel (default = false)
+        // WITHOUT inlineLevel (default = false)
         $cc->addContentControl($text, [
             'alias' => 'TestParagraph',
         ]);
@@ -195,7 +195,7 @@ describe('Feature - Inline-Level SDTs', function () {
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
         
-        // Verificar ambos SDTs inline
+        // Verify both inline SDTs
         expect($xml)->toContain('<w:alias w:val="FirstRun"/>');
         expect($xml)->toContain('<w:alias w:val="SecondRun"/>');
         expect($xml)->toContain('First Run');

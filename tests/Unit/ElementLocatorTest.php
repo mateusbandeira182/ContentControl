@@ -6,8 +6,8 @@ use MkGrow\ContentControl\ElementLocator;
 
 describe('ElementLocator', function () {
 
-    test('findElementInDOM localiza Text simples por ordem', function () {
-        // Gerar document.xml mock
+    test('findElementInDOM locates simple Text by order', function () {
+        // Generate document.xml mock
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -19,26 +19,26 @@ describe('ElementLocator', function () {
 
         $locator = new ElementLocator();
         
-        // Criar um elemento Text real que será serializado como <w:p>
+        // Create a real Text element that will be serialized as <w:p>
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $text = $section->addText('Primeiro');  // v3.0: sempre busca [1] (primeiro livre)
+        $text = $section->addText('Primeiro');  // always searches [1] (first free)
 
-        // v3.0: Sempre busca [1] (primeiro elemento livre que não está em SDT)
+        // Always searches [1] (first free element that is not in SDT)
         $found = $locator->findElementInDOM($dom, $text, 0);
 
         expect($found)->not->toBeNull();
         expect($found->nodeName)->toBe('w:p');
         
-        // Validar texto interno
+        // Validate inner text
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
         $textNode = $xpath->query('.//w:t', $found)->item(0);
         assert($textNode !== null);
-        expect($textNode->textContent)->toBe('Primeiro');  // Agora espera "Primeiro" (primeiro livre)
+        expect($textNode->textContent)->toBe('Primeiro');  // Now expects "Primeiro" (first free)
     });
 
-    test('findElementInDOM localiza Table por ordem', function () {
+    test('findElementInDOM locates Table by order', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -54,16 +54,16 @@ describe('ElementLocator', function () {
         $locator = new ElementLocator();
         $table = createSimpleTable(1, 1);
 
-        // Buscar 2ª tabela (ordem 1, 0-indexed)
+        // Search for 2nd table (order 1, 0-indexed)
         $found = $locator->findElementInDOM($dom, $table, 1);
 
         expect($found)->not->toBeNull();
         expect($found->nodeName)->toBe('w:tbl');
     });
 
-    test('findElementInDOM retorna null se não encontrar', function () {
+    test('findElementInDOM returns null if not found', function () {
         $dom = new DOMDocument();
-        // XML sem parágrafos - apenas uma tabela
+        // XML without paragraphs - only one table
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
             <w:tbl>
@@ -76,17 +76,17 @@ describe('ElementLocator', function () {
         
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $text = $section->addText('Texto qualquer');  // Busca <w:p> mas XML só tem <w:tbl>
+        $text = $section->addText('Texto qualquer');  // Searches <w:p> but XML only has <w:tbl>
 
-        // v4.0: Com suporte a Text em células, findElementInDOM agora ENCONTRA <w:p> dentro de <w:tc>
+        // With support for Text in cells, findElementInDOM now FINDS <w:p> inside <w:tc>
         $found = $locator->findElementInDOM($dom, $text, 0);
 
-        // Deve encontrar o <w:p> dentro da célula (inline-level support)
+        // Should find the <w:p> inside the cell (inline-level support)
         expect($found)->not->toBeNull();
         expect($found->nodeName)->toBe('w:p');
     });
 
-    test('findElementInDOM fallback para hash de conteúdo funciona', function () {
+    test('findElementInDOM fallback for content hash works', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -102,14 +102,14 @@ describe('ElementLocator', function () {
         $section = $phpWord->addSection();
         $text = $section->addText('Duplicado');
 
-        // Buscar com ordem incorreta (forçar fallback para hash)
+        // Search with incorrect order (force fallback to hash)
         $found = $locator->findElementInDOM($dom, $text, 10);
 
-        // Deve encontrar via hash mesmo com ordem errada
+        // Should find via hash even with wrong order
         expect($found)->not->toBeNull();
     });
 
-    test('validateMatch valida corretamente elemento DOM vs PHPWord', function () {
+    test('validateMatch correctly validates DOM element vs PHPWord', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -134,7 +134,7 @@ describe('ElementLocator', function () {
         expect($isValid)->toBeTrue();
     });
 
-    test('validateMatch rejeita elemento com conteúdo diferente', function () {
+    test('validateMatch rejects element with different content', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -159,7 +159,7 @@ describe('ElementLocator', function () {
         expect($isValid)->toBeFalse();
     });
 
-    test('findElementInDOM reutiliza XPath instance', function () {
+    test('findElementInDOM reuses XPath instance', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -175,7 +175,7 @@ describe('ElementLocator', function () {
         $text1 = $section->addText('Test1');
         $text2 = $section->addText('Test2');
 
-        // Múltiplas buscas devem reutilizar a mesma instância XPath
+        // Multiple searches should reuse the same XPath instance
         $found1 = $locator->findElementInDOM($dom, $text1, 0);
         $found2 = $locator->findElementInDOM($dom, $text2, 1);
 
@@ -183,7 +183,7 @@ describe('ElementLocator', function () {
         expect($found2)->not->toBeNull();
     });
 
-    test('hashDOMElement processa Table com múltiplas linhas', function () {
+    test('hashDOMElement processes Table with multiple rows', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -198,20 +198,20 @@ describe('ElementLocator', function () {
         $locator = new ElementLocator();
         $table = createSimpleTable(3, 1);
 
-        // Localizar usando fallback de hash (forçando elementIndex alto)
+        // Locate using hash fallback (forcing high elementIndex)
         $found = $locator->findElementInDOM($dom, $table, 0);
 
         expect($found)->not->toBeNull();
         expect($found->nodeName)->toBe('w:tbl');
         
-        // Verificar que hash funcionou contando linhas
+        // Verify that hash worked by counting rows
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
         $rows = $xpath->query('.//w:tr', $found);
         expect($rows->length)->toBe(3);
     });
 
-    test('hashDOMElement processa Cell com múltiplos parágrafos', function () {
+    test('hashDOMElement processes Cell with multiple paragraphs', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -229,7 +229,7 @@ describe('ElementLocator', function () {
 
         $locator = new ElementLocator();
         
-        // Criar Cell com múltiplos parágrafos
+        // Create Cell with multiple paragraphs
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $table = $section->addTable();
@@ -239,14 +239,14 @@ describe('ElementLocator', function () {
         $cell->addText('Para 2');
         $cell->addText('Para 3');
 
-        // ElementLocator deve conseguir fazer hash da Cell
+        // ElementLocator should be able to hash the Cell
         $found = $locator->findElementInDOM($dom, $cell, 0);
 
         expect($found)->not->toBeNull();
         expect($found->nodeName)->toBe('w:tc');
     });
 
-    test('createXPathQuery lança exceção para tipo não suportado', function () {
+    test('createXPathQuery throws exception for unsupported type', function () {
         $locator = new ElementLocator();
         $unsupportedElement = new stdClass();
 
@@ -258,7 +258,7 @@ describe('ElementLocator', function () {
             ->toThrow(\InvalidArgumentException::class, 'Element type "stdClass" is not supported for Content Controls');
     });
 
-    test('findByContentHash retorna null se elemento não encontrado por hash', function () {
+    test('findByContentHash returns null if element not found by hash', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -268,17 +268,17 @@ describe('ElementLocator', function () {
 
         $locator = new ElementLocator();
         
-        // Criar Table (tipo diferente de w:p no DOM)
+        // Create Table (different type from w:p in DOM)
         $table = createSimpleTable(3, 3);
 
-        // Forçar uso de fallback hash usando índice muito alto
+        // Force hash fallback using very high index
         $found = $locator->findElementInDOM($dom, $table, 999);
 
-        // Table não existe no DOM (só tem w:p), deve retornar null
+        // Table does not exist in DOM (only has w:p), should return null
         expect($found)->toBeNull();
     });
 
-    test('extractTextContent retorna string vazia para elemento sem texto', function () {
+    test('extractTextContent returns empty string for element without text', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -300,7 +300,7 @@ describe('ElementLocator', function () {
         expect($text)->toBe('');
     });
 
-    test('validateMatch retorna false para tipos diferentes', function () {
+    test('validateMatch returns false for different types', function () {
         $dom = new DOMDocument();
         $xml = '<?xml version="1.0"?>
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -316,7 +316,7 @@ describe('ElementLocator', function () {
 
         $locator = new ElementLocator();
         
-        // Criar elemento Text (tipo diferente de Table no DOM)
+        // Create Text element (different type from Table in DOM)
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $text = $section->addText('Texto');

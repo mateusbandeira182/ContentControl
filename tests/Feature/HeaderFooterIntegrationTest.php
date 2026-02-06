@@ -5,7 +5,7 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * End-to-End Integration tests for Headers and Footers (v0.2.0)
+ * End-to-End Integration tests for Headers and Footers
  * 
  * Validates complete workflow:
  * 1. Create document with headers/footers

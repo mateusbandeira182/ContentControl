@@ -7,26 +7,26 @@ use MkGrow\ContentControl\SDTInjector;
 
 describe('Element Serialization - Text', function () {
     
-    test('serializa Text com wrapper <w:p>', function () {
+    test('serializes Text with <w:p> wrapper', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
-        $section->addText('Texto de teste');
+        $section->addText('Test text');
         
-        // Criar arquivo temporário para injetar XML
+        // Create temporary file to inject XML
         $tempFile = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {
             $cc->save($tempFile);
             
-            // Abrir e validar XML
+            // Open and validate XML
             $zip = new ZipArchive();
             $zip->open($tempFile);
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
             
-            // Deve conter <w:p> envolvendo <w:r><w:t>
+            // Should contain <w:p> wrapping <w:r><w:t>
             expect($xml)->toContain('<w:p');
             expect($xml)->toContain('<w:t');
-            expect($xml)->toContain('Texto de teste');
+            expect($xml)->toContain('Test text');
         } finally {
             if (file_exists($tempFile)) {
                 safeUnlink($tempFile);
@@ -37,13 +37,13 @@ describe('Element Serialization - Text', function () {
 
 describe('Element Serialization - TextRun', function () {
     
-    test('serializa TextRun com wrapper <w:p> externo', function () {
+    test('serializes TextRun with external <w:p> wrapper', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         
         $textRun = $section->addTextRun();
-        $textRun->addText('Parte 1 ');
-        $textRun->addText('Parte 2', ['bold' => true]);
+        $textRun->addText('Part 1 ');
+        $textRun->addText('Part 2', ['bold' => true]);
         
         $tempFile = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {
@@ -54,10 +54,10 @@ describe('Element Serialization - TextRun', function () {
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
             
-            // TextRun deve ter <w:p> externo
+            // TextRun must have external <w:p>
             expect($xml)->toContain('<w:p');
-            expect($xml)->toContain('Parte 1');
-            expect($xml)->toContain('Parte 2');
+            expect($xml)->toContain('Part 1');
+            expect($xml)->toContain('Part 2');
         } finally {
             if (file_exists($tempFile)) {
                 safeUnlink($tempFile);
@@ -68,14 +68,14 @@ describe('Element Serialization - TextRun', function () {
 
 describe('Element Serialization - Table', function () {
     
-    test('serializa Table SEM wrapper <w:p>', function () {
+    test('serializes Table WITHOUT <w:p> wrapper', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         
         $table = $section->addTable();
         $table->addRow();
-        $table->addCell(2000)->addText('Célula 1');
-        $table->addCell(2000)->addText('Célula 2');
+        $table->addCell(2000)->addText('Cell 1');
+        $table->addCell(2000)->addText('Cell 2');
         
         $tempFile = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {
@@ -86,10 +86,10 @@ describe('Element Serialization - Table', function () {
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
             
-            // Deve conter <w:tbl>
+            // Should contain <w:tbl>
             expect($xml)->toContain('<w:tbl>');
-            expect($xml)->toContain('Célula 1');
-            expect($xml)->toContain('Célula 2');
+            expect($xml)->toContain('Cell 1');
+            expect($xml)->toContain('Cell 2');
         } finally {
             if (file_exists($tempFile)) {
                 safeUnlink($tempFile);
@@ -98,22 +98,22 @@ describe('Element Serialization - Table', function () {
     });
 });
 
-describe('Element Serialization - Múltiplos Elementos', function () {
+describe('Element Serialization - Multiple Elements', function () {
     
-    test('serializa mix de elementos corretamente', function () {
+    test('serializes mix of elements correctly', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         
-        // Text (precisa wrapper)
-        $section->addText('Parágrafo antes da tabela');
+        // Text (needs wrapper)
+        $section->addText('Paragraph before table');
         
-        // Table (sem wrapper)
+        // Table (without wrapper)
         $table = $section->addTable();
         $table->addRow();
-        $table->addCell(2000)->addText('Célula');
+        $table->addCell(2000)->addText('Cell');
         
-        // Text (precisa wrapper)
-        $section->addText('Parágrafo depois da tabela');
+        // Text (needs wrapper)
+        $section->addText('Paragraph after table');
         
         $tempFile = sys_get_temp_dir() . '/test_' . uniqid() . '.docx';
         try {
@@ -124,11 +124,11 @@ describe('Element Serialization - Múltiplos Elementos', function () {
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
             
-            // Verificar presença de todos elementos
-            expect($xml)->toContain('Parágrafo antes da tabela');
+            // Verify presence of all elements
+            expect($xml)->toContain('Paragraph before table');
             expect($xml)->toContain('<w:tbl>');
-            expect($xml)->toContain('Célula');
-            expect($xml)->toContain('Parágrafo depois da tabela');
+            expect($xml)->toContain('Cell');
+            expect($xml)->toContain('Paragraph after table');
         } finally {
             if (file_exists($tempFile)) {
                 safeUnlink($tempFile);
@@ -137,10 +137,10 @@ describe('Element Serialization - Múltiplos Elementos', function () {
     });
 });
 
-test('lida com Content Control vazio', function () {
+test('handles empty Content Control', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
-    // Adicionar Text vazio (v3.0 não suporta Section vazio)
+    // Add empty Text (v3.0 does not support empty Section)
     $emptyText = $section->addText('');
     
     $cc->addContentControl($emptyText);
@@ -154,7 +154,7 @@ test('lida com Content Control vazio', function () {
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
         
-        // sdtContent deve estar presente
+        // sdtContent must be present
         expect($xml)->toContain('w:sdtContent');
     } finally {
         if (file_exists($tempFile)) {

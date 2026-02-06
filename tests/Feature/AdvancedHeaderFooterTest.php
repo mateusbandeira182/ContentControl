@@ -5,7 +5,7 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * Advanced Integration Tests for Headers and Footers (v0.2.0)
+ * Advanced Integration Tests for Headers and Footers
  * 
  * Tests complex scenarios:
  * - Multiple sections with independent headers/footers

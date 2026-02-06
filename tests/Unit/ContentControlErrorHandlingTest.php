@@ -5,32 +5,32 @@ declare(strict_types=1);
 use MkGrow\ContentControl\ContentControl;
 
 /**
- * Testes de cenários de erro no ContentControl
+ * Tests for ContentControl error scenarios
  * 
- * Cobertura de linhas: 305-307, 326-328
- * Nota: unlinkWithRetry (348-368) não é testado para Windows file locks
+ * Line coverage: 305-307, 326-328
+ * Note: unlinkWithRetry (348-368) is not tested for Windows file locks
  */
 
-test('save lança RuntimeException se diretório não for gravável', function () {
+test('save throws RuntimeException if directory is not writable', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $section->addText('Test content');
     
-    // Tentar salvar em diretório que não existe/não é gravável
-    // Usar caminho absoluto que não existe em Linux e Windows
+    // Attempt to save in a directory that does not exist/is not writable
+    // Use absolute path that does not exist on Linux and Windows
     $invalidPath = '/nonexistent_dir_12345/subdir/document.docx';
     
     expect(fn() => $cc->save($invalidPath))
         ->toThrow(\RuntimeException::class, 'Target directory not writable');
 });
 
-test('save lança RuntimeException se diretório for caminho inválido', function () {
+test('save throws RuntimeException if directory path is invalid', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $section->addText('Test content');
     
-    // Caminho com caractere nulo (causa ValueError em is_dir/is_writable no PHP 8.2+)
-    // Usar separador de diretório apropriado para o sistema operacional
+    // Path with null character (causes ValueError in is_dir/is_writable in PHP 8.2+)
+    // Use appropriate directory separator for the operating system
     $sep = DIRECTORY_SEPARATOR;
     $invalidPath = "{$sep}invalid{$sep}\0path{$sep}document.docx";
     
@@ -38,14 +38,14 @@ test('save lança RuntimeException se diretório for caminho inválido', functio
         ->toThrow(\RuntimeException::class);
 });
 
-test('save cria documento com sucesso em diretório temporário', function () {
+test('save creates document successfully in temporary directory', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $section->addText('Test content for valid save');
     
     $tempFile = sys_get_temp_dir() . '/test_valid_' . uniqid() . '.docx';
     
-    // Não deve lançar exceção
+    // Should not throw exception
     $cc->save($tempFile);
     
     expect(file_exists($tempFile))->toBeTrue();
@@ -55,7 +55,7 @@ test('save cria documento com sucesso em diretório temporário', function () {
     unlink($tempFile);
 });
 
-test('save com Content Controls registrados funciona corretamente', function () {
+test('save with registered Content Controls works correctly', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $text = $section->addText('Protected content');
@@ -72,12 +72,12 @@ test('save com Content Controls registrados funciona corretamente', function () 
     
     expect(file_exists($tempFile))->toBeTrue();
     
-    // Verificar que é um arquivo ZIP válido (DOCX é ZIP)
+    // Verify that it is a valid ZIP file (DOCX is ZIP)
     $zip = new ZipArchive();
     $openResult = $zip->open($tempFile);
     expect($openResult)->toBeTrue();
     
-    // Verificar que word/document.xml existe
+    // Verify that word/document.xml exists
     $documentXml = $zip->getFromName('word/document.xml');
     expect($documentXml)->not->toBeFalse();
     
@@ -87,7 +87,7 @@ test('save com Content Controls registrados funciona corretamente', function () 
     unlink($tempFile);
 });
 
-test('save processa múltiplos Content Controls sem erro', function () {
+test('save processes multiple Content Controls without error', function () {
     $cc = new ContentControl();
     
     $section1 = $cc->addSection();
@@ -108,7 +108,7 @@ test('save processa múltiplos Content Controls sem erro', function () {
     unlink($tempFile);
 });
 
-test('save com formato Word2007 explícito funciona', function () {
+test('save with explicit Word2007 format works', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $section->addText('Content with explicit format');
@@ -123,21 +123,21 @@ test('save com formato Word2007 explícito funciona', function () {
     unlink($tempFile);
 });
 
-test('save limpa arquivo temporário após processamento', function () {
+test('save cleans up temporary file after processing', function () {
     $cc = new ContentControl();
     $section = $cc->addSection();
     $section->addText('Temporary file cleanup test');
     
     $tempFile = sys_get_temp_dir() . '/test_cleanup_' . uniqid() . '.docx';
     
-    // Capturar arquivos temporários antes
+    // Capture temporary files before
     $tempDir = sys_get_temp_dir();
     $beforeFiles = glob($tempDir . '/phpword_*.docx');
     $beforeCount = is_array($beforeFiles) ? count($beforeFiles) : 0;
     
     $cc->save($tempFile);
     
-    // Verificar que nenhum arquivo phpword_* ficou para trás
+    // Verify that no phpword_* files were left behind
     $afterFiles = glob($tempDir . '/phpword_*.docx');
     $afterCount = is_array($afterFiles) ? count($afterFiles) : 0;
     
