@@ -1084,6 +1084,43 @@ $builder->injectTable('template.docx', 'tax-breakdown', $taxBreakdown);
 
 ---
 
+## Content Control Flags
+
+### inlineLevel Flag
+
+When wrapping elements inside table cells with Content Controls, you must specify the `inlineLevel => true` flag.
+
+**Required for:**
+- Text/TextRun/Image elements inside table cells
+- Any element within the `<w:tc>` (table cell) XML structure
+
+**Not required for:**
+- Text at document body level
+- Table elements (always block-level)
+- Title elements (always block-level)
+
+**Correct Usage:**
+```php
+$cell = $row->addCell(3000);
+$text = $cell->addText('Protected');
+$cc->addContentControl($text, ['tag' => 'cell-text', 'inlineLevel' => true]);
+```
+
+**Incorrect Usage (will fail):**
+```php
+$cell = $row->addCell(3000);
+$text = $cell->addText('Protected');
+$cc->addContentControl($text, ['tag' => 'cell-text']); // Missing inlineLevel flag
+```
+
+**Technical Explanation:**
+The ElementLocator uses XPath to find elements in the DOM. For elements inside
+table cells, the search strategy checks `//w:tc//w:p` (cell paragraphs) before
+`//w:body//w:p` (body paragraphs). The `inlineLevel` flag tells the locator to
+prioritize cell-level searches.
+
+---
+
 ## Architecture
 
 ContentControl uses the **Proxy Pattern** to encapsulate PHPWord:
