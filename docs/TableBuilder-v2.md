@@ -692,6 +692,143 @@ $processor->save('output.docx');
 
 ---
 
+## WARNING: Nested SDT Anti-Pattern
+
+Do NOT combine `addContentControl()` + `injectInto()` on the same table.
+This creates nested SDTs (invalid OOXML structure).
+
+### The Problem
+
+**WRONG (creates nested SDTs):**
+```php
+$builder->addContentControl(['tag' => 'table-sdt'])
+    ->addRow()->addCell(3000)->addText('Data')->end()->end();
+
+$processor = new ContentProcessor('template.docx');
+$builder->injectInto($processor, 'table-sdt'); // Injects table into SDT with same tag
+// Result: <w:sdt><w:sdt>...</w:sdt></w:sdt> (nested, invalid)
+```
+
+**Why This Fails:**
+1. `addContentControl()` wraps the entire table in an SDT
+2. `injectInto()` replaces an existing SDT placeholder with the wrapped table
+3. Result: The new SDT-wrapped table is placed inside the old SDT placeholder
+
+### The Solution
+
+**CORRECT (choose ONE approach):**
+
+**Option 1: Direct Save (table-level SDT valid):**
+```php
+$builder->addContentControl(['tag' => 'table-sdt'])
+    ->addRow()->addCell(3000)->addText('Data')->end()->end();
+$cc->save('output.docx'); // Table-level SDT wraps entire table
+```
+
+**Option 2: Template Injection (no table-level SDT):**
+```php
+$builder->addRow()->addCell(3000)->addText('Data')->end()->end();
+$processor = new ContentProcessor('template.docx');
+$builder->injectInto($processor, 'table-placeholder'); // Replaces SDT entirely
+```
+
+### Why This Matters
+
+Nested SDTs cause:
+- XML validation failures in strict parsers
+- Corruption warnings in Microsoft Word
+- Unpredictable behavior in content controls
+- Document repair prompts when opening files
+
+### Technical Explanation
+
+When you call `addContentControl()` on a table builder, the library wraps the entire
+table in an SDT. When you then call `injectInto()`, the library injects this
+SDT-wrapped table into an existing SDT placeholder, creating nesting.
+
+**DOM Structure (nested, invalid):**
+```xml
+<w:sdt>                    <!-- Outer SDT from template -->
+    <w:sdtPr>
+        <w:tag w:val="table-placeholder"/>
+    </w:sdtPr>
+    <w:sdtContent>
+        <w:sdt>            <!-- Inner SDT from builder -->
+            <w:sdtPr>
+                <w:tag w:val="table-sdt"/>
+            </w:sdtPr>
+            <w:sdtContent>
+                <w:tbl>...</w:tbl>
+            </w:sdtContent>
+        </w:sdt>
+    </w:sdtContent>
+</w:sdt>
+```
+
+**Correct Structure (Option 1 - Direct Save):**
+```xml
+<w:sdt>                    <!-- Single SDT wrapping table -->
+    <w:sdtPr>
+        <w:tag w:val="table-sdt"/>
+    </w:sdtPr>
+    <w:sdtContent>
+        <w:tbl>...</w:tbl>
+    </w:sdtContent>
+</w:sdt>
+```
+
+**Correct Structure (Option 2 - Template Injection):**
+```xml
+<w:tbl>...</w:tbl>         <!-- No SDT, just table replacing placeholder -->
+```
+
+### Detection
+
+If you suspect nested SDTs in your document, extract and validate the XML:
+
+**PowerShell:**
+```powershell
+# Extract DOCX
+Expand-Archive output.docx -DestinationPath temp -Force
+
+# Search for nested SDTs (look for pattern)
+Get-Content temp/word/document.xml | Select-String '<w:sdt'
+
+# Pretty print for inspection
+[xml]$xml = Get-Content temp/word/document.xml
+$xml.Save("temp/formatted.xml")
+code temp/formatted.xml
+
+# Look for multiple <w:sdt> elements without closing tags between them
+# Valid:   <w:sdt>...<w:sdtContent>...</w:sdtContent></w:sdt>
+# Invalid: <w:sdt>...<w:sdt>...</w:sdt>...</w:sdt>
+```
+
+**Bash/Linux:**
+```bash
+# Extract DOCX
+unzip -q output.docx -d temp/
+
+# Pretty print XML
+xmllint --format temp/word/document.xml > temp/formatted.xml
+
+# Search for nested pattern (Basic check)
+grep -c '<w:sdt' temp/word/document.xml  # Count SDTs
+grep -c '</w:sdt>' temp/word/document.xml  # Should be equal
+
+# Advanced: Find nested SDTs (requires manual inspection)
+xmllint --xpath '//w:sdt[.//w:sdt]' temp/word/document.xml 2>/dev/null
+# If output exists, nested SDTs found
+```
+
+### Rule of Thumb
+
+- **Creating standalone documents:** Use `addContentControl()` to wrap tables
+- **Injecting into templates:** Do NOT use `addContentControl()` on tables
+- **Use Case Separation:** Treat document creation and template injection as separate workflows
+
+---
+
 ## Best Practices
 
 ### 1. Use Fluent API for New Code

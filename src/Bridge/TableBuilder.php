@@ -308,6 +308,9 @@ final class TableBuilder
      *
      * @since 0.4.2
      *
+     * @see docs/TableBuilder-v2.md#warning-nested-sdt-anti-pattern
+     * @warning Do not combine with injectInto() - creates nested SDTs (invalid OOXML)
+     *
      * @example
      * ```php
      * $builder = new TableBuilder();
