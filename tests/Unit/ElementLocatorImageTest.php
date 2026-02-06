@@ -316,7 +316,7 @@ XML;
     expect($shape->item(0)->getAttribute('style'))->toContain('150pt');
 });
 
-test('hash collision occurs when images have identical dimensions', function () {
+test('hash differentiates images with identical dimensions but different sources (UUID v5)', function () {
     $testImagePath1 = TestImageHelper::getTestImagePath();
     
     // Create a second temporary image with different content but identical dimensions
@@ -337,10 +337,11 @@ test('hash collision occurs when images have identical dimensions', function () 
         $image2 = new Image($tempImagePath, ['width' => 200, 'height' => 200]);
         $hash2 = ElementIdentifier::generateContentHash($image2);
         
-        // Known limitation: Same dimensions = same hash (collision)
-        // This test documents that distinct image files with identical dimensions produce identical hashes
-        expect($hash1)->toBe($hash2)
-            ->and($hash1)->not->toBeEmpty();
+        // FIXED in v0.5.0: UUID v5 includes source basename, so different files produce DIFFERENT hashes
+        // Even with identical dimensions, distinct image files now generate unique hashes
+        expect($hash1)->not->toBe($hash2)
+            ->and($hash1)->not->toBeEmpty()
+            ->and($hash2)->not->toBeEmpty();
     } finally {
         // Clean up temporary file
         if (file_exists($tempImagePath)) {

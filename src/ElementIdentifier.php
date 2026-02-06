@@ -163,25 +163,9 @@ final class ElementIdentifier
             }
         }
 
-        // Image: incluir dimensões e source
+        // Image: use UUID v5 hash (v0.5.0+)
         if ($element instanceof \PhpOffice\PhpWord\Element\Image) {
-            $parts[] = 'image';
-            
-            // Extrair width e height via getStyle()
-            $style = $element->getStyle();
-            if ($style !== null) {
-                $width = $style->getWidth();
-                $parts[] = "width:{$width}";
-                
-                $height = $style->getHeight();
-                $parts[] = "height:{$height}";
-            }
-            
-            // Nota: Não incluímos basename($source) pois não é derivável do DOM
-            // de document.xml (requer resolução de relationships). Usar width+height
-            // pode causar colisões entre imagens distintas com mesmas dimensões, mas é
-            // suficiente para a maioria dos casos. Para identificação única garantida,
-            // seria necessário resolver relationships ou usar metadados adicionais.
+            return self::generateImageHash($element);
         }
 
         // Table: incluir número de linhas e colunas
