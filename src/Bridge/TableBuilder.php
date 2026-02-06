@@ -87,6 +87,17 @@ final class TableBuilder
     private ?array $tableSdtConfig = null;
 
     /**
+     * Pending table-level style configuration
+     *
+     * Stored when setStyles() is called, applied on first addRow().
+     * Ensures table is created with proper styling before rows are added.
+     *
+     * @var array<string, mixed>|null
+     * @since 0.5.0
+     */
+    private ?array $tableStyle = null;
+
+    /**
      * TableBuilder Constructor
      *
      * Initializes the builder with a ContentControl instance.
@@ -160,6 +171,70 @@ final class TableBuilder
     }
 
     /**
+     * Set table-level styles for the fluent API
+     *
+     * Configures styling for the table before rows are added. This method provides
+     * a fluent alternative to the deprecated createTable() API for setting table-level
+     * styles (borders, alignment, width, cell margins, etc.).
+     *
+     * IMPORTANT: Must be called BEFORE addRow(). Calling after table creation throws exception.
+     *
+     * Supported style properties (PhpWord Table style):
+     * - 'borderSize': int - Border width in eighths of a point (e.g., 6 = 0.75pt)
+     * - 'borderColor': string - Hex color code (e.g., '000000')
+     * - 'cellMargin': int - Default cell margin in twips
+     * - 'alignment': string - Table alignment ('left', 'center', 'right')
+     * - 'width': int|float - Table width in twips or percentage
+     * - 'unit': string - Width unit ('pct' for percentage, 'dxa' for twips)
+     * - 'layout': string - Table layout algorithm ('fixed', 'autofit')
+     *
+     * @param array<string, mixed> $style Table style configuration array
+     *
+     * @return self Returns $this for method chaining
+     *
+     * @throws ContentControlException If called after table creation
+     *
+     * @since 0.5.0
+     *
+     * @example Basic table with borders
+     * ```php
+     * $builder = new TableBuilder();
+     * $builder->setStyles([
+     *     'borderSize' => 6,
+     *     'borderColor' => '000000',
+     *     'alignment' => 'center'
+     * ])
+     * ->addRow()
+     *     ->addCell(3000)->addText('Cell 1')->end()
+     *     ->addCell(3000)->addText('Cell 2')->end()
+     *     ->end();
+     * ```
+     *
+     * @example Full-width table with custom margins
+     * ```php
+     * $builder->setStyles([
+     *     'width' => 100,
+     *     'unit' => 'pct',
+     *     'cellMargin' => 100,
+     *     'layout' => 'fixed'
+     * ])
+     * ->addRow()->addCell(5000)->addText('Content')->end()->end();
+     * ```
+     */
+    public function setStyles(array $style): self
+    {
+        if ($this->table !== null) {
+            throw new ContentControlException(
+                'Cannot call setStyles() after table creation. ' .
+                'Call setStyles() before the first addRow().'
+            );
+        }
+
+        $this->tableStyle = $style;
+        return $this;
+    }
+
+    /**
      * Add row to table with fluent interface
      *
      * Creates a new row in the table and returns a RowBuilder for configuring cells.
@@ -202,7 +277,8 @@ final class TableBuilder
         // Lazy create table on first addRow() call
         if ($this->table === null) {
             $section = $this->contentControl->addSection();
-            $this->table = $section->addTable();
+            // Apply stored table styles from setStyles() if present
+            $this->table = $section->addTable($this->tableStyle);
         }
 
         $row = $this->table->addRow($height, $style);
