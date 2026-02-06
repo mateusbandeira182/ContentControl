@@ -82,8 +82,6 @@ $builder
         ->addCell(2000)->addText('+12%', ['color' => '388E3C', 'bold' => true])->end()
         ->end();
 
-$builder->injectInto($replacement);
-
 // Replace GROUP SDT with complex content
 $processor->replaceGroupContent('report-section', $replacement);
 

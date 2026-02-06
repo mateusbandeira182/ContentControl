@@ -38,12 +38,11 @@ describe('Nested SDT Detection', function (): void {
             $builder
                 ->addRow()
                     ->addCell(3000)->addText('Product')->end()
-                    ->addCell(2000)->addText('Price')->end()
-                ->end()
-                ->addRow()
+                    ->addCell(2000)->addText('Price');
+
+            $builder->addRow()
                     ->addCell(3000)->addText('Widget A')->end()
-                    ->addCell(2000)->addText('$99.99')->end()
-                ->end();
+                    ->addCell(2000)->addText('$99.99');
 
             // Step 3: Inject into template (no table-level SDT)
             $processor = new ContentProcessor($templatePath);
@@ -105,12 +104,11 @@ describe('Nested SDT Detection', function (): void {
                 ->addContentControl(['tag' => 'table-sdt', 'alias' => 'Table SDT'])  // ANTI-PATTERN
                 ->addRow()
                     ->addCell(3000)->addText('Product')->end()
-                    ->addCell(2000)->addText('Price')->end()
-                ->end()
-                ->addRow()
+                    ->addCell(2000)->addText('Price');
+
+            $builder->addRow()
                     ->addCell(3000)->addText('Widget A')->end()
-                    ->addCell(2000)->addText('$99.99')->end()
-                ->end();
+                    ->addCell(2000)->addText('$99.99');
 
             // Step 3: Inject into template (creates nesting)
             $processor = new ContentProcessor($templatePath);

@@ -12,25 +12,15 @@ declare(strict_types=1);
  * @since 0.5.0
  */
 
+use Tests\Helpers\WithImageFixtures;
 use MkGrow\ContentControl\ElementIdentifier;
 use PhpOffice\PhpWord\Element\Image;
 use PhpOffice\PhpWord\Writer\Word2007\Style\Image as ImageStyleWriter;
 
+uses(WithImageFixtures::class);
+
 beforeEach(function () {
-    // Ensure test fixtures exist
-    $this->fixtureDir = __DIR__ . '/../Fixtures';
-    if (!is_dir($this->fixtureDir)) {
-        mkdir($this->fixtureDir, 0755, recursive: true);
-    }
-    
-    // Create test image if not exists
-    $this->testImagePath = $this->fixtureDir . '/test_image.png';
-    if (!file_exists($this->testImagePath)) {
-        // Create minimal 1x1 PNG
-        $img = imagecreate(1, 1);
-        imagepng($img, $this->testImagePath);
-        imagedestroy($img);
-    }
+    $this->setUpImageFixtures();
 });
 
 /**

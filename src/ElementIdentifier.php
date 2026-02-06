@@ -5,90 +5,90 @@ declare(strict_types=1);
 namespace MkGrow\ContentControl;
 
 /**
- * Gerador de identificadores únicos para elementos PHPWord
+ * Unique identifier generator for PHPWord elements
  * 
- * Usado para tracking de elementos durante localização no DOM.
- * Implementa cache de marcadores e hashes para melhor performance.
+ * Used for element tracking during DOM location.
+ * Implements marker and hash caching for better performance.
  * 
  * @since 3.0.0
  */
 final class ElementIdentifier
 {
     /**
-     * Cache de marcadores por object ID
+     * Marker cache by object ID
      * 
      * @var array<int, string>
      */
     private static array $markerCache = [];
 
     /**
-     * Cache de hashes de conteúdo por object ID
+     * Content hash cache by object ID
      * 
      * @var array<int, string>
      */
     private static array $hashCache = [];
 
     /**
-     * Gera marcador único para elemento (com cache)
+     * Generate unique marker for element (with caching)
      * 
-     * Formato: sdt-marker-{objectId}-{hash8}
+     * Format: sdt-marker-{objectId}-{hash8}
      * 
-     * Performance: O(1) para elementos já processados, O(n) para novos elementos
+     * Performance: O(1) for cached elements, O(n) for new elements
      * 
-     * @param object $element Elemento PHPWord
-     * @return string Marcador único (ex: "sdt-marker-12345-a1b2c3d4")
+     * @param object $element PHPWord element
+     * @return string Unique marker (e.g., "sdt-marker-12345-a1b2c3d4")
      */
     public static function generateMarker(object $element): string
     {
         $objectId = spl_object_id($element);
         
-        // Retornar do cache se disponível
+        // Return from cache if available
         if (isset(self::$markerCache[$objectId])) {
             return self::$markerCache[$objectId];
         }
         
-        // Gerar novo marcador
+        // Generate new marker
         $hash = self::generateContentHash($element);
         $marker = sprintf('sdt-marker-%d-%s', $objectId, $hash);
         
-        // Armazenar no cache
+        // Store in cache
         self::$markerCache[$objectId] = $marker;
         
         return $marker;
     }
 
     /**
-     * Gera hash MD5 truncado (8 chars) do conteúdo do elemento (com cache)
+     * Generate truncated MD5 hash (8 chars) of element content (with caching)
      * 
-     * Hash é baseado em tipo + conteúdo serializado.
-     * Elementos com conteúdo idêntico terão o mesmo hash.
+     * Hash is based on type + serialized content.
+     * Elements with identical content will have the same hash.
      * 
-     * Performance: O(1) para elementos já processados, O(n) para novos elementos
+     * Performance: O(1) for cached elements, O(n) for new elements
      * 
-     * @param object $element Elemento PHPWord
-     * @return string Hash de 8 caracteres hexadecimais
+     * @param object $element PHPWord element
+     * @return string 8-character hexadecimal hash
      */
     public static function generateContentHash(object $element): string
     {
         $objectId = spl_object_id($element);
         
-        // Retornar do cache se disponível
+        // Return from cache if available
         if (isset(self::$hashCache[$objectId])) {
             return self::$hashCache[$objectId];
         }
         
-        // Gerar novo hash
+        // Generate new hash
         $serialized = self::serializeForHash($element);
         $hash = substr(md5($serialized), 0, 8);
         
-        // Armazenar no cache
+        // Store in cache
         self::$hashCache[$objectId] = $hash;
         
         return $hash;
     }
 
     /**
-     * Limpa cache de marcadores e hashes (útil para testes)
+     * Clear marker and hash caches (useful for testing)
      * 
      * @return void
      */
@@ -99,9 +99,9 @@ final class ElementIdentifier
     }
 
     /**
-     * Retorna estatísticas do cache (para debug/testes)
+     * Returns cache statistics (for debug/testing)
      * 
-     * @return array{markers: int, hashes: int} Contadores de cache
+     * @return array{markers: int, hashes: int} Cache counters
      */
     public static function getCacheStats(): array
     {
@@ -112,29 +112,29 @@ final class ElementIdentifier
     }
 
     /**
-     * Serializa elemento para geração de hash
+     * Serialize element for hash generation
      * 
-     * @param object $element Elemento PHPWord
-     * @return string Representação serializada
-     * @throws \RuntimeException Se a propriedade depth do Title não for um inteiro válido
+     * @param object $element PHPWord element
+     * @return string Serialized representation
+     * @throws \RuntimeException If Title depth property is not a valid integer
      */
     private static function serializeForHash(object $element): string
     {
         $parts = [];
 
-        // Text: incluir texto (sem className para compatibilidade com DOM)
+        // Text: include text content (no className for DOM compatibility)
         if ($element instanceof \PhpOffice\PhpWord\Element\Text) {
-            $parts[] = 'paragraph';  // Corresponde a w:p no DOM
+            $parts[] = 'paragraph';  // Corresponds to w:p in DOM
             $parts[] = $element->getText();
         }
 
-        // TextRun: incluir todos textos internos
+        // TextRun: include all internal text content
         if ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
-            $parts[] = 'paragraph';  // TextRun também vira w:p
+            $parts[] = 'paragraph';  // TextRun also becomes w:p
             $parts[] = $element->getText();
         }
 
-        // Title: incluir depth e texto
+        // Title: include depth and text content
         if ($element instanceof \PhpOffice\PhpWord\Element\Title) {
             try {
                 $reflection = new \ReflectionClass($element);
@@ -146,7 +146,7 @@ final class ElementIdentifier
                 $textProperty->setAccessible(true);
                 $text = $textProperty->getValue($element);
                 
-                // Garantir que depth seja inteiro
+                // Ensure depth is an integer
                 if (!is_int($depth)) {
                     throw new \RuntimeException('Title depth must be an integer');
                 }
@@ -157,8 +157,8 @@ final class ElementIdentifier
                 $parts[] = $styleName;
                 $parts[] = $text;
             } catch (\ReflectionException $e) {
-                // Não foi possível acessar propriedades via Reflection.
-                // Fallback: adicionar apenas marcador 'title' sem texto adicional.
+                // Failed to access properties via Reflection.
+                // Fallback: add only 'title' marker without additional text.
                 $parts[] = 'title';
             }
         }
@@ -168,13 +168,13 @@ final class ElementIdentifier
             return self::generateImageHash($element);
         }
 
-        // Table: incluir número de linhas e colunas
+        // Table: include row and column count
         if ($element instanceof \PhpOffice\PhpWord\Element\Table) {
-            $parts[] = 'table';  // Corresponde a w:tbl no DOM
+            $parts[] = 'table';  // Corresponds to w:tbl in DOM
             $rowCount = count($element->getRows());
             $parts[] = "rows:{$rowCount}";
             
-            // Primeira célula de cada linha para diferenciação
+            // First cell of each row for differentiation
             foreach ($element->getRows() as $row) {
                 $cells = $row->getCells();
                 if (count($cells) > 0) {
@@ -190,12 +190,12 @@ final class ElementIdentifier
             }
         }
 
-        // Section: incluir tipo e conteúdo de elementos filhos
+        // Section: include child element types and content
         if ($element instanceof \PhpOffice\PhpWord\Element\Section) {
             $parts[] = 'section';
             $childElements = $element->getElements();
             foreach ($childElements as $child) {
-                // Tipo simplificado
+                // Simplified type
                 if ($child instanceof \PhpOffice\PhpWord\Element\Text) {
                     $parts[] = 'text';
                     $parts[] = $child->getText();
@@ -208,7 +208,7 @@ final class ElementIdentifier
             }
         }
 
-        // Cell: incluir tipo e conteúdo de elementos filhos
+        // Cell: include child element types and content
         if ($element instanceof \PhpOffice\PhpWord\Element\Cell) {
             $parts[] = 'cell';
             $childElements = $element->getElements();

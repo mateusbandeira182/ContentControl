@@ -5,3 +5,14 @@ parameters:
 			identifier: method.resultUnused
 			count: 12
 			path: tests/Feature/FluentTableBuilderTest.php
+		
+		# Pest Framework Limitation: Dynamic group() method
+		# Pest generates test grouping methods at runtime via __call() magic method.
+		# PHPStan cannot statically analyze dynamic method calls.
+		# This is a known framework limitation, not a code quality issue.
+		# Reference: https://pestphp.com/docs/grouping-tests
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall.*::group\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/ImageHashCollisionTest.php

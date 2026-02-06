@@ -80,8 +80,8 @@ $builder
             ->end()
         ->end();
 
-// Inject table
-$builder->injectInto($contentControl);
+// Table is automatically added to ContentControl during build
+// No manual injection needed for direct creation workflow
 
 // Save document
 $outputFile = __DIR__ . '/output/04-table-with-controls.docx';

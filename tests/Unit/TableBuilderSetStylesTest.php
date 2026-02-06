@@ -35,8 +35,7 @@ describe('TableBuilder::setStyles()', function () {
         
         $builder->setStyles(['borderSize' => 6])
             ->addRow()
-                ->addCell(3000)->addText('Test')->end()
-                ->end();
+                ->addCell(3000)->addText('Test');
         
         expect($builder)->toBeInstanceOf(TableBuilder::class);
     });
@@ -49,8 +48,7 @@ describe('TableBuilder::setStyles()', function () {
             'borderColor' => '000000'
         ])
         ->addRow()
-            ->addCell(3000)->addText('Content')->end()
-            ->end();
+            ->addCell(3000)->addText('Content');
         
         // Extract table and verify it was created
         $cc = $builder->getContentControl();
@@ -79,8 +77,7 @@ describe('TableBuilder::setStyles()', function () {
         
         // Create table by calling addRow
         $builder->addRow()
-            ->addCell(3000)->addText('First row')->end()
-            ->end();
+            ->addCell(3000)->addText('First row');
         
         // Attempt to set styles after table creation
         $builder->setStyles(['borderSize' => 6]);
@@ -110,8 +107,7 @@ describe('TableBuilder::setStyles()', function () {
             'layout' => 'fixed'
         ])
         ->addRow()
-            ->addCell(5000)->addText('Full-width table')->end()
-            ->end();
+            ->addCell(5000)->addText('Full-width table');
         
         expect($builder->getContentControl())->toBeInstanceOf(ContentControl::class);
     });
@@ -122,12 +118,11 @@ describe('TableBuilder::setStyles()', function () {
         $builder->setStyles(['borderSize' => 6, 'borderColor' => '000000'])
             ->addRow()
                 ->addCell(3000)->addText('Row 1 Cell 1')->end()
-                ->addCell(3000)->addText('Row 1 Cell 2')->end()
-                ->end()
-            ->addRow()
+                ->addCell(3000)->addText('Row 1 Cell 2');
+
+        $builder->addRow()
                 ->addCell(3000)->addText('Row 2 Cell 1')->end()
-                ->addCell(3000)->addText('Row 2 Cell 2')->end()
-                ->end();
+                ->addCell(3000)->addText('Row 2 Cell 2');
         
         $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
         $builder->getContentControl()->save($tempFile);
@@ -153,8 +148,7 @@ describe('TableBuilder::setStyles()', function () {
         $builder->setStyles(['borderSize' => 6])
             ->addContentControl(['tag' => 'test-table', 'alias' => 'Test Table'])
             ->addRow()
-                ->addCell(3000)->addText('Content')->end()
-                ->end();
+                ->addCell(3000)->addText('Content');
         
         expect($builder->getContentControl())->toBeInstanceOf(ContentControl::class);
     });

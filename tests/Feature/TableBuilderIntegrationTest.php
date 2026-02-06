@@ -346,12 +346,11 @@ describe('TableBuilder Integration', function (): void {
             ])
             ->addRow()
                 ->addCell(3000)->addText('Header 1')->end()
-                ->addCell(2000)->addText('Header 2')->end()
-                ->end()
-            ->addRow()
+                ->addCell(2000)->addText('Header 2');
+
+        $builder->addRow()
                 ->addCell(3000)->addText('Data 1')->end()
-                ->addCell(2000)->addText('Data 2')->end()
-                ->end();
+                ->addCell(2000)->addText('Data 2');
         
         $tempFile = tempnam(sys_get_temp_dir(), 'test_borders_') . '.docx';
         
@@ -389,13 +388,16 @@ describe('TableBuilder Integration', function (): void {
             // Validate border size (w:sz attribute in table borders)
             $topBorder = $xpath->query('//w:tbl/w:tblPr/w:tblBorders/w:top')->item(0);
             expect($topBorder)->not->toBeNull();
+            expect($topBorder)->toBeInstanceOf(DOMElement::class);
             
-            $borderSize = $topBorder?->getAttribute('w:sz');
-            expect($borderSize)->toBe('6');
-            
-            // Validate border color (w:color attribute)
-            $borderColor = $topBorder?->getAttribute('w:color');
-            expect($borderColor)->toBe('1F4788');
+            if ($topBorder instanceof DOMElement) {
+                $borderSize = $topBorder->getAttribute('w:sz');
+                expect($borderSize)->toBe('6');
+                
+                // Validate border color (w:color attribute)
+                $borderColor = $topBorder->getAttribute('w:color');
+                expect($borderColor)->toBe('1F4788');
+            }
             
             // Verify table content is preserved
             expect($xml)->toContain('Header 1');
