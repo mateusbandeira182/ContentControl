@@ -393,10 +393,10 @@ $processor->save('output.docx');
 ### 1. Use Fluent API for New Code
 
 ```php
-// ✅ GOOD: Fluent API (type-safe, readable)
+// RECOMMENDED: Fluent API (type-safe, readable)
 $builder->addRow()->addCell(3000)->addText('Data')->end()->end();
 
-// ❌ BAD: Legacy API (deprecated)
+// NOT RECOMMENDED: Legacy API (deprecated)
 $builder->createTable(['rows' => [['cells' => [['text' => 'Data']]]]]);
 ```
 
@@ -417,13 +417,13 @@ $builder
 ### 3. SDT After Element Creation
 
 ```php
-// ✅ GOOD: Add SDT after content
+// RECOMMENDED: Add SDT after content
 ->addCell(3000)
     ->addText('Customer Name')
     ->withContentControl(['tag' => 'customer'])
 ->end()
 
-// ❌ BAD: Cannot add SDT without content
+// WRONG: Cannot add SDT without content
 ->addCell(3000)
     ->withContentControl(['tag' => 'customer'])  // No element to wrap!
     ->addText('Customer Name')
@@ -433,10 +433,10 @@ $builder
 ### 4. Use Descriptive Tags
 
 ```php
-// ✅ GOOD: Semantic tags
+// RECOMMENDED: Semantic tags
 ->withContentControl(['tag' => 'customer_name', 'alias' => 'Customer Name'])
 
-// ❌ BAD: Generic tags
+// WRONG: Generic tags
 ->withContentControl(['tag' => 'field1'])
 ```
 
