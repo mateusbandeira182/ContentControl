@@ -363,6 +363,51 @@ ContentControl can wrap the following PHPWord elements with Structured Document 
 | TOC | `\PhpOffice\PhpWord\Element\TOC` | `<w:fldChar>` (multi-paragraph) | - | Not supported |
 | Section | `\PhpOffice\PhpWord\Element\Section` | `<w:sectPr>` | - | Not wrappable |
 
+### Title Elements vs Document Metadata
+
+PHPWord has two distinct "title" concepts that are commonly confused:
+
+**1. Document Metadata** (stored in `docProps/core.xml`):
+```php
+$cc->getDocInfo()->setTitle('Report Title'); // NOT wrappable with SDT
+```
+This sets the document properties visible in File > Properties in Word.
+CANNOT be wrapped with Content Controls (not part of document body XML).
+
+**2. Title Content Element** (stored in `word/document.xml`):
+```php
+$title = $section->addTitle('Report Title', 0); // Wrappable with SDT
+$cc->addContentControl($title, ['tag' => 'doc-title']);
+```
+This creates a styled heading in the document body.
+CAN be wrapped with Content Controls.
+
+**Common Mistake:**
+```php
+// WRONG: Trying to sync metadata and wrap it
+$cc->getDocInfo()->setTitle('Report');
+$cc->addContentControl(???, ['tag' => 'title']); // No element to wrap!
+```
+
+**Correct Pattern:**
+```php
+// Create Title element in document body
+$title = $section->addTitle('Report Title', 0);
+$cc->addContentControl($title, ['tag' => 'doc-title']);
+
+// Optionally sync metadata separately
+$cc->getDocInfo()->setTitle('Report Title');
+```
+
+**Helper Method (v0.6.0+):**
+```php
+// Combines both in one call
+$cc->addProtectedTitle($section, 'Report Title', 0, 
+    ['tag' => 'doc-title'], 
+    syncMetadata: true
+);
+```
+
 ---
 
 ## ContentProcessor API (Template Processing)
