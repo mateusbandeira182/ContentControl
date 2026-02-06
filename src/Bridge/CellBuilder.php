@@ -171,6 +171,11 @@ final class CellBuilder
     /**
      * Ends cell building and returns to parent RowBuilder
      *
+     * @deprecated Since v0.5.1, will be removed in v0.7.0
+     *             The end() method pattern is foreign to PHPWord conventions.
+     *             Recommended: Use end() calls until v0.6.0 introduces optional auto-close.
+     *             Migration timeline: v0.7.0 (H1 2027) will remove this method entirely.
+     *
      * Completes the current cell and returns the parent RowBuilder,
      * allowing you to add more cells or end the row.
      *
@@ -184,6 +189,18 @@ final class CellBuilder
      */
     public function end(): RowBuilder
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        static $warned = false;
+        if (!$warned) {
+            trigger_error(
+                'CellBuilder::end() is deprecated since v0.5.1 and will be removed in v0.7.0. ' .
+                'Continue using end() for now. In v0.6.0, end() will become optional (auto-close pattern). ' .
+                'Full removal planned for v0.7.0 (18-month deprecation window).',
+                E_USER_DEPRECATED
+            );
+            $warned = true;
+        }
+        
         return $this->parent;
     }
 }

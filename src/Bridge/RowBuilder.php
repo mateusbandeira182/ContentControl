@@ -84,6 +84,11 @@ final class RowBuilder
     /**
      * Ends row building and returns to parent TableBuilder
      *
+     * @deprecated Since v0.5.1, will be removed in v0.7.0
+     *             The end() method pattern is foreign to PHPWord conventions.
+     *             Recommended: Use end() calls until v0.6.0 introduces optional auto-close.
+     *             Migration timeline: v0.7.0 (H1 2027) will remove this method entirely.
+     *
      * Completes the current row and returns the parent TableBuilder,
      * allowing you to add more rows or finalize the table.
      *
@@ -97,6 +102,18 @@ final class RowBuilder
      */
     public function end(): TableBuilder
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        static $warned = false;
+        if (!$warned) {
+            trigger_error(
+                'RowBuilder::end() is deprecated since v0.5.1 and will be removed in v0.7.0. ' .
+                'Continue using end() for now. In v0.6.0, end() will become optional (auto-close pattern). ' .
+                'Full removal planned for v0.7.0 (18-month deprecation window).',
+                E_USER_DEPRECATED
+            );
+            $warned = true;
+        }
+        
         return $this->parent;
     }
 }

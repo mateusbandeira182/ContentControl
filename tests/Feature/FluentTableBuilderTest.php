@@ -234,8 +234,18 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             safeUnlink($templatePath);
         });
 
-        it('injects table with table-level SDT creating nested structure', function () {
-            // Create template using ContentControl API (bug fixed)
+        it('throws exception when attempting removed addContentControl method', function () {
+            $builder = new TableBuilder();
+            
+            expect(fn() => $builder->addContentControl(['tag' => 'items-table']))
+                ->toThrow(
+                    ContentControlException::class,
+                    'TableBuilder::addContentControl() removed in v0.5.1'
+                );
+        });
+
+        it('supports cell-level SDTs without table-level wrapping (recommended pattern)', function () {
+            // Create template
             $template = new \MkGrow\ContentControl\ContentControl();
             $section = $template->addSection();
             $placeholder = $section->addText('Placeholder');
@@ -244,40 +254,70 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             $templatePath = tempnam(sys_get_temp_dir(), 'fluent_template_sdt_') . '.docx';
             $template->save($templatePath);
 
-            // Create table with its own SDT
+            // Create table with cell-level SDTs only (no table-level SDT)
             $builder = new TableBuilder();
-            $builder->addContentControl(['tag' => 'items-table', 'alias' => 'Items'])
-                ->addRow()
-                    ->addCell(3000)->addText('Product')->end()
-                    ->addCell(2000)->addText('Price')->end()
-                    ->end();
+            $builder->addRow()
+                ->addCell(3000)
+                    ->withContentControl([
+                        'tag' => 'product-1',
+                        'alias' => 'Product',
+                        'inlineLevel' => true,
+                    ])
+                    ->addText('Widget A')
+                    ->end()
+                ->addCell(2000)
+                    ->withContentControl([
+                        'tag' => 'price-1',
+                        'alias' => 'Price',
+                        'inlineLevel' => true,
+                    ])
+                    ->addText('$99.99')
+                    ->end()
+                ->end();
 
-            // Inject into template SDT (creates nested SDT structure)
+            // Inject into template
             $processor = new ContentProcessor($templatePath);
             $builder->injectInto($processor, 'invoice-table');
 
             $outputPath = tempnam(sys_get_temp_dir(), 'fluent_output_sdt_') . '.docx';
             $processor->save($outputPath);
 
-            // Verify nested SDT structure: invoice-table wraps items-table
+            // Verify zero nested SDTs (XPath: no SDT containing another SDT)
             $zip = new ZipArchive();
             $zip->open($outputPath);
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
 
             expect($xml)->toBeValidXml();
-            // Both SDTs should be present (nested)
-            expect($xml)->toContain('<w:tag w:val="invoice-table"/>');
-            expect($xml)->toContain('<w:tag w:val="items-table"/>');
-            expect($xml)->toContain('<w:alias w:val="Items"/>');
-            expect($xml)->toContain('Product');
-            expect($xml)->toContain('Price');
+            
+            // Validate cell-level SDTs exist
+            expect($xml)->toContain('<w:tag w:val="product-1"/>');
+            expect($xml)->toContain('<w:tag w:val="price-1"/>');
+            
+            // Critical validation: Verify NO table-level SDT wrapping cell-level SDTs
+            // (The template SDT wrapping the injected table is expected and acceptable)
+            // We're checking that there's no extra table-level SDT layer between template and cells
+            $doc = new \DOMDocument();
+            $doc->loadXML($xml);
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+            
+            // Check: No w:sdt with tag "items-table" or similar table-level tags
+            // (which would indicate the removed addContentControl() was used)
+            $tableSdts = $xpath->query('//w:sdt[w:sdtPr/w:tag[@w:val="items-table"]]');
+            expect($tableSdts->length)->toBe(0, 'Should have no table-level SDT from addContentControl()');
+            
+            // Verify cell-level SDTs exist (correct pattern)
+            $cellSdt1 = $xpath->query('//w:sdt[w:sdtPr/w:tag[@w:val="product-1"]]');
+            $cellSdt2 = $xpath->query('//w:sdt[w:sdtPr/w:tag[@w:val="price-1"]]');
+            expect($cellSdt1->length)->toBe(1, 'Should have cell-level product SDT');
+            expect($cellSdt2->length)->toBe(1, 'Should have cell-level price SDT');
 
-            // Cleanup
-            foreach ([$templatePath, $outputPath] as $file) {
-                if (file_exists($file)) {
-                    safeUnlink($file);
-                }
+            if (file_exists($templatePath)) {
+                unlink($templatePath);
+            }
+            if (file_exists($outputPath)) {
+                unlink($outputPath);
             }
         });
     });
