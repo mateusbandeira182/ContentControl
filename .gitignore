@@ -1,17 +1,11 @@
 vendor
 composer.lock
-.PRDS
-.SPECS
-.PLANS
 .idea
 .vscode
 .antigravity
 .github/prompts
 .github/copilot-instructions.md
-.review
-.prompts
-.backlog
-.searches
+.local
 # Cobertura de testes
 coverage/
 .phpunit.result.cache

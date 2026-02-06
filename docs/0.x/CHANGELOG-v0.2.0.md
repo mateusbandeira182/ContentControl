@@ -125,12 +125,12 @@ None. All tests passing.
 
 ### Validation
 
-- ✅ 293 tests passing (788 assertions)
-- ✅ PHPStan Level 9: 0 errors
-- ✅ Code coverage: 82.3%
-- ✅ Performance benchmarks met
-- ✅ OOXML validation passed
-- ✅ Example scripts execute successfully
+- 293 tests passing (788 assertions)
+- PHPStan Level 9: 0 errors
+- Code coverage: 82.3%
+- Performance benchmarks met
+- OOXML validation passed
+- Example scripts execute successfully
 
 ### Contributors
 
