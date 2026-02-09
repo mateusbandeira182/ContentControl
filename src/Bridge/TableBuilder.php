@@ -77,16 +77,6 @@ final class TableBuilder
     private ?Table $table = null;
 
     /**
-     * Pending table-level Content Control configuration
-     *
-     * Stored when addContentControl() is called, applied before extraction/injection.
-     *
-     * @var array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string}|null
-     * @since 0.4.2
-     */
-    private ?array $tableSdtConfig = null;
-
-    /**
      * Pending table-level style configuration
      *
      * Stored when setStyles() is called, applied on first addRow().
@@ -148,6 +138,102 @@ final class TableBuilder
     public function getContentControl(): ContentControl
     {
         return $this->contentControl;
+    }
+
+    /**
+     * Set existing PhpWord Table for decoration
+     *
+     * Enables using TableBuilder with existing PhpWord documents, decoupling
+     * from ContentControl lifecycle management. This is the recommended pattern
+     * for integrating with existing document structures.
+     *
+     * **Usage Pattern:**
+     * ```php
+     * // User controls document structure
+     * $phpWord = new \PhpOffice\PhpWord\PhpWord();
+     * $section = $phpWord->addSection();
+     * $section->addText('Document header');
+     * 
+     * // Create table externally
+     * $table = $section->addTable(['borderSize' => 6]);
+     * 
+     * // Builder decorates existing table
+     * $builder = new TableBuilder();
+     * $builder->setTable($table);
+     * $builder->addRow()->addCell(3000)->addText('Data')->end()->end();
+     * 
+     * // User saves document
+     * $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+     * $writer->save('output.docx');
+     * ```
+     *
+     * **Constraints:**
+     * - Must be called before any `addRow()` calls
+     * - Cannot be called if table already exists (internally created via addRow)
+     * - Existing rows in the table are preserved; new rows added via addRow() will be appended
+     *
+     * **IMPORTANT - SDT Save Workflow:**
+     * When using setTable() with withContentControl() for cell-level SDTs, you MUST save
+     * via ContentControl::save(), NOT PhpWord's native IOFactory writer. SDT registration
+     * is handled by ContentControl and requires its save workflow to inject SDTs into the XML.
+     *
+     * Incorrect (SDTs will not be saved):
+     * ```php
+     * $builder->setTable($table)->addRow()->addCell(3000)->withContentControl(['tag' => 'x'])->end()->end();
+     * $writer = IOFactory::createWriter($phpWord, 'Word2007');
+     * $writer->save('output.docx'); // ❌ SDTs not written!
+     * ```
+     *
+     * Correct:
+     * ```php
+     * $cc = new ContentControl();
+     * $builder = new TableBuilder($cc);
+     * $builder->setTable($table)->addRow()->addCell(3000)->withContentControl(['tag' => 'x'])->end()->end();
+     * $cc->save('output.docx'); // ✅ SDTs properly injected
+     * ```
+     *
+     * @param Table $table Existing PhpWord Table instance (can have existing rows)
+     * @return self For method chaining
+     * @throws ContentControlException If table already set or rows already added
+     * @since 0.5.1
+     * 
+     * @example Basic usage
+     * ```php
+     * $builder = new TableBuilder();
+     * $builder->setTable($existingTable)
+     *     ->addRow()->addCell(3000)->addText('Cell')->end()->end();
+     * ```
+     * 
+     * @example With pre-styled table
+     * ```php
+     * $table = $section->addTable(['borderSize' => 6, 'borderColor' => '000000']);
+     * $builder = new TableBuilder();
+     * $builder->setTable($table)
+     *     ->addRow()->addCell(3000)->addText('Formatted')->end()->end();
+     * ```
+     */
+    public function setTable(Table $table): self
+    {
+        // Validation: Ensure not already initialized
+        if ($this->table !== null) {
+            throw new ContentControlException(
+                'Cannot call setTable() after table creation. ' .
+                'setTable() must be called before addRow() or any table-building method. ' .
+                'Current state: table already initialized (either via setTable or addRow).'
+            );
+        }
+        
+        // Validation: Ensure no pending styles
+        if ($this->tableStyle !== null) {
+            throw new ContentControlException(
+                'Cannot call setTable() after setStyles(). ' .
+                'When using setTable(), apply styles to the Table instance before passing it. ' .
+                'Example: $table = $section->addTable([\'borderSize\' => 6]); $builder->setTable($table);'
+            );
+        }
+        
+        $this->table = $table;
+        return $this;
     }
 
     /**
@@ -325,11 +411,19 @@ final class TableBuilder
      * $builder->injectInto($processor, 'invoice-table');
      * $processor->save('output.docx');
      * ```
+     * 
+     * @deprecated Removed in v0.5.1 due to OOXML specification violation (nested SDTs)
+     * @throws ContentControlException Always thrown to prevent usage
+     * @see https://github.com/mateusbandeira182/ContentControl/blob/main/docs/TableBuilder.md#migration-from-addContentControl
      */
     public function addContentControl(array $config): self
     {
-        $this->tableSdtConfig = $config;
-        return $this;
+        throw new ContentControlException(
+            'TableBuilder::addContentControl() removed in v0.5.1 due to OOXML specification violation (nested SDTs). ' .
+            'For table-level SDTs: Use ContentControl::addContentControl($table, $config) after building. ' .
+            'For cell-level SDTs: Use CellBuilder::withContentControl() (recommended pattern). ' .
+            'See migration guide: docs/migration/v0.5.0-to-v0.5.1.md'
+        );
     }
 
     /**
@@ -374,13 +468,9 @@ final class TableBuilder
             );
         }
 
-        // Apply pending table-level SDT if not yet applied
-        // (This handles edge case where user calls injectInto() without creating rows first,
-        // though that would be unusual since $table is null without rows)
-        if ($this->tableSdtConfig !== null) {
-            $this->contentControl->addContentControl($this->table, $this->tableSdtConfig);
-            $this->tableSdtConfig = null;
-        }
+        // REMOVED (v0.5.1): Automatic table-level SDT application via $tableSdtConfig
+        // Users must apply table-level SDTs manually via ContentControl::addContentControl()
+        // before calling injectInto() if truly needed (though cell-level SDTs are recommended)
 
         // Save to temp file and extract XML
         $tempPath = $this->getTempFilePath();

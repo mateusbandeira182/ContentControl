@@ -142,14 +142,13 @@ describe('TableBuilder::setStyles()', function () {
         unlink($tempFile);
     });
     
-    it('works with addContentControl for table SDT', function () {
+    it('throws exception when using removed addContentControl', function () {
         $builder = new TableBuilder();
         
-        $builder->setStyles(['borderSize' => 6])
-            ->addContentControl(['tag' => 'test-table', 'alias' => 'Test Table'])
-            ->addRow()
-                ->addCell(3000)->addText('Content');
-        
-        expect($builder->getContentControl())->toBeInstanceOf(ContentControl::class);
+        expect(fn() => $builder->addContentControl(['tag' => 'test-table']))
+            ->toThrow(
+                ContentControlException::class,
+                'TableBuilder::addContentControl() removed in v0.5.1'
+            );
     });
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use MkGrow\ContentControl\Bridge\TableBuilder;
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ContentProcessor;
+use MkGrow\ContentControl\Exception\ContentControlException;
 
 /**
  * Integration tests for nested SDT detection and anti-pattern validation.
@@ -82,78 +83,25 @@ describe('Nested SDT Detection', function (): void {
         }
     });
 
-    it('detects nested SDT anti-pattern (addContentControl + injectInto)', function (): void {
-        // Step 1: Create template with SDT placeholder
-        $template = new ContentControl();
-        $section = $template->addSection();
-        $placeholder = $section->addText('Table will be inserted here');
-        $template->addContentControl($placeholder, [
-            'tag' => 'table-placeholder',
-            'alias' => 'Table Placeholder',
-        ]);
-
-        $templatePath = tempnam(sys_get_temp_dir(), 'nested_test_antipattern_') . '.docx';
-        $outputPath = tempnam(sys_get_temp_dir(), 'nested_test_antipattern_output_') . '.docx';
+    it('throws exception preventing nested SDT anti-pattern (v0.5.1)', function (): void {
+        // The anti-pattern (table-level SDT + injection) is now prevented at the API level
+        // addContentControl() throws ContentControlException in v0.5.1
+        
+        $builder = new TableBuilder();
+        
+        $exceptionThrown = false;
+        $exceptionMessage = '';
         
         try {
-            $template->save($templatePath);
-
-            // Step 2: Create table WITH table-level SDT (anti-pattern)
-            $builder = new TableBuilder();
-            $builder
-                ->addContentControl(['tag' => 'table-sdt', 'alias' => 'Table SDT'])  // ANTI-PATTERN
-                ->addRow()
-                    ->addCell(3000)->addText('Product')->end()
-                    ->addCell(2000)->addText('Price');
-
-            $builder->addRow()
-                    ->addCell(3000)->addText('Widget A')->end()
-                    ->addCell(2000)->addText('$99.99');
-
-            // Step 3: Inject into template (creates nesting)
-            $processor = new ContentProcessor($templatePath);
-            $builder->injectInto($processor, 'table-placeholder');
-            $processor->save($outputPath);
-
-            // Step 4: Validate nested SDT structure exists
-            $zip = new ZipArchive();
-            $zip->open($outputPath);
-            $xml = $zip->getFromName('word/document.xml');
-            $zip->close();
-
-            expect($xml)->toContain('<w:tbl>');
-
-            // Load into DOMDocument for XPath analysis
-            $dom = new DOMDocument();
-            $dom->loadXML($xml);
-            $xpath = new DOMXPath($dom);
-            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
-
-            // Check for nested SDTs: //w:sdt[.//w:sdt] should return results
-            // This XPath finds SDT elements that contain other SDT elements
-            $nestedSdts = $xpath->query('//w:sdt[.//w:sdt]');
-            
-            // NOTE: As of v0.5.0, the implementation may have fixed this anti-pattern
-            // If no nesting is found, this test serves as regression prevention
-            // The documentation still warns about the pattern for educational purposes
-            
-            // If nesting IS found (legacy behavior), verify it's detectable
-            if ($nestedSdts->length > 0) {
-                expect($nestedSdts->length)->toBeGreaterThan(0, 'Anti-pattern should create nested SDTs');
-                
-                // Verify we can count total SDTs vs nested SDTs
-                $allSdts = $xpath->query('//w:sdt');
-                expect($allSdts->length)->toBeGreaterThan($nestedSdts->length, 'Should have both outer and inner SDTs');
-            }
-
-        } finally {
-            if (file_exists($templatePath)) {
-                @unlink($templatePath);
-            }
-            if (file_exists($outputPath)) {
-                @unlink($outputPath);
-            }
+            $builder->addContentControl(['tag' => 'table-sdt']);
+        } catch (ContentControlException $e) {
+            $exceptionThrown = true;
+            $exceptionMessage = $e->getMessage();
         }
+        
+        expect($exceptionThrown)->toBeTrue('Expected ContentControlException to be thrown');
+        expect($exceptionMessage)->toContain('removed in v0.5.1');
+        expect($exceptionMessage)->toContain('OOXML specification violation');
     });
 
     it('validates direct save pattern creates table without forcing nested structure', function (): void {
