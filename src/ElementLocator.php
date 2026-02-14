@@ -36,6 +36,7 @@ final class ElementLocator
      * @param object $element PHPWord element to locate
      * @param int $registrationOrder Element registration order (0-indexed)
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
+     * @param bool $inlineLevel If true, skip content hash strategy for Text/TextRun (cell-first search)
      * @return DOMElement|null DOM Element or null if not found
      * @throws \InvalidArgumentException If element type is not supported
      */
@@ -43,7 +44,8 @@ final class ElementLocator
         DOMDocument $dom,
         object $element,
         int $registrationOrder = 0,
-        string $rootElement = 'w:body'
+        string $rootElement = 'w:body',
+        bool $inlineLevel = false
     ): ?DOMElement {
         // Always (re)initialize XPath for the current DOM document
         // This is necessary because we process multiple XML files (document.xml, header*.xml, footer*.xml)
@@ -56,12 +58,23 @@ final class ElementLocator
         // FIX v0.4.2: Changed strategy priority to use content hash FIRST
         // This fixes the issue where registrationOrder doesn't match DOM position
         // when multiple elements are added to a section but only some have SDTs
-        
+
+        // FIX v0.5.2: Skip content hash strategy for inline-level Text/TextRun
+        // Content hash XPath (//w:body/w:p) cannot match paragraphs inside <w:tc>.
+        // When inlineLevel=true, the type+order strategy's findTextInCell()/findTextRunInCell()
+        // correctly locates the element within the cell scope.
+        $skipContentHash = $inlineLevel && (
+            $element instanceof \PhpOffice\PhpWord\Element\Text ||
+            $element instanceof \PhpOffice\PhpWord\Element\TextRun
+        );
+
         // Strategy 1: By content hash (more reliable)
-        $contentHash = ElementIdentifier::generateContentHash($element);
-        $found = $this->findByContentHash($element, $contentHash, $rootElement);
-        if ($found !== null) {
-            return $found;
+        if (!$skipContentHash) {
+            $contentHash = ElementIdentifier::generateContentHash($element);
+            $found = $this->findByContentHash($element, $contentHash, $rootElement);
+            if ($found !== null) {
+                return $found;
+            }
         }
 
         // Strategy 2: By type + order (fallback)
