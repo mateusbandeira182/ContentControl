@@ -345,7 +345,10 @@ describe('ElementLocator', function () {
 
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $text = $section->addText('');
+        $table = $section->addTable();
+        $row = $table->addRow();
+        $cell = $row->addCell();
+        $text = $cell->addText('');
 
         // With inlineLevel=true: should return cell-level <w:p> (skips content hash)
         $found = $locator->findElementInDOM($dom, $text, 0, 'w:body', true);
