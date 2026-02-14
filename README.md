@@ -1,10 +1,12 @@
 # ContentControl
 
 [![Build Status](https://github.com/mateusbandeira182/ContentControl/workflows/CI/badge.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
-[![Code Coverage](https://img.shields.io/badge/coverage-82%25-green.svg)](coverage/html/index.html)
+[![Code Coverage](https://img.shields.io/badge/coverage-82.2%25-green.svg)](coverage/html/index.html)
+[![Tests](https://img.shields.io/badge/tests-490%20passed-brightgreen.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](phpstan.neon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF.svg)](https://php.net)
+[![Version](https://img.shields.io/badge/version-0.5.2-blue.svg)](CHANGELOG.md)
 
 **ContentControl** is a PHP library that extends [PHPOffice/PHPWord](https://github.com/PHPOffice/PHPWord) to add Word Content Controls (Structured Document Tags/SDTs) to .docx files. It enables document-level content protection and metadata tagging conforming to **ISO/IEC 29500-1:2016 §17.5.2**.
 
@@ -149,7 +151,7 @@ For more examples, see the [samples/](samples/) directory.
 
 **Quality Standards:**
 - PHPStan Level 9 static analysis with strict rules
-- 82%+ code coverage with 464+ tests (Pest framework)
+- 82%+ code coverage with 490+ tests (Pest framework)
 - Zero-collision UUID v5 hashing for element identification
 - Single Responsibility Principle across all components
 
@@ -197,6 +199,7 @@ ContentControl follows a **composition-based architecture** with no inheritance 
 - **v0.4.0:** Inline-level SDT support with `inlineLevel` flag
 - **v0.4.2:** Fluent API, UUID v5 hashing, GROUP SDT replacement
 - **v0.5.0:** TableBuilder::setStyles() method (must be called before first addRow)
+- **v0.5.2:** Fix content hash strategy for inline-level Text/TextRun hash collisions
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -680,7 +683,7 @@ ElementIdentifier::clearCache();
 
 ### Running Tests
 
-The project uses [Pest](https://pestphp.com/) for testing with 464+ tests and 82%+ code coverage.
+The project uses [Pest](https://pestphp.com/) for testing with 490+ tests and 82%+ code coverage.
 
 **All Tests:**
 ```bash
