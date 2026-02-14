@@ -326,4 +326,41 @@ describe('ElementLocator', function () {
         expect($isValid)->toBeFalse();
     });
 
+    test('findElementInDOM skips content hash for inline-level Text', function () {
+        $dom = new DOMDocument();
+        $xml = '<?xml version="1.0"?>
+        <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:p><w:r><w:t></w:t></w:r></w:p>
+            <w:tbl>
+                <w:tr>
+                    <w:tc>
+                        <w:p><w:r><w:t></w:t></w:r></w:p>
+                    </w:tc>
+                </w:tr>
+            </w:tbl>
+        </w:body>';
+        $dom->loadXML($xml);
+
+        $locator = new ElementLocator();
+
+        $phpWord = new \PhpOffice\PhpWord\PhpWord();
+        $section = $phpWord->addSection();
+        $table = $section->addTable();
+        $row = $table->addRow();
+        $cell = $row->addCell();
+        $text = $cell->addText('');
+
+        // With inlineLevel=true: should return cell-level <w:p> (skips content hash)
+        $found = $locator->findElementInDOM($dom, $text, 0, 'w:body', true);
+        expect($found)->not->toBeNull();
+        expect($found->parentNode)->toBeInstanceOf(DOMElement::class);
+        expect($found->parentNode->nodeName)->toBe('w:tc');
+
+        // With inlineLevel=false (default): should return body-level <w:p> (content hash matches first)
+        $foundDefault = $locator->findElementInDOM($dom, $text, 0, 'w:body', false);
+        expect($foundDefault)->not->toBeNull();
+        expect($foundDefault->parentNode)->toBeInstanceOf(DOMElement::class);
+        expect($foundDefault->parentNode->nodeName)->toBe('w:body');
+    });
+
 });

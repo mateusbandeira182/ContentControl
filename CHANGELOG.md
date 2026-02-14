@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.2] - 2026-02-14
+
+### Fixed
+
+**Content Hash Strategy for Inline-Level SDTs** (Critical Bug Fix)
+- **`ElementLocator::findElementInDOM()`** - Fixed incorrect DOM element resolution for inline-level `Text`/`TextRun` elements
+  - **Problem**: Content hash strategy (`findByContentHash()`) uses XPath `//w:body/w:p` which only matches direct children of `<w:body>`, not paragraphs nested inside `<w:tc>`. When a body-level paragraph shares the same content hash as a cell paragraph (common with empty text, `addTextBreak()`), the locator returns the wrong DOM node, causing `SDTInjector::findParentCell()` to throw `RuntimeException: Paragraph not inside a table cell (<w:tc>)`
+  - **Root cause**: `SDTInjector::processElement()` did not propagate `$config->inlineLevel` to `ElementLocator::findElementInDOM()`, so the content hash strategy always ran first regardless of inline context
+  - **Fix**: Added `bool $inlineLevel = false` parameter to `findElementInDOM()`. When `inlineLevel=true` AND element is `Text`/`TextRun`, content hash strategy is skipped, allowing the type+order fallback (`findTextInCell()`/`findTextRunInCell()`) to correctly locate elements inside `<w:tc>` scope
+  - **Impact**: All inline-level Text/TextRun SDTs with hash collisions now resolve correctly. Zero backward compatibility breaks (default parameter `false` preserves all existing behavior)
+- **`SDTInjector::processElement()`** - Now propagates `$config->inlineLevel` as 5th argument to `findElementInDOM()`
+
+### Testing
+
+- **5 new tests** added (4 feature + 1 unit)
+  - `InlineLevelSDTTest::handles hash collision: empty Text in cell vs addTextBreak at body level` (FT06)
+  - `InlineLevelSDTTest::handles hash collision: matching non-empty text in cell and body` (FT07)
+  - `InlineLevelSDTTest::handles hash collision: multiple empty cells and multiple text breaks` (FT08)
+  - `InlineLevelSDTTest::handles hash collision: TextRun in cell vs addTextBreak at body level` (FT09)
+  - `ElementLocatorTest::findElementInDOM skips content hash for inline-level Text` (UT-INLINE-01)
+- **Total: 490 tests, 1423 assertions** (up from 485 tests)
+- **Code coverage: 82.2%** (exceeds 80% minimum)
+- **PHPStan Level 9: 0 errors**
+
+### Technical Details
+
+- **Files modified**: 2 production (`src/ElementLocator.php`, `src/SDTInjector.php`), 2 test
+- **Lines changed**: ~19 insertions, 6 deletions (production code)
+- **New classes/files**: 0 (surgical fix in existing code)
+- **Breaking changes**: 0
+- **Regression**: Introduced in v0.4.2 (content hash strategy priority change)
+- **Specification**: ISO/IEC 29500-1:2016 Section 17.5.2 (Structured Document Tags)
+
+---
+
 ## [0.5.0] - 2026-02-06
 
 ### Added

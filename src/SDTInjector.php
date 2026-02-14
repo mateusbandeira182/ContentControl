@@ -195,7 +195,7 @@ final class SDTInjector
         }
         
         // Locate element in DOM using specific root context
-        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex, $rootElement);
+        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex, $rootElement, $config->inlineLevel);
         
         if ($targetElement === null) {
             throw new \RuntimeException(

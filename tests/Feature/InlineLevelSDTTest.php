@@ -203,4 +203,132 @@ describe('Feature - Inline-Level SDTs', function () {
         
         safeUnlink($tempFile);
     });
+
+    test('handles hash collision: empty Text in cell vs addTextBreak at body level', function () {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+
+        $table = $section->addTable();
+        $row = $table->addRow();
+        $cell = $row->addCell();
+        $text = $cell->addText('');
+
+        $section->addTextBreak();
+
+        $cc->addContentControl($text, [
+            'alias' => 'EmptyCellText',
+            'inlineLevel' => true,
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'collision_ft06_') . '.docx';
+        $cc->save($tempFile);
+
+        $zip = new ZipArchive();
+        $zip->open($tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toContain('<w:alias w:val="EmptyCellText"/>');
+        expect($xml)->toMatch('/<w:tc>.*<w:sdt>.*<w:alias w:val="EmptyCellText".*<\/w:sdt>.*<\/w:tc>/s');
+
+        safeUnlink($tempFile);
+    });
+
+    test('handles hash collision: matching non-empty text in cell and body', function () {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+
+        $table = $section->addTable();
+        $row = $table->addRow();
+        $cell = $row->addCell();
+        $text = $cell->addText('-');
+
+        $section->addText('-');
+
+        $cc->addContentControl($text, [
+            'alias' => 'DashCellText',
+            'inlineLevel' => true,
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'collision_ft07_') . '.docx';
+        $cc->save($tempFile);
+
+        $zip = new ZipArchive();
+        $zip->open($tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toContain('<w:alias w:val="DashCellText"/>');
+        expect($xml)->toMatch('/<w:tc>.*<w:sdt>.*<w:alias w:val="DashCellText".*<\/w:sdt>.*<\/w:tc>/s');
+
+        safeUnlink($tempFile);
+    });
+
+    test('handles hash collision: multiple empty cells and multiple text breaks', function () {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+
+        $table = $section->addTable();
+        $row = $table->addRow();
+        $cell1 = $row->addCell();
+        $text1 = $cell1->addText('');
+        $cell2 = $row->addCell();
+        $text2 = $cell2->addText('');
+
+        $section->addTextBreak();
+        $section->addTextBreak();
+
+        $cc->addContentControl($text1, [
+            'alias' => 'EmptyCell1',
+            'inlineLevel' => true,
+        ]);
+        $cc->addContentControl($text2, [
+            'alias' => 'EmptyCell2',
+            'inlineLevel' => true,
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'collision_ft08_') . '.docx';
+        $cc->save($tempFile);
+
+        $zip = new ZipArchive();
+        $zip->open($tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toContain('<w:alias w:val="EmptyCell1"/>');
+        expect($xml)->toContain('<w:alias w:val="EmptyCell2"/>');
+
+        safeUnlink($tempFile);
+    });
+
+    test('handles hash collision: TextRun in cell vs addTextBreak at body level', function () {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+
+        $table = $section->addTable();
+        $row = $table->addRow();
+        $cell = $row->addCell();
+        $textRun = $cell->addTextRun();
+        $textRun->addText('');
+
+        $section->addTextBreak();
+
+        $cc->addContentControl($textRun, [
+            'alias' => 'TextRunCollision',
+            'inlineLevel' => true,
+        ]);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'collision_ft09_') . '.docx';
+        $cc->save($tempFile);
+
+        $zip = new ZipArchive();
+        $zip->open($tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toContain('<w:alias w:val="TextRunCollision"/>');
+        expect($xml)->toMatch('/<w:tc>.*<w:sdt>.*<w:alias w:val="TextRunCollision".*<\/w:sdt>.*<\/w:tc>/s');
+
+        safeUnlink($tempFile);
+    });
 });
