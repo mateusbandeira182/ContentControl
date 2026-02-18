@@ -195,7 +195,11 @@ final class SDTInjector
         }
         
         // Locate element in DOM using specific root context
-        $targetElement = $this->locator->findElementInDOM($dom, $element, $elementIndex, $rootElement, $config->inlineLevel);
+        $targetElement = $this->locator->findElementInDOM(
+            $dom, $element, $elementIndex, $rootElement,
+            $config->inlineLevel,
+            $config->runLevel
+        );
         
         if ($targetElement === null) {
             throw new \RuntimeException(
@@ -208,7 +212,13 @@ final class SDTInjector
             return; // Already wrapped in <w:sdt>, skip
         }
         
-        // NEW LOGIC v3.1: Routing based on inlineLevel
+        // NEW v0.6.0: Run-level routing (highest precedence)
+        if ($config->runLevel) {
+            $this->processRunLevelSDT($targetElement, $config);
+            return;
+        }
+
+        // Routing based on inlineLevel (v3.1)
         if ($config->inlineLevel) {
             $this->processInlineLevelSDT($targetElement, $config);
         } else {
@@ -594,6 +604,109 @@ final class SDTInjector
         
         // Wrap paragraph inline
         $this->wrapParagraphInCellInline($cellElement, $paragraphIndex, $config);
+    }
+
+    /**
+     * Processes run-level SDT (individual <w:r> inside <w:p>)
+     *
+     * Validates that the target element is a <w:r> with a <w:p> parent,
+     * then delegates to wrapRunInline() for the actual DOM wrapping.
+     *
+     * @param \DOMElement $targetElement <w:r> Element in DOM
+     * @param SDTConfig $config SDT Configuration
+     * @return void
+     * @throws \RuntimeException If target is not <w:r> or parent is not <w:p>
+     *
+     * @since 0.6.0
+     */
+    private function processRunLevelSDT(\DOMElement $targetElement, SDTConfig $config): void
+    {
+        // Validate that target is a run element (<w:r>)
+        if ($targetElement->localName !== 'r' ||
+            $targetElement->namespaceURI !== self::WORDML_NAMESPACE) {
+            throw new \RuntimeException(
+                'SDTInjector: Run-level SDT can only wrap run elements (<w:r>), got <' .
+                $targetElement->localName . '>'
+            );
+        }
+
+        // Validate parent is a paragraph (<w:p>)
+        $parent = $targetElement->parentNode;
+        if (!$parent instanceof \DOMElement ||
+            $parent->localName !== 'p' ||
+            $parent->namespaceURI !== self::WORDML_NAMESPACE) {
+            throw new \RuntimeException(
+                'SDTInjector: Run-level SDT requires <w:r> to be inside <w:p>'
+            );
+        }
+
+        $this->wrapRunInline($targetElement, $config);
+    }
+
+    /**
+     * Wraps a run element (<w:r>) with <w:sdt> structure (CT_SdtContentRun)
+     *
+     * Follows the same 7-step DOM manipulation pattern as wrapElementInline(),
+     * but operates at run level inside a paragraph.
+     *
+     * Generated structure:
+     * <w:p>
+     *   <w:sdt>
+     *     <w:sdtPr>...</w:sdtPr>
+     *     <w:sdtContent>
+     *       <w:r><w:rPr>...</w:rPr><w:t>text</w:t></w:r>
+     *     </w:sdtContent>
+     *   </w:sdt>
+     * </w:p>
+     *
+     * @param \DOMElement $targetRun <w:r> Element to wrap
+     * @param SDTConfig $config SDT Configuration
+     * @return void
+     * @throws \RuntimeException If element has no parent or owner document
+     *
+     * @since 0.6.0
+     */
+    private function wrapRunInline(\DOMElement $targetRun, SDTConfig $config): void
+    {
+        // Validate pre-conditions
+        $dom = $targetRun->ownerDocument;
+        if ($dom === null) {
+            throw new \RuntimeException('SDTInjector: Target run has no owner document');
+        }
+
+        $parent = $targetRun->parentNode;
+        if ($parent === null) {
+            throw new \RuntimeException('SDTInjector: Target run has no parent node');
+        }
+
+        // Detect document namespace (usually inherited from root)
+        $nsUri = $targetRun->namespaceURI;
+        if ($nsUri === null || $nsUri === '') {
+            $nsUri = self::WORDML_NAMESPACE;
+        }
+
+        // 1. Create <w:sdt> structure WITH namespace
+        $sdt = $dom->createElementNS($nsUri, 'w:sdt');
+
+        // 2. Add properties <w:sdtPr> (reuse existing method)
+        $sdtPr = $this->createSdtProperties($dom, $config);
+        $sdt->appendChild($sdtPr);
+
+        // 3. Create content container <w:sdtContent> WITH namespace
+        $sdtContent = $dom->createElementNS($nsUri, 'w:sdtContent');
+
+        // 4. Insert SDT BEFORE original run in paragraph
+        $parent->insertBefore($sdt, $targetRun);
+
+        // 5. MOVE run inside <w:sdtContent>
+        // IMPORTANT: appendChild() MOVES the node (does not duplicate)
+        $sdtContent->appendChild($targetRun);
+
+        // 6. Complete SDT structure
+        $sdt->appendChild($sdtContent);
+
+        // 7. Mark as processed
+        $this->markElementAsProcessed($targetRun);
     }
 
     /**

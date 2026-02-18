@@ -23,10 +23,44 @@ use PhpOffice\PhpWord\Element\Cell;
  *
  * @package MkGrow\ContentControl\Bridge
  * @since 0.4.2
+ * @deprecated Since v0.6.0, will be removed in v0.8.0.
+ *             Use direct PHPWord Cell API with TableBuilder::addContentControl() instead.
  * @final
  */
 final class CellBuilder
 {
+    /**
+     * Flag: whether withContentControl() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $withContentControlWarned = false;
+
+    /**
+     * Flag: whether addText() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $addTextWarned = false;
+
+    /**
+     * Flag: whether addImage() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $addImageWarned = false;
+
+    /**
+     * Flag: whether end() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $endWarned = false;
+
     /**
      * The PhpWord Cell element being built
      *
@@ -87,9 +121,24 @@ final class CellBuilder
      *
      * @param array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string, inlineLevel?: bool} $config SDT configuration
      * @return self This CellBuilder for method chaining
+     *
+     * @deprecated Since v0.6.0, will be removed in v0.8.0.
+     *             Use TableBuilder::addContentControl() instead.
+     *             See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.
      */
     public function withContentControl(array $config): self
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        if (!self::$withContentControlWarned) {
+            trigger_error(
+                'CellBuilder::withContentControl() is deprecated since v0.6.0 and will be removed in v0.8.0. ' .
+                'Use TableBuilder::addContentControl() instead. ' .
+                'See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.',
+                E_USER_DEPRECATED
+            );
+            self::$withContentControlWarned = true;
+        }
+
         $this->sdtConfig = $config;
         return $this;
     }
@@ -115,9 +164,24 @@ final class CellBuilder
      * @param string $text The text content
      * @param array<string, mixed> $style Optional text styling (bold, italic, size, color, etc.)
      * @return self This CellBuilder for method chaining
+     *
+     * @deprecated Since v0.6.0, will be removed in v0.8.0.
+     *             Use direct PHPWord Cell::addText() with TableBuilder::addContentControl() instead.
+     *             See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.
      */
     public function addText(string $text, array $style = []): self
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        if (!self::$addTextWarned) {
+            trigger_error(
+                'CellBuilder::addText() is deprecated since v0.6.0 and will be removed in v0.8.0. ' .
+                'Use direct PHPWord Cell::addText() with TableBuilder::addContentControl() instead. ' .
+                'See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.',
+                E_USER_DEPRECATED
+            );
+            self::$addTextWarned = true;
+        }
+
         $textElement = $this->cell->addText($text, $style);
 
         // Apply pending SDT configuration
@@ -154,9 +218,24 @@ final class CellBuilder
      * @param string $source Path to the image file
      * @param array<string, mixed> $style Optional image styling (width, height, alignment, etc.)
      * @return self This CellBuilder for method chaining
+     *
+     * @deprecated Since v0.6.0, will be removed in v0.8.0.
+     *             Use direct PHPWord Cell::addImage() with TableBuilder::addContentControl() instead.
+     *             See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.
      */
     public function addImage(string $source, array $style = []): self
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        if (!self::$addImageWarned) {
+            trigger_error(
+                'CellBuilder::addImage() is deprecated since v0.6.0 and will be removed in v0.8.0. ' .
+                'Use direct PHPWord Cell::addImage() with TableBuilder::addContentControl() instead. ' .
+                'See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.',
+                E_USER_DEPRECATED
+            );
+            self::$addImageWarned = true;
+        }
+
         $imageElement = $this->cell->addImage($source, $style);
 
         // Apply pending SDT configuration
@@ -190,17 +269,32 @@ final class CellBuilder
     public function end(): RowBuilder
     {
         // Emit deprecation warning (only once per script execution to avoid log spam)
-        static $warned = false;
-        if (!$warned) {
+        if (!self::$endWarned) {
             trigger_error(
                 'CellBuilder::end() is deprecated since v0.5.1 and will be removed in v0.7.0. ' .
                 'Continue using end() for now. In v0.6.0, end() will become optional (auto-close pattern). ' .
                 'Full removal planned for v0.7.0 (18-month deprecation window).',
                 E_USER_DEPRECATED
             );
-            $warned = true;
+            self::$endWarned = true;
         }
         
         return $this->parent;
+    }
+
+    /**
+     * Reset deprecation warning flags (for testing only)
+     *
+     * @internal This method is intended for test cleanup only.
+     *           Do not call in production code.
+     *
+     * @codeCoverageIgnore
+     */
+    public static function resetDeprecationFlags(): void
+    {
+        self::$withContentControlWarned = false;
+        self::$addTextWarned = false;
+        self::$addImageWarned = false;
+        self::$endWarned = false;
     }
 }

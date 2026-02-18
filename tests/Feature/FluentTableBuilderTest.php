@@ -234,14 +234,14 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             safeUnlink($templatePath);
         });
 
-        it('throws exception when attempting removed addContentControl method', function () {
+        it('addContentControl delegates to ContentControl (v0.6.0)', function () {
             $builder = new TableBuilder();
-            
-            expect(fn() => $builder->addContentControl(['tag' => 'items-table']))
-                ->toThrow(
-                    ContentControlException::class,
-                    'TableBuilder::addContentControl() removed in v0.5.1'
-                );
+            $section = $builder->getContentControl()->addSection();
+            $text = $section->addText('Test');
+
+            $result = $builder->addContentControl($text, ['tag' => 'items-table']);
+
+            expect($result)->toBeInstanceOf(TableBuilder::class);
         });
 
         it('supports cell-level SDTs without table-level wrapping (recommended pattern)', function () {

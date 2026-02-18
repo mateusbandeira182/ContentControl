@@ -142,13 +142,14 @@ describe('TableBuilder::setStyles()', function () {
         unlink($tempFile);
     });
     
-    it('throws exception when using removed addContentControl', function () {
+    it('addContentControl delegates to ContentControl (v0.6.0)', function () {
         $builder = new TableBuilder();
-        
-        expect(fn() => $builder->addContentControl(['tag' => 'test-table']))
-            ->toThrow(
-                ContentControlException::class,
-                'TableBuilder::addContentControl() removed in v0.5.1'
-            );
+        $section = $builder->getContentControl()->addSection();
+        $text = $section->addText('Test');
+
+        // Should NOT throw - delegates to ContentControl::addContentControl()
+        $result = $builder->addContentControl($text, ['tag' => 'test-tag']);
+
+        expect($result)->toBeInstanceOf(TableBuilder::class);
     });
 });

@@ -8,6 +8,7 @@ use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ContentProcessor;
 use MkGrow\ContentControl\ElementIdentifier;
 use MkGrow\ContentControl\Exception\ContentControlException;
+use PhpOffice\PhpWord\Element\AbstractElement;
 use PhpOffice\PhpWord\Element\Table;
 
 /**
@@ -58,6 +59,14 @@ final class TableBuilder
     private ContentControl $contentControl;
 
     /**
+     * Flag: whether addRow() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $addRowWarned = false;
+
+    /**
      * Temporary file path for intermediate processing
      *
      * Used during table extraction. Automatically cleaned up in destructor.
@@ -90,26 +99,41 @@ final class TableBuilder
     /**
      * TableBuilder Constructor
      *
-     * Initializes the builder with a ContentControl instance.
-     * If not provided, creates a new instance.
+     * Initializes the builder with a ContentControl instance, a PHPWord Table,
+     * or null for default behavior.
      *
-     * @param ContentControl|null $contentControl Optional ContentControl instance
+     * When a Table is provided, a new ContentControl is created and the table
+     * is stored for immediate use with addContentControl().
+     *
+     * @param Table|ContentControl|null $source Optional Table, ContentControl, or null
      *
      * @since 0.4.0
+     * @since 0.6.0 Accepts Table instance directly
      *
      * @example
      * ```php
-     * // With default ContentControl
-     * $builder = new TableBuilder();
-     * 
+     * // With PHPWord Table (v0.6.0+)
+     * $table = $section->addTable();
+     * $builder = new TableBuilder($table);
+     *
      * // With custom ContentControl
      * $cc = new ContentControl();
      * $builder = new TableBuilder($cc);
+     *
+     * // With default ContentControl
+     * $builder = new TableBuilder();
      * ```
      */
-    public function __construct(?ContentControl $contentControl = null)
+    public function __construct(Table|ContentControl|null $source = null)
     {
-        $this->contentControl = $contentControl ?? new ContentControl();
+        if ($source instanceof Table) {
+            $this->contentControl = new ContentControl();
+            $this->table = $source;
+        } elseif ($source instanceof ContentControl) {
+            $this->contentControl = $source;
+        } else {
+            $this->contentControl = new ContentControl();
+        }
     }
 
     /**
@@ -340,6 +364,9 @@ final class TableBuilder
      * @return RowBuilder Row builder for chaining cell configuration
      *
      * @since 0.4.2
+     * @deprecated Since v0.6.0, will be removed in v0.8.0.
+     *             Use TableBuilder::addContentControl() with direct PHPWord Table API instead.
+     *             See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.
      *
      * @example Basic usage
      * ```php
@@ -360,6 +387,17 @@ final class TableBuilder
      */
     public function addRow(?int $height = null, array $style = []): RowBuilder
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        if (!self::$addRowWarned) {
+            trigger_error(
+                'TableBuilder::addRow() is deprecated since v0.6.0 and will be removed in v0.8.0. ' .
+                'Use TableBuilder::addContentControl() with the direct PHPWord Table API instead. ' .
+                'See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.',
+                E_USER_DEPRECATED
+            );
+            self::$addRowWarned = true;
+        }
+
         // Lazy create table on first addRow() call
         if ($this->table === null) {
             $section = $this->contentControl->addSection();
@@ -376,54 +414,40 @@ final class TableBuilder
      *
      * Wraps the table with a GROUP SDT. The configuration is stored and applied
      * when injectInto() is called. This is primarily intended for template injection workflows.
+    /**
+     * Add Content Control to an element within the table
      *
-     * **Important:** Table-level SDTs via addContentControl() are only reliably applied
-     * when using injectInto(). For direct ContentControl::save(), the timing of SDT application
-     * may conflict with cell-level SDTs. This limitation will be addressed in a future version.
+     * Delegates to ContentControl::addContentControl() to register an SDT
+     * wrapping for any AbstractElement. Supports run-level SDTs via the
+     * runLevel config option.
      *
-     * This allows creating a table-level SDT that contains all cell SDTs,
-     * useful for template scenarios where the entire table needs to be replaceable.
-     *
-     * @param array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string} $config SDT configuration
-     *                                                                                                    - tag: string (required for injectInto)
-     *                                                                                                    - alias: string (optional, display name)
-     *                                                                                                    - type: string (optional, defaults to TYPE_GROUP)
-     *                                                                                                    - lockType: string (optional, defaults to LOCK_NONE)
+     * @param AbstractElement $element PHPWord element to wrap with SDT
+     * @param array{id?: string, alias?: string, tag?: string, type?: string, lockType?: string, inlineLevel?: bool, runLevel?: bool} $config SDT configuration
      *
      * @return self For method chaining
      *
-     * @since 0.4.2
-     *
-     * @see docs/TableBuilder-v2.md#warning-nested-sdt-anti-pattern
-     * @warning Do not combine with injectInto() - creates nested SDTs (invalid OOXML)
+     * @since 0.6.0
      *
      * @example
      * ```php
-     * $builder = new TableBuilder();
-     * $builder->addContentControl(['tag' => 'invoice-table', 'alias' => 'Invoice Items'])
-     *     ->addRow()
-     *         ->addCell(3000)->addText('Product')->end()
-     *         ->addCell(2000)->addText('Price')->end()
-     *         ->end();
-     * 
-     * // Use with injectInto() for reliable table-level SDT
-     * $processor = new ContentProcessor('template.docx');
-     * $builder->injectInto($processor, 'invoice-table');
-     * $processor->save('output.docx');
+     * $table = $section->addTable();
+     * $row = $table->addRow();
+     * $cell = $row->addCell(3000);
+     * $text = $cell->addText('John Doe');
+     *
+     * $builder = new TableBuilder($table);
+     * $builder->addContentControl($text, [
+     *     'tag' => 'first-name',
+     *     'alias' => 'First Name',
+     *     'runLevel' => true,
+     *     'inlineLevel' => true,
+     * ]);
      * ```
-     * 
-     * @deprecated Removed in v0.5.1 due to OOXML specification violation (nested SDTs)
-     * @throws ContentControlException Always thrown to prevent usage
-     * @see https://github.com/mateusbandeira182/ContentControl/blob/main/docs/TableBuilder.md#migration-from-addContentControl
      */
-    public function addContentControl(array $config): self
+    public function addContentControl(AbstractElement $element, array $config = []): self
     {
-        throw new ContentControlException(
-            'TableBuilder::addContentControl() removed in v0.5.1 due to OOXML specification violation (nested SDTs). ' .
-            'For table-level SDTs: Use ContentControl::addContentControl($table, $config) after building. ' .
-            'For cell-level SDTs: Use CellBuilder::withContentControl() (recommended pattern). ' .
-            'See migration guide: docs/migration/v0.5.0-to-v0.5.1.md'
-        );
+        $this->contentControl->addContentControl($element, $config);
+        return $this;
     }
 
     /**
@@ -1414,5 +1438,18 @@ final class TableBuilder
                 "Row {$rowIndex}, Cell {$cellIndex}: \"element\" is not supported in v0.4.0, use \"text\" only"
             );
         }
+    }
+
+    /**
+     * Reset deprecation warning flags (for testing only)
+     *
+     * @internal This method is intended for test cleanup only.
+     *           Do not call in production code.
+     *
+     * @codeCoverageIgnore
+     */
+    public static function resetDeprecationFlags(): void
+    {
+        self::$addRowWarned = false;
     }
 }

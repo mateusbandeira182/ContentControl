@@ -83,25 +83,17 @@ describe('Nested SDT Detection', function (): void {
         }
     });
 
-    it('throws exception preventing nested SDT anti-pattern (v0.5.1)', function (): void {
-        // The anti-pattern (table-level SDT + injection) is now prevented at the API level
-        // addContentControl() throws ContentControlException in v0.5.1
-        
+    it('addContentControl delegates to ContentControl (v0.6.0 replaces v0.5.1 exception)', function (): void {
+        // In v0.6.0, addContentControl() is functional and delegates to ContentControl.
+        // The old throwing behavior was removed.
         $builder = new TableBuilder();
-        
-        $exceptionThrown = false;
-        $exceptionMessage = '';
-        
-        try {
-            $builder->addContentControl(['tag' => 'table-sdt']);
-        } catch (ContentControlException $e) {
-            $exceptionThrown = true;
-            $exceptionMessage = $e->getMessage();
-        }
-        
-        expect($exceptionThrown)->toBeTrue('Expected ContentControlException to be thrown');
-        expect($exceptionMessage)->toContain('removed in v0.5.1');
-        expect($exceptionMessage)->toContain('OOXML specification violation');
+        $section = $builder->getContentControl()->addSection();
+        $text = $section->addText('Test Element');
+
+        // Should NOT throw - functional delegation
+        $result = $builder->addContentControl($text, ['tag' => 'test-sdt']);
+
+        expect($result)->toBeInstanceOf(TableBuilder::class);
     });
 
     it('validates direct save pattern creates table without forcing nested structure', function (): void {
