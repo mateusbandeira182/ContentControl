@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\ContentProcessor;
-use ZipArchive;
 
 /**
  * Integration tests for GROUP SDT replacement functionality

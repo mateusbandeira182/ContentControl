@@ -27,10 +27,28 @@ use PhpOffice\PhpWord\Element\Row;
  *
  * @package MkGrow\ContentControl\Bridge
  * @since 0.4.2
+ * @deprecated Since v0.6.0, will be removed in v0.8.0.
+ *             Use direct PHPWord Table API with TableBuilder::addContentControl() instead.
  * @final
  */
 final class RowBuilder
 {
+    /**
+     * Flag: whether addCell() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $addCellWarned = false;
+
+    /**
+     * Flag: whether end() deprecation was already emitted
+     *
+     * @var bool
+     * @internal
+     */
+    private static bool $endWarned = false;
+
     /**
      * The PhpWord Row element being built
      *
@@ -74,9 +92,24 @@ final class RowBuilder
      * @param int $width Cell width in twips (1/1440 inch)
      * @param array<string, mixed> $style Optional cell styling (bgColor, borders, etc.)
      * @return CellBuilder Builder for the created cell
+     *
+     * @deprecated Since v0.6.0, will be removed in v0.8.0.
+     *             Use direct PHPWord Table API with TableBuilder::addContentControl() instead.
+     *             See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.
      */
     public function addCell(int $width, array $style = []): CellBuilder
     {
+        // Emit deprecation warning (only once per script execution to avoid log spam)
+        if (!self::$addCellWarned) {
+            trigger_error(
+                'RowBuilder::addCell() is deprecated since v0.6.0 and will be removed in v0.8.0. ' .
+                'Use direct PHPWord Table API with TableBuilder::addContentControl() instead. ' .
+                'See docs/migration/v0.5.2-to-v0.6.0.md for migration guide.',
+                E_USER_DEPRECATED
+            );
+            self::$addCellWarned = true;
+        }
+
         $cell = $this->row->addCell($width, $style);
         return new CellBuilder($cell, $this, $this->parent);
     }
@@ -103,17 +136,30 @@ final class RowBuilder
     public function end(): TableBuilder
     {
         // Emit deprecation warning (only once per script execution to avoid log spam)
-        static $warned = false;
-        if (!$warned) {
+        if (!self::$endWarned) {
             trigger_error(
                 'RowBuilder::end() is deprecated since v0.5.1 and will be removed in v0.7.0. ' .
                 'Continue using end() for now. In v0.6.0, end() will become optional (auto-close pattern). ' .
                 'Full removal planned for v0.7.0 (18-month deprecation window).',
                 E_USER_DEPRECATED
             );
-            $warned = true;
+            self::$endWarned = true;
         }
         
         return $this->parent;
+    }
+
+    /**
+     * Reset deprecation warning flags (for testing only)
+     *
+     * @internal This method is intended for test cleanup only.
+     *           Do not call in production code.
+     *
+     * @codeCoverageIgnore
+     */
+    public static function resetDeprecationFlags(): void
+    {
+        self::$addCellWarned = false;
+        self::$endWarned = false;
     }
 }

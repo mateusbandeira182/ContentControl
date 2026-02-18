@@ -23,6 +23,7 @@ final class SDTConfig
      * @param string $type Control type (TYPE_RICH_TEXT, TYPE_PLAIN_TEXT, etc)
      * @param string $lockType Lock level (LOCK_NONE, LOCK_SDT_LOCKED, etc)
      * @param bool $inlineLevel If true, injects SDT inside cell; if false, at body level
+     * @param bool $runLevel If true, wraps <w:r> inside <w:p> instead of <w:p> itself
      * 
      * @throws \InvalidArgumentException If any parameter is invalid
      */
@@ -33,6 +34,7 @@ final class SDTConfig
         public readonly string $type = ContentControl::TYPE_RICH_TEXT,
         public readonly string $lockType = ContentControl::LOCK_NONE,
         public readonly bool $inlineLevel = false,
+        public readonly bool $runLevel = false,
     ) {
         $this->validateId($id);
         $this->validateAlias($alias);
@@ -50,7 +52,8 @@ final class SDTConfig
      *     tag?: string,
      *     type?: string,
      *     lockType?: string,
-     *     inlineLevel?: bool
+     *     inlineLevel?: bool,
+     *     runLevel?: bool
      * } $options Content Control Configuration
      * 
      * @return self
@@ -76,6 +79,7 @@ final class SDTConfig
             type: $options['type'] ?? ContentControl::TYPE_RICH_TEXT,
             lockType: $options['lockType'] ?? ContentControl::LOCK_NONE,
             inlineLevel: $options['inlineLevel'] ?? false,
+            runLevel: $options['runLevel'] ?? false,
         );
     }
 
@@ -95,6 +99,7 @@ final class SDTConfig
             type: $this->type,
             lockType: $this->lockType,
             inlineLevel: $this->inlineLevel,
+            runLevel: $this->runLevel,
         );
     }
 
@@ -122,6 +127,32 @@ final class SDTConfig
             type: $this->type,
             lockType: $this->lockType,
             inlineLevel: $inlineLevel,
+            runLevel: $this->runLevel,
+        );
+    }
+
+    /**
+     * Returns new instance with different runLevel (immutability)
+     *
+     * Used to enable run-level SDT wrapping (w:r inside w:p).
+     * When true, the injection pipeline wraps individual <w:r>
+     * elements rather than entire <w:p> paragraphs.
+     *
+     * @param bool $runLevel If true, targets <w:r> elements for wrapping
+     * @return self New instance with updated runLevel
+     *
+     * @since 0.6.0
+     */
+    public function withRunLevel(bool $runLevel): self
+    {
+        return new self(
+            id: $this->id,
+            alias: $this->alias,
+            tag: $this->tag,
+            type: $this->type,
+            lockType: $this->lockType,
+            inlineLevel: $this->inlineLevel,
+            runLevel: $runLevel,
         );
     }
 
@@ -141,6 +172,7 @@ final class SDTConfig
             type: $this->type,
             lockType: $this->lockType,
             inlineLevel: $this->inlineLevel,
+            runLevel: $this->runLevel,
         );
     }
 
@@ -160,6 +192,7 @@ final class SDTConfig
             type: $this->type,
             lockType: $this->lockType,
             inlineLevel: $this->inlineLevel,
+            runLevel: $this->runLevel,
         );
     }
 

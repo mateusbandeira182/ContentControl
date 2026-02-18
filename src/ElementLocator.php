@@ -37,6 +37,7 @@ final class ElementLocator
      * @param int $registrationOrder Element registration order (0-indexed)
      * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
      * @param bool $inlineLevel If true, skip content hash strategy for Text/TextRun (cell-first search)
+     * @param bool $runLevel If true, dispatches to run-level finding strategy (w:r elements)
      * @return DOMElement|null DOM Element or null if not found
      * @throws \InvalidArgumentException If element type is not supported
      */
@@ -45,7 +46,8 @@ final class ElementLocator
         object $element,
         int $registrationOrder = 0,
         string $rootElement = 'w:body',
-        bool $inlineLevel = false
+        bool $inlineLevel = false,
+        bool $runLevel = false
     ): ?DOMElement {
         // Always (re)initialize XPath for the current DOM document
         // This is necessary because we process multiple XML files (document.xml, header*.xml, footer*.xml)
@@ -54,6 +56,16 @@ final class ElementLocator
         $this->xpath->registerNamespace('w', self::WORDML_NS);
         $this->xpath->registerNamespace('v', self::VML_NS);
         $this->xpath->registerNamespace('o', self::OFFICE_NS);
+
+        // NEW v0.6.0: Run-level dispatch for Text elements with runLevel=true
+        // Run-level targets <w:r> elements, which requires fundamentally different XPath.
+        // Must be checked FIRST because content hash and type+order strategies target <w:p>.
+        if ($runLevel && $element instanceof \PhpOffice\PhpWord\Element\Text) {
+            if ($inlineLevel) {
+                return $this->findRunInCell($element, $rootElement);
+            }
+            return $this->findRunByTextContent($element, $rootElement);
+        }
 
         // FIX v0.4.2: Changed strategy priority to use content hash FIRST
         // This fixes the issue where registrationOrder doesn't match DOM position
@@ -738,5 +750,130 @@ final class ElementLocator
             'ftr' => 'w:ftr',
             default => 'w:body',
         };
+    }
+
+    /**
+     * Locates a run element (<w:r>) by its text content in body-level paragraphs
+     *
+     * Primary strategy uses normalize-space() for whitespace tolerance.
+     * Fallback returns first unprocessed run when text match fails.
+     *
+     * XPath: //{root}/w:p/w:r[w:t[normalize-space(.)={text}]][not(ancestor::w:sdtContent)][1]
+     *
+     * @param \PhpOffice\PhpWord\Element\Text $element PHPWord Text element
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
+     * @return DOMElement|null The <w:r> element or null if not found
+     *
+     * @since 0.6.0
+     */
+    private function findRunByTextContent(\PhpOffice\PhpWord\Element\Text $element, string $rootElement): ?DOMElement
+    {
+        if ($this->xpath === null) {
+            return null;
+        }
+
+        $text = $element->getText() ?? '';
+
+        // Strategy 1: Match by text content using normalize-space()
+        if ($text !== '') {
+            $escaped = $this->escapeXPathString($text);
+            $query = '//' . $rootElement . '/w:p/w:r[w:t[normalize-space(.)=' . $escaped . ']][not(ancestor::w:sdtContent)][1]';
+
+            $nodes = $this->xpath->query($query);
+            if ($nodes !== false && $nodes->length > 0) {
+                $node = $nodes->item(0);
+                if ($node instanceof DOMElement) {
+                    return $node;
+                }
+            }
+        }
+
+        // Strategy 2 (fallback): First unprocessed run in body-level paragraphs
+        $fallbackQuery = '//' . $rootElement . '/w:p/w:r[not(ancestor::w:sdtContent)][1]';
+
+        $nodes = $this->xpath->query($fallbackQuery);
+        if ($nodes !== false && $nodes->length > 0) {
+            $node = $nodes->item(0);
+            if ($node instanceof DOMElement) {
+                return $node;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Locates a run element (<w:r>) inside a table cell
+     *
+     * Cell-scoped variant for inlineLevel+runLevel combination.
+     * Primary strategy uses normalize-space() text matching within cells.
+     * Fallback returns first unprocessed run in any cell.
+     *
+     * XPath: //{root}//w:tbl//w:tc/w:p/w:r[w:t[normalize-space(.)={text}]][not(ancestor::w:sdtContent)][1]
+     *
+     * @param \PhpOffice\PhpWord\Element\Text $element PHPWord Text element
+     * @param string $rootElement Root element to search in (w:body, w:hdr, or w:ftr)
+     * @return DOMElement|null The <w:r> element inside a cell or null if not found
+     *
+     * @since 0.6.0
+     */
+    private function findRunInCell(\PhpOffice\PhpWord\Element\Text $element, string $rootElement): ?DOMElement
+    {
+        if ($this->xpath === null) {
+            return null;
+        }
+
+        $text = $element->getText() ?? '';
+
+        // Strategy 1: Cell-scoped text match using normalize-space()
+        if ($text !== '') {
+            $escaped = $this->escapeXPathString($text);
+            $query = '//' . $rootElement . '//w:tbl//w:tc/w:p/w:r[w:t[normalize-space(.)=' . $escaped . ']][not(ancestor::w:sdtContent)][1]';
+
+            $nodes = $this->xpath->query($query);
+            if ($nodes !== false && $nodes->length > 0) {
+                $node = $nodes->item(0);
+                if ($node instanceof DOMElement) {
+                    return $node;
+                }
+            }
+        }
+
+        // Strategy 2 (fallback): First unprocessed run in any cell
+        $fallbackQuery = '//' . $rootElement . '//w:tbl//w:tc/w:p/w:r[not(ancestor::w:sdtContent)][1]';
+
+        $nodes = $this->xpath->query($fallbackQuery);
+        if ($nodes !== false && $nodes->length > 0) {
+            $node = $nodes->item(0);
+            if ($node instanceof DOMElement) {
+                return $node;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Escapes a string value for use in XPath expressions
+     *
+     * Prevents XPath injection when text content contains quotes.
+     * Uses single/double quote wrapping or concat() for mixed quotes.
+     *
+     * @param string $value The string to escape
+     * @return string XPath-safe string expression
+     *
+     * @since 0.6.0
+     */
+    private function escapeXPathString(string $value): string
+    {
+        if (strpos($value, "'") === false) {
+            return "'" . $value . "'";
+        }
+        if (strpos($value, '"') === false) {
+            return '"' . $value . '"';
+        }
+        // Contains both single and double quotes: use concat()
+        $parts = explode("'", $value);
+        return "concat('" . implode("',\"'\",'", $parts) . "')";
     }
 }

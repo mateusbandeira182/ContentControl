@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-02-16
+
+### Added
+
+- **Run-level SDT wrapping** (CT_SdtContentRun) for individual `<w:r>` elements
+  - `SDTConfig::$runLevel` property with `withRunLevel()` wither method
+  - `ElementLocator::findRunByTextContent()` - Body-level run location via XPath with normalize-space
+  - `ElementLocator::findRunInCell()` - Cell-scoped run location for inline-level context
+  - `ElementLocator::escapeXPathString()` - XPath injection prevention utility
+  - `SDTInjector::processRunLevelSDT()` - Run-level routing and validation
+  - `SDTInjector::wrapRunInline()` - DOM manipulation for wrapping `<w:r>` in `<w:sdt>`
+- **TableBuilder v2 constructor** accepts PHPWord `Table` object directly (`new TableBuilder($table)`)
+- **Functional `TableBuilder::addContentControl()`** delegates to `ContentControl::addContentControl()`
+  - New signature: `addContentControl(AbstractElement $element, array $config = []): self`
+
+### Changed
+
+- `TableBuilder::addContentControl()` signature: `(array) → (AbstractElement, array)` [**BREAKING**]
+  - Note: Old signature always threw `ContentControlException`; no user code affected.
+- `TableBuilder` constructor: `(?ContentControl) → (Table|ContentControl|null)` [**BREAKING**]
+  - `Table` instance: stores table and creates new ContentControl
+  - `ContentControl` instance: preserves existing behavior
+  - `null`: creates default ContentControl (preserves existing behavior)
+
+### Deprecated
+
+- `TableBuilder::addRow()` — use direct PHPWord Table API with `TableBuilder::addContentControl()`
+- `RowBuilder::addCell()` — use `$row->addCell()` directly
+- `CellBuilder::withContentControl()` — use `TableBuilder::addContentControl()`
+- `CellBuilder::addText()` — use `$cell->addText()` directly
+- `CellBuilder::addImage()` — use `$cell->addImage()` directly
+- See [Migration Guide](docs/migration/v0.5.2-to-v0.6.0.md) for before/after examples. Removal target: v0.8.0.
+
+### Testing
+
+- **38+ new tests** added across 6 test files:
+  - `SDTConfigRunLevelTest.php` (9 unit tests)
+  - `ElementLocatorRunLevelTest.php` (10 unit tests)
+  - `SDTInjectorRunLevelTest.php` (7 unit tests)
+  - `TableBuilderConstructorTest.php` (6 unit tests)
+  - `DeprecationTest.php` (6 feature tests)
+  - `RunLevelSDTTest.php` (8 feature tests)
+  - `TableBuilderV2Test.php` (5 feature tests)
+
+---
+
 ## [0.5.2] - 2026-02-14
 
 ### Fixed

@@ -5,6 +5,7 @@
          colors="true"
          failOnWarning="true"
          failOnRisky="true"
+         failOnDeprecation="false"
          failOnEmptyTestSuite="true"
          beStrictAboutOutputDuringTests="true"
          displayDetailsOnTestsThatTriggerErrors="true"
