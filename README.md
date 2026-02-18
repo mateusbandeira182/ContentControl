@@ -2,11 +2,11 @@
 
 [![Build Status](https://github.com/mateusbandeira182/ContentControl/workflows/CI/badge.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
 [![Code Coverage](https://img.shields.io/badge/coverage-82.2%25-green.svg)](coverage/html/index.html)
-[![Tests](https://img.shields.io/badge/tests-490%20passed-brightgreen.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
+[![Tests](https://img.shields.io/badge/tests-535%20passed-brightgreen.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](phpstan.neon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF.svg)](https://php.net)
-[![Version](https://img.shields.io/badge/version-0.5.2-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md)
 
 **ContentControl** is a PHP library that extends [PHPOffice/PHPWord](https://github.com/PHPOffice/PHPWord) to add Word Content Controls (Structured Document Tags/SDTs) to .docx files. It enables document-level content protection and metadata tagging conforming to **ISO/IEC 29500-1:2016 §17.5.2**.
 
@@ -91,40 +91,37 @@ $processor->setValue('field_2', 'New text');
 $processor->save('output.docx');
 ```
 
-### Building Tables with Content Controls
+### Building Tables with Content Controls (v0.6.0+)
 
 ```php
 <?php
 use MkGrow\ContentControl\ContentControl;
 use MkGrow\ContentControl\Bridge\TableBuilder;
 
+// Create document and table via PHPWord API
 $cc = new ContentControl();
-$builder = new TableBuilder($cc);
+$section = $cc->addSection();
+$table = $section->addTable(['borderSize' => 6, 'borderColor' => '1F4788']);
 
-// Configure table styles (must be before first addRow)
-$builder->setStyles([
-    'borderSize' => 6,
-    'borderColor' => '1F4788',
-    'cellMargin' => 80
+// Build table using native PHPWord API
+$row = $table->addRow();
+$row->addCell(3000)->addText('Name', ['bold' => true]);
+$row->addCell(3000)->addText('Value', ['bold' => true]);
+
+$row2 = $table->addRow();
+$row2->addCell(3000)->addText('Item 1');
+$priceCell = $row2->addCell(3000);
+$priceText = $priceCell->addText('$100');
+
+// Wrap elements with Content Controls via TableBuilder
+$builder = new TableBuilder($table);
+$builder->addContentControl($priceText, [
+    'tag' => 'price_1',
+    'alias' => 'Price',
+    'inlineLevel' => true,   // Required for cell-level elements
+    'runLevel' => true,      // Wraps <w:r> instead of <w:p>
+    'lockType' => ContentControl::LOCK_SDT_LOCKED,
 ]);
-
-// Build table using fluent API
-$builder->addRow()
-    ->addCell(3000)->addText('Name')->end()
-    ->addCell(3000)->addText('Value')->end()
-    ->end();
-
-$builder->addRow()
-    ->addCell(3000)->addText('Item 1')->end()
-    ->addCell(3000)
-        ->addText('$100')
-        ->withContentControl([
-            'tag' => 'price_1',
-            'inlineLevel' => true,  // Required for cell-level SDTs
-            'lockType' => ContentControl::LOCK_SDT_LOCKED
-        ])
-        ->end()
-    ->end();
 
 $cc->save('table_document.docx');
 ```
@@ -138,7 +135,8 @@ For more examples, see the [samples/](samples/) directory.
 - **ISO/IEC 29500-1:2016 Compliance:** Full adherence to OOXML standard §17.5.2
 - **Document Protection:** Lock SDTs, content, or both to prevent unauthorized modifications
 - **Template Processing:** Modify existing DOCX files with XPath-based SDT location
-- **Table Builder:** Fluent API for creating complex tables with cell-level Content Controls
+- **Run-Level SDT Wrapping:** Wrap individual `<w:r>` text runs with Content Controls (v0.6.0+)
+- **TableBuilder v2:** Direct PHPWord Table API with `addContentControl()` delegation (v0.6.0+)
 - **GROUP SDT Replacement:** Replace placeholder SDTs with complex multi-element structures
 - **Header/Footer Support:** Add Content Controls to headers and footers (v0.2.0+)
 - **UUID v5 Hashing:** Zero-collision element identification for template injection (v0.4.2+)
@@ -151,7 +149,7 @@ For more examples, see the [samples/](samples/) directory.
 
 **Quality Standards:**
 - PHPStan Level 9 static analysis with strict rules
-- 82%+ code coverage with 490+ tests (Pest framework)
+- 82%+ code coverage with 535+ tests (Pest framework)
 - Zero-collision UUID v5 hashing for element identification
 - Single Responsibility Principle across all components
 
@@ -200,6 +198,7 @@ ContentControl follows a **composition-based architecture** with no inheritance 
 - **v0.4.2:** Fluent API, UUID v5 hashing, GROUP SDT replacement
 - **v0.5.0:** TableBuilder::setStyles() method (must be called before first addRow)
 - **v0.5.2:** Fix content hash strategy for inline-level Text/TextRun hash collisions
+- **v0.6.0:** Run-level SDT wrapping (CT_SdtContentRun), TableBuilder v2 with direct PHPWord Table API
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -256,10 +255,11 @@ ContentControl follows a **composition-based architecture** with no inheritance 
 │                   TableBuilder                              │
 │  (Bridge for tables with SDTs)                              │
 │                                                             │
-│  - Fluent API: setStyles → addRow → addCell → addText      │
-│  - Auto-integration into ContentControl on first addRow     │
+│  - v0.6.0: Direct PHPWord Table API + addContentControl()   │
+│  - Constructor accepts Table|ContentControl|null            │
+│  - Run-level SDT wrapping (runLevel: true)                  │
 │  - Template injection: injectInto(ContentProcessor, tag)    │
-│  - UUID v5 matching for zero-collision injection            │
+│  - Legacy fluent API deprecated (removal in v0.8.0)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -354,22 +354,26 @@ For detailed documentation, see [docs/contentprocessor.md](docs/contentprocessor
 
 **Two Distinct Workflows:**
 
-**Workflow 1: Direct Creation** (build into ContentControl, save directly)
+**Workflow 1: Direct Creation with v2 API (v0.6.0+)** (recommended)
 ```php
+// Create table via PHPWord directly
 $cc = new ContentControl();
-$builder = new TableBuilder($cc);
+$section = $cc->addSection();
+$table = $section->addTable(['borderSize' => 6, 'borderColor' => '1F4788']);
 
-$builder->setStyles([
-    'borderSize' => 6,
-    'borderColor' => '1F4788'
+$row = $table->addRow();
+$cell = $row->addCell(3000);
+$text = $cell->addText('Protected Value');
+
+// Pass Table to TableBuilder, register SDTs
+$builder = new TableBuilder($table);
+$builder->addContentControl($text, [
+    'tag' => 'value-1',
+    'runLevel' => true,       // Wrap <w:r> instead of <w:p>
+    'inlineLevel' => true,    // Element is inside a cell
 ]);
 
-$builder->addRow()
-    ->addCell(3000)->addText('Header 1')->end()
-    ->addCell(3000)->addText('Header 2')->end()
-    ->end();
-
-$cc->save('output.docx');  // Table already integrated, no injection needed
+$cc->save('output.docx');
 ```
 
 **Workflow 2: Template Injection** (build table, inject into template placeholder)
@@ -377,7 +381,7 @@ $cc->save('output.docx');  // Table already integrated, no injection needed
 // Build table in new ContentControl
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
-// ... build table via fluent API
+// ... build table via fluent or direct API
 
 // Inject into template
 $processor = new ContentProcessor('template.docx');
@@ -389,17 +393,23 @@ $processor->save('output.docx');
 - **NEVER call `injectInto()` on ContentControl** - only accepts ContentProcessor
 - **ALWAYS call `setStyles()` BEFORE first `addRow()`** - throws exception if table exists
 - **Cell-level SDTs REQUIRE `inlineLevel: true`** in configuration
+- **Run-level SDTs** use `runLevel: true` to wrap `<w:r>` instead of `<w:p>` (v0.6.0+)
 
-**Fluent API (v0.4.2+):**
-- `setStyles(array $style): self` - Configure table styles (must be before addRow)
-- `addRow(?int $height = null, array $style = []): RowBuilder` - Create row (lazy-creates table on first call)
-- `RowBuilder::addCell(int $width, array $style = []): CellBuilder` - Add cell
-- `CellBuilder::addText(string $text, array $style = []): self` - Add text to cell
-- `CellBuilder::withContentControl(array $config): self` - Wrap cell with SDT
-- `CellBuilder::end(): RowBuilder` - Return to parent row
-- `RowBuilder::end(): TableBuilder` - Return to table builder
-- `addContentControl(array $config): self` - Add table-level GROUP SDT
+**v2 API (v0.6.0+):**
+- `__construct(Table|ContentControl|null $source)` - Accept Table, ContentControl, or null
+- `addContentControl(AbstractElement $element, array $config = []): self` - Register SDT wrapping for any element
 - `injectInto(ContentProcessor $processor, string $targetTag): void` - Inject into template
+- `setStyles(array $style): self` - Configure table styles (must be before addRow)
+- `getContentControl(): ContentControl` - Access underlying ContentControl instance
+
+**Legacy Fluent API (deprecated since v0.6.0, removal in v0.8.0):**
+- `addRow(?int $height = null, array $style = []): RowBuilder`
+- `RowBuilder::addCell(int $width, array $style = []): CellBuilder`
+- `CellBuilder::addText(string $text, array $style = []): self`
+- `CellBuilder::withContentControl(array $config): self`
+- `CellBuilder::end(): RowBuilder` / `RowBuilder::end(): TableBuilder`
+
+See [Migration Guide](docs/migration/v0.5.2-to-v0.6.0.md) for fluent-to-direct API migration examples.
 
 For detailed documentation, see [docs/tablebuilder.md](docs/tablebuilder.md).
 
@@ -416,7 +426,8 @@ $config = [
     'tag' => 'metadata_id',        // Programmatic identifier
     'type' => ContentControl::TYPE_RICH_TEXT,  // SDT type
     'lockType' => ContentControl::LOCK_SDT_LOCKED,  // Protection level
-    'inlineLevel' => false         // true for cell-level elements (REQUIRED)
+    'inlineLevel' => false,        // true for cell-level elements (REQUIRED)
+    'runLevel' => false            // true to wrap <w:r> instead of <w:p> (v0.6.0+)
 ];
 ```
 
@@ -442,6 +453,12 @@ $config = [
 - **MUST be `true`** for elements inside table cells
 - Default: `false` (block-level elements)
 - Affects XPath search priority (cells before rootElement)
+
+**Run Level Flag (v0.6.0+):**
+- When `true`, wraps individual `<w:r>` (text runs) instead of `<w:p>` (paragraphs)
+- Default: `false` (paragraph-level wrapping)
+- Conforms to CT_SdtContentRun (ECMA-376 Part 4 S17.5.2.30)
+- Can be combined with `inlineLevel: true` for cell-scoped run-level wrapping
 
 #### Table Styles Configuration
 
@@ -608,6 +625,7 @@ cat temp/formatted.xml
 
 Valid Content Control XML (ISO/IEC 29500-1:2016 §17.5.2):
 
+**Block-level SDT** (wraps `<w:p>`, `<w:tbl>`, `<w:tc>`):
 ```xml
 <w:sdt>
     <w:sdtPr>
@@ -626,6 +644,26 @@ Valid Content Control XML (ISO/IEC 29500-1:2016 §17.5.2):
         </w:p>
     </w:sdtContent>
 </w:sdt>
+```
+
+**Run-level SDT (v0.6.0+)** (wraps `<w:r>` inside `<w:p>`, CT_SdtContentRun):
+```xml
+<w:p>
+    <w:sdt>
+        <w:sdtPr>
+            <w:id w:val="12345678"/>
+            <w:alias w:val="First Name"/>
+            <w:tag w:val="first-name"/>
+            <w:richText/>
+        </w:sdtPr>
+        <w:sdtContent>
+            <w:r>
+                <w:rPr><w:b/></w:rPr>
+                <w:t>John</w:t>
+            </w:r>
+        </w:sdtContent>
+    </w:sdt>
+</w:p>
 ```
 
 #### Common Debugging Scenarios
@@ -683,7 +721,7 @@ ElementIdentifier::clearCache();
 
 ### Running Tests
 
-The project uses [Pest](https://pestphp.com/) for testing with 490+ tests and 82%+ code coverage.
+The project uses [Pest](https://pestphp.com/) for testing with 535+ tests and 82%+ code coverage.
 
 **All Tests:**
 ```bash
@@ -731,6 +769,9 @@ composer test:coverage-html
 - `NoDuplicationTest.php` - v3.0 DOM manipulation verification
 - `ImageHashCollisionTest.php` - UUID v5 collision resistance
 - `NestedSDTDetectionTest.php` - Multi-level SDT preservation
+- `RunLevelSDTTest.php` - Run-level `<w:r>` SDT wrapping (v0.6.0)
+- `TableBuilderV2Test.php` - Direct Table API + addContentControl (v0.6.0)
+- `DeprecationTest.php` - Deprecation notice validation (v0.6.0)
 
 ### Custom Pest Expectations
 
