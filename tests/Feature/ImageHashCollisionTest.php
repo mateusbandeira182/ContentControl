@@ -92,20 +92,6 @@ test('Image Hash Collision - generates unique hashes for 10000 images', function
     // Average time per hash: Should be <1ms (target from spec)
     $avgTimeMs = ($executionTime / $imageCount) * 1000;
     expect($avgTimeMs)->toBeLessThan(3.0, "Average hash generation should be <3ms per image");
-    
-    echo sprintf(
-        "\n  ✓ Collision Test Results:\n" .
-        "    - Images tested: %d\n" .
-        "    - Unique hashes: %d\n" .
-        "    - Collisions: %d (0.00%%)\n" .
-        "    - Execution time: %.2fs\n" .
-        "    - Avg time per hash: %.3fms\n",
-        $imageCount,
-        count($uniqueHashes),
-        $collisions,
-        $executionTime,
-        $avgTimeMs
-    );
 })->group('feature', 'image-hash', 'performance');
 
 /**
