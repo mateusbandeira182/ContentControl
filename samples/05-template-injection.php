@@ -48,25 +48,23 @@ $builder->setStyles([
     'cellMargin' => 100,
 ]);
 
-$builder
-    ->addRow()
-        ->addCell(2500)->addText('SKU', ['bold' => true])->end()
-        ->addCell(3500)->addText('Product Name', ['bold' => true])->end()
-        ->addCell(1500)->addText('Stock', ['bold' => true])->end()
-        ->addCell(2000)->addText('Price', ['bold' => true])->end()
-        ->end()
-    ->addRow()
-        ->addCell(2500)->addText('WDG-001')->end()
-        ->addCell(3500)->addText('Standard Widget')->end()
-        ->addCell(1500)->addText('150')->end()
-        ->addCell(2000)->addText('$25.00')->end()
-        ->end()
-    ->addRow()
-        ->addCell(2500)->addText('WDG-002')->end()
-        ->addCell(3500)->addText('Premium Widget')->end()
-        ->addCell(1500)->addText('75')->end()
-        ->addCell(2000)->addText('$45.00')->end()
-        ->end();
+$row1 = $builder->addRow();
+$row1->addCell(2500)->addText('SKU', ['bold' => true]);
+$row1->addCell(3500)->addText('Product Name', ['bold' => true]);
+$row1->addCell(1500)->addText('Stock', ['bold' => true]);
+$row1->addCell(2000)->addText('Price', ['bold' => true]);
+
+$row2 = $builder->addRow();
+$row2->addCell(2500)->addText('WDG-001');
+$row2->addCell(3500)->addText('Standard Widget');
+$row2->addCell(1500)->addText('150');
+$row2->addCell(2000)->addText('$25.00');
+
+$row3 = $builder->addRow();
+$row3->addCell(2500)->addText('WDG-002');
+$row3->addCell(3500)->addText('Premium Widget');
+$row3->addCell(1500)->addText('75');
+$row3->addCell(2000)->addText('$45.00');
 
 // Inject table into template (replaces placeholder SDT)
 $builder->injectInto($processor, 'product-table-placeholder');

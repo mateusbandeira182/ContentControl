@@ -67,11 +67,11 @@ use MkGrow\ContentControl\Bridge\TableBuilder;
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
 
-$builder->setStyles(['borderSize' => 6])
-    ->addRow()
-        ->addCell(3000)->addText('Name')->end()
-        ->addCell(3000)->addText('Value')->end()
-        ->end();
+$builder->setStyles(['borderSize' => 6]);
+
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Name');
+$row->addCell(3000)->addText('Value');
 
 $cc->save('table.docx');
 ```
@@ -240,22 +240,21 @@ $processor->save('invoice_2024_001.docx');
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
 
-$builder->setStyles(['borderSize' => 6])
-    ->addRow()
-        ->addCell(3000)->addText('Product')->end()
-        ->addCell(3000)->addText('Price')->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Widget')->end()
-        ->addCell(3000)
-            ->addText('$99.99')
-            ->withContentControl([
-                'tag' => 'price_1',
-                'inlineLevel' => true,  // REQUIRED for cells
-                'lockType' => ContentControl::LOCK_SDT_LOCKED
-            ])
-            ->end()
-        ->end();
+$builder->setStyles(['borderSize' => 6]);
+
+$row1 = $builder->addRow();
+$row1->addCell(3000)->addText('Product');
+$row1->addCell(3000)->addText('Price');
+
+$row2 = $builder->addRow();
+$row2->addCell(3000)->addText('Widget');
+$row2->addCell(3000)
+    ->addText('$99.99')
+    ->withContentControl([
+        'tag' => 'price_1',
+        'inlineLevel' => true,  // REQUIRED for cells
+        'lockType' => ContentControl::LOCK_SDT_LOCKED
+    ]);
 
 $cc->save('table.docx');
 ```
@@ -415,34 +414,31 @@ $processor->save("invoices/{$data['invoice_number']}.docx");
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
 
-$builder->setStyles(['borderSize' => 6])
-    ->addRow()
-        ->addCell(3000)->addText('Item')->end()
-        ->addCell(3000)->addText('Qty')->end()
-        ->addCell(3000)->addText('Price')->end()
-        ->end();
+$builder->setStyles(['borderSize' => 6]);
+
+$headerRow = $builder->addRow();
+$headerRow->addCell(3000)->addText('Item');
+$headerRow->addCell(3000)->addText('Qty');
+$headerRow->addCell(3000)->addText('Price');
 
 // Add data rows with cell SDTs
 for ($i = 1; $i <= 5; $i++) {
-    $builder->addRow()
-        ->addCell(3000)->addText("Item {$i}")->end()
-        ->addCell(3000)
-            ->addText('0')
-            ->withContentControl([
-                'tag' => "qty_{$i}",
-                'inlineLevel' => true,
-                'lockType' => ContentControl::LOCK_SDT_LOCKED
-            ])
-            ->end()
-        ->addCell(3000)
-            ->addText('$0.00')
-            ->withContentControl([
-                'tag' => "price_{$i}",
-                'inlineLevel' => true,
-                'lockType' => ContentControl::LOCK_SDT_LOCKED
-            ])
-            ->end()
-        ->end();
+    $dataRow = $builder->addRow();
+    $dataRow->addCell(3000)->addText("Item {$i}");
+    $dataRow->addCell(3000)
+        ->addText('0')
+        ->withContentControl([
+            'tag' => "qty_{$i}",
+            'inlineLevel' => true,
+            'lockType' => ContentControl::LOCK_SDT_LOCKED
+        ]);
+    $dataRow->addCell(3000)
+        ->addText('$0.00')
+        ->withContentControl([
+            'tag' => "price_{$i}",
+            'inlineLevel' => true,
+            'lockType' => ContentControl::LOCK_SDT_LOCKED
+        ]);
 }
 
 // 2. Inject into template

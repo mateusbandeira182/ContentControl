@@ -17,8 +17,7 @@ use PhpOffice\PhpWord\Element\Cell;
  * Usage Example:
  * ```php
  * $cellBuilder->withContentControl(['tag' => 'user-name', 'alias' => 'User Name'])
- *     ->addText('John Doe')
- *     ->end();
+ *     ->addText('John Doe');
  * ```
  *
  * @package MkGrow\ContentControl\Bridge
@@ -54,26 +53,11 @@ final class CellBuilder
     private static bool $addImageWarned = false;
 
     /**
-     * Flag: whether end() deprecation was already emitted
-     *
-     * @var bool
-     * @internal
-     */
-    private static bool $endWarned = false;
-
-    /**
      * The PhpWord Cell element being built
      *
      * @var Cell
      */
     private Cell $cell;
-
-    /**
-     * Reference to parent RowBuilder for method chaining
-     *
-     * @var RowBuilder
-     */
-    private RowBuilder $parent;
 
     /**
      * Reference to root TableBuilder for SDT registration
@@ -99,7 +83,6 @@ final class CellBuilder
     public function __construct(Cell $cell, RowBuilder $parent, TableBuilder $tableParent)
     {
         $this->cell = $cell;
-        $this->parent = $parent;
         $this->tableParent = $tableParent;
     }
 
@@ -248,41 +231,6 @@ final class CellBuilder
     }
 
     /**
-     * Ends cell building and returns to parent RowBuilder
-     *
-     * @deprecated Since v0.5.1, will be removed in v0.7.0
-     *             The end() method pattern is foreign to PHPWord conventions.
-     *             Recommended: Use end() calls until v0.6.0 introduces optional auto-close.
-     *             Migration timeline: v0.7.0 (H1 2027) will remove this method entirely.
-     *
-     * Completes the current cell and returns the parent RowBuilder,
-     * allowing you to add more cells or end the row.
-     *
-     * Example:
-     * ```php
-     * $rowBuilder = $cellBuilder->end();
-     * $rowBuilder->addCell(2000); // Add another cell
-     * ```
-     *
-     * @return RowBuilder The parent RowBuilder instance
-     */
-    public function end(): RowBuilder
-    {
-        // Emit deprecation warning (only once per script execution to avoid log spam)
-        if (!self::$endWarned) {
-            trigger_error(
-                'CellBuilder::end() is deprecated since v0.5.1 and will be removed in v0.7.0. ' .
-                'Continue using end() for now. In v0.6.0, end() will become optional (auto-close pattern). ' .
-                'Full removal planned for v0.7.0 (18-month deprecation window).',
-                E_USER_DEPRECATED
-            );
-            self::$endWarned = true;
-        }
-        
-        return $this->parent;
-    }
-
-    /**
      * Reset deprecation warning flags (for testing only)
      *
      * @internal This method is intended for test cleanup only.
@@ -295,6 +243,5 @@ final class CellBuilder
         self::$withContentControlWarned = false;
         self::$addTextWarned = false;
         self::$addImageWarned = false;
-        self::$endWarned = false;
     }
 }

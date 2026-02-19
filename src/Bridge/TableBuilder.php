@@ -184,7 +184,8 @@ final class TableBuilder
      * // Builder decorates existing table
      * $builder = new TableBuilder();
      * $builder->setTable($table);
-     * $builder->addRow()->addCell(3000)->addText('Data')->end()->end();
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Data');
      * 
      * // User saves document
      * $writer = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
@@ -203,7 +204,9 @@ final class TableBuilder
      *
      * Incorrect (SDTs will not be saved):
      * ```php
-     * $builder->setTable($table)->addRow()->addCell(3000)->withContentControl(['tag' => 'x'])->end()->end();
+     * $builder->setTable($table);
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->withContentControl(['tag' => 'x']);
      * $writer = IOFactory::createWriter($phpWord, 'Word2007');
      * $writer->save('output.docx'); // ❌ SDTs not written!
      * ```
@@ -212,7 +215,9 @@ final class TableBuilder
      * ```php
      * $cc = new ContentControl();
      * $builder = new TableBuilder($cc);
-     * $builder->setTable($table)->addRow()->addCell(3000)->withContentControl(['tag' => 'x'])->end()->end();
+     * $builder->setTable($table);
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->withContentControl(['tag' => 'x']);
      * $cc->save('output.docx'); // ✅ SDTs properly injected
      * ```
      *
@@ -224,16 +229,18 @@ final class TableBuilder
      * @example Basic usage
      * ```php
      * $builder = new TableBuilder();
-     * $builder->setTable($existingTable)
-     *     ->addRow()->addCell(3000)->addText('Cell')->end()->end();
+     * $builder->setTable($existingTable);
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Cell');
      * ```
      * 
      * @example With pre-styled table
      * ```php
      * $table = $section->addTable(['borderSize' => 6, 'borderColor' => '000000']);
      * $builder = new TableBuilder();
-     * $builder->setTable($table)
-     *     ->addRow()->addCell(3000)->addText('Formatted')->end()->end();
+     * $builder->setTable($table);
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Formatted');
      * ```
      */
     public function setTable(Table $table): self
@@ -313,11 +320,10 @@ final class TableBuilder
      *     'borderSize' => 6,
      *     'borderColor' => '000000',
      *     'alignment' => 'center'
-     * ])
-     * ->addRow()
-     *     ->addCell(3000)->addText('Cell 1')->end()
-     *     ->addCell(3000)->addText('Cell 2')->end()
-     *     ->end();
+     * ]);
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Cell 1');
+     * $row->addCell(3000)->addText('Cell 2');
      * ```
      *
      * @example Full-width table with custom margins
@@ -327,8 +333,9 @@ final class TableBuilder
      *     'unit' => 'pct',
      *     'cellMargin' => 100,
      *     'layout' => 'fixed'
-     * ])
-     * ->addRow()->addCell(5000)->addText('Content')->end()->end();
+     * ]);
+     * $row = $builder->addRow();
+     * $row->addCell(5000)->addText('Content');
      * ```
      */
     public function setStyles(array $style): self
@@ -371,18 +378,16 @@ final class TableBuilder
      * @example Basic usage
      * ```php
      * $builder = new TableBuilder();
-     * $builder->addRow()
-     *     ->addCell(3000)->addText('Name')->end()
-     *     ->addCell(5000)->addText('Description')->end()
-     *     ->end();
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Name');
+     * $row->addCell(5000)->addText('Description');
      * ```
      *
      * @example With row styling
      * ```php
-     * $builder->addRow(720, ['tblHeader' => true])
-     *     ->addCell(3000)->addText('Column 1')->end()
-     *     ->addCell(3000)->addText('Column 2')->end()
-     *     ->end();
+     * $row = $builder->addRow(720, ['tblHeader' => true]);
+     * $row->addCell(3000)->addText('Column 1');
+     * $row->addCell(3000)->addText('Column 2');
      * ```
      */
     public function addRow(?int $height = null, array $style = []): RowBuilder
@@ -474,10 +479,9 @@ final class TableBuilder
      * @example
      * ```php
      * $builder = new TableBuilder();
-     * $builder->addRow()
-     *     ->addCell(3000)->addText('Product A')->end()
-     *     ->addCell(2000)->addText('$99.99')->end()
-     *     ->end();
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Product A');
+     * $row->addCell(2000)->addText('$99.99');
      *
      * $processor = new ContentProcessor('template.docx');
      * $builder->injectInto($processor, 'invoice-items');
@@ -647,7 +651,7 @@ final class TableBuilder
      *
      * @throws ContentControlException If configuration is invalid or element is used
      *
-     * @deprecated Since v0.4.2. Use fluent API instead: $builder->addRow()->addCell()->end()
+     * @deprecated Since v0.4.2. Use fluent API instead: $row = $builder->addRow(); $row->addCell();
      *             This method will be removed in v1.0.0. Migration guide available in docs/MIGRATION-v042.md
      *
      * @since 0.4.0
@@ -684,7 +688,7 @@ final class TableBuilder
         // Deprecation warning
         trigger_error(
             'TableBuilder::createTable() is deprecated since v0.4.2. ' .
-            'Use fluent API instead: $builder->addRow()->addCell()->end(). ' .
+            'Use fluent API instead: $row = $builder->addRow(); $row->addCell(). ' .
             'Will be removed in v1.0.0. See docs/MIGRATION-v042.md for migration guide.',
             E_USER_DEPRECATED
         );
@@ -1030,83 +1034,34 @@ final class TableBuilder
     }
 
     /**
-     * Generate hash for table identification in DOCX XML
+     * Serialize table with embedded SDTs to XML string.
      *
-     * Creates a deterministic MD5 hash based on table dimensions (rows x cells)
-     * extracted via Reflection from PHPWord's private properties.
+     * Saves the builder's ContentControl to a temp file (triggering SDTInjector),
+     * then extracts the table XML with all nested SDTs preserved.
      *
-     * Algorithm:
-     * - Extracts rowCount from Table's private $rows property
-     * - Extracts cellCount from first row's private $cells property
-     * - Generates MD5 hash from "{rowCount}x{cellCount}" string
+     * @return string Table XML string with embedded SDTs, namespace-cleaned
      *
-     * Limitations:
-     * - Hash collisions possible for tables with same dimensions
-     * - Only dimensions considered (not content or styles)
-     * - Assumes all rows have same number of cells
+     * @throws ContentControlException If no table exists or extraction fails
      *
-     * @param Table $table PHPWord table instance
-     *
-     * @return string MD5 hash (32 characters)
-     *
-     * @throws ContentControlException If reflection fails or table has no rows
-     *
-     * @deprecated since 0.4.2, use ElementIdentifier::generateTableHash() instead.
-     *             This method will be removed in v1.0.0.
-     * @since 0.4.0
-     *
-     * @example
-     * ```php
-     * $table = $builder->createTable([
-     *     'rows' => [
-     *         ['cells' => [['text' => 'A'], ['text' => 'B'], ['text' => 'C']]],
-     *         ['cells' => [['text' => 'D'], ['text' => 'E'], ['text' => 'F']]],
-     *     ]
-     * ]);
-     * $hash = $builder->generateTableHash($table);
-     * // Returns: md5("2x3") = "a87ff679a2f3e71d9181a67b7542122c"
-     * ```
+     * @since 0.7.0
      */
-    private function generateTableHash(Table $table): string // @phpstan-ignore-line method.unused
+    public function serializeWithSdts(): string
     {
-        try {
-            // Use Reflection to access private $rows property
-            $reflectionTable = new \ReflectionClass($table);
-            $rowsProperty = $reflectionTable->getProperty('rows');
-            $rowsProperty->setAccessible(true);
-            
-            /** @var array<\PhpOffice\PhpWord\Element\Row> $rows */
-            $rows = $rowsProperty->getValue($table);
-            
-            if (count($rows) === 0) {
-                throw new ContentControlException(
-                    'Cannot generate hash for empty table'
-                );
-            }
-            
-            $rowCount = count($rows);
-            
-            // Use Reflection to access private $cells property from first row
-            $firstRow = $rows[0];
-            $reflectionRow = new \ReflectionClass($firstRow);
-            $cellsProperty = $reflectionRow->getProperty('cells');
-            $cellsProperty->setAccessible(true);
-            
-            /** @var array<\PhpOffice\PhpWord\Element\Cell> $cells */
-            $cells = $cellsProperty->getValue($firstRow);
-            $cellCount = count($cells);
-            
-            // Generate hash: md5("{rowCount}x{cellCount}")
-            $dimensionString = "{$rowCount}x{$cellCount}";
-            
-            return md5($dimensionString);
-            
-        } catch (\ReflectionException $e) {
+        if ($this->table === null) {
             throw new ContentControlException(
-                "Failed to generate table hash via Reflection: {$e->getMessage()}",
-                0,
-                $e
+                'No table to serialize. Create a table via addSection()->addTable() first.'
             );
+        }
+
+        $tempPath = $this->getTempFilePath();
+
+        try {
+            $this->contentControl->save($tempPath);
+            return $this->extractTableXmlWithSdts($tempPath, $this->table);
+        } finally {
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
         }
     }
 

@@ -36,14 +36,13 @@ describe('Nested SDT Detection', function (): void {
 
             // Step 2: Create table WITHOUT table-level SDT (recommended pattern)
             $builder = new TableBuilder();
-            $builder
-                ->addRow()
-                    ->addCell(3000)->addText('Product')->end()
-                    ->addCell(2000)->addText('Price');
+            $row1 = $builder->addRow();
+            $row1->addCell(3000)->addText('Product');
+            $row1->addCell(2000)->addText('Price');
 
-            $builder->addRow()
-                    ->addCell(3000)->addText('Widget A')->end()
-                    ->addCell(2000)->addText('$99.99');
+            $row2 = $builder->addRow();
+            $row2->addCell(3000)->addText('Widget A');
+            $row2->addCell(2000)->addText('$99.99');
 
             // Step 3: Inject into template (no table-level SDT)
             $processor = new ContentProcessor($templatePath);

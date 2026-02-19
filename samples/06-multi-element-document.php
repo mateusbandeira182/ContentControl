@@ -82,22 +82,20 @@ $builder->setStyles([
     'cellMargin' => 80,
 ]);
 
-$builder
-    ->addRow()
-        ->addCell(3000)->addText('Category', ['bold' => true])->end()
-        ->addCell(2000)->addText('Items', ['bold' => true])->end()
-        ->addCell(2000)->addText('Status', ['bold' => true])->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Electronics')->end()
-        ->addCell(2000)->addText('245')->end()
-        ->addCell(2000)->addText('In Stock')->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Furniture')->end()
-        ->addCell(2000)->addText('87')->end()
-        ->addCell(2000)->addText('Low Stock')->end()
-        ->end();
+$row1 = $builder->addRow();
+$row1->addCell(3000)->addText('Category', ['bold' => true]);
+$row1->addCell(2000)->addText('Items', ['bold' => true]);
+$row1->addCell(2000)->addText('Status', ['bold' => true]);
+
+$row2 = $builder->addRow();
+$row2->addCell(3000)->addText('Electronics');
+$row2->addCell(2000)->addText('245');
+$row2->addCell(2000)->addText('In Stock');
+
+$row3 = $builder->addRow();
+$row3->addCell(3000)->addText('Furniture');
+$row3->addCell(2000)->addText('87');
+$row3->addCell(2000)->addText('Low Stock');
 
 // Table is automatically added to document
 // No manual injection needed

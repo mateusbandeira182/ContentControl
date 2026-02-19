@@ -62,25 +62,23 @@ $builder->setStyles([
     'cellMargin' => 80,
 ]);
 
-$builder
-    ->addRow()
-        ->addCell(3000)->addText('Category', ['bold' => true])->end()
-        ->addCell(2000)->addText('Q4 2025', ['bold' => true])->end()
-        ->addCell(2000)->addText('Q1 2026', ['bold' => true])->end()
-        ->addCell(2000)->addText('Growth', ['bold' => true])->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Electronics')->end()
-        ->addCell(2000)->addText('$125,000')->end()
-        ->addCell(2000)->addText('$181,250')->end()
-        ->addCell(2000)->addText('+45%', ['color' => '388E3C', 'bold' => true])->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Furniture')->end()
-        ->addCell(2000)->addText('$87,500')->end()
-        ->addCell(2000)->addText('$98,000')->end()
-        ->addCell(2000)->addText('+12%', ['color' => '388E3C', 'bold' => true])->end()
-        ->end();
+$row1 = $builder->addRow();
+$row1->addCell(3000)->addText('Category', ['bold' => true]);
+$row1->addCell(2000)->addText('Q4 2025', ['bold' => true]);
+$row1->addCell(2000)->addText('Q1 2026', ['bold' => true]);
+$row1->addCell(2000)->addText('Growth', ['bold' => true]);
+
+$row2 = $builder->addRow();
+$row2->addCell(3000)->addText('Electronics');
+$row2->addCell(2000)->addText('$125,000');
+$row2->addCell(2000)->addText('$181,250');
+$row2->addCell(2000)->addText('+45%', ['color' => '388E3C', 'bold' => true]);
+
+$row3 = $builder->addRow();
+$row3->addCell(3000)->addText('Furniture');
+$row3->addCell(2000)->addText('$87,500');
+$row3->addCell(2000)->addText('$98,000');
+$row3->addCell(2000)->addText('+12%', ['color' => '388E3C', 'bold' => true]);
 
 // Replace GROUP SDT with complex content
 $processor->replaceGroupContent('report-section', $replacement);

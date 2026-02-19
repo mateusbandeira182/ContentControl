@@ -580,7 +580,8 @@ try {
 6. **injectInto on ContentControl:**
    ```php
    $builder = new TableBuilder($cc);
-   $builder->addRow()->addCell()->end()->end();
+   $row = $builder->addRow();
+   $row->addCell();
    $builder->injectInto($cc, 'tag');  // Type error! Expects ContentProcessor
    
    // CORRECT for template injection:

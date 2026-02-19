@@ -32,53 +32,45 @@ $builder->setStyles([
 ]);
 
 // Build table with Content Controls at cell level
-$builder
-    ->addRow()
-        ->addCell(4000)
-            ->addText('Employee Name', ['bold' => true])
-            ->end()
-        ->addCell(3000)
-            ->addText('Department', ['bold' => true])
-            ->end()
-        ->end()
-    ->addRow()
-        ->addCell(4000)
+$headerRow = $builder->addRow();
+$headerRow->addCell(4000)
+            ->addText('Employee Name', ['bold' => true]);
+$headerRow->addCell(3000)
+            ->addText('Department', ['bold' => true]);
+
+$dataRow1 = $builder->addRow();
+$dataRow1->addCell(4000)
             ->addText('John Doe')
             ->withContentControl([
                 'alias' => 'Employee 1 Name',
                 'tag' => 'emp1-name',
                 'lockType' => ContentControl::LOCK_CONTENT_LOCKED,
                 'inlineLevel' => true,  // CRITICAL: Required for cell-level SDTs
-            ])
-            ->end()
-        ->addCell(3000)
+            ]);
+$dataRow1->addCell(3000)
             ->addText('Engineering')
             ->withContentControl([
                 'alias' => 'Employee 1 Department',
                 'tag' => 'emp1-dept',
                 'lockType' => ContentControl::LOCK_CONTENT_LOCKED,
                 'inlineLevel' => true,  // CRITICAL: Required for cell-level SDTs
-            ])
-            ->end()
-        ->end()
-    ->addRow()
-        ->addCell(4000)
+            ]);
+
+$dataRow2 = $builder->addRow();
+$dataRow2->addCell(4000)
             ->addText('Jane Smith')
             ->withContentControl([
                 'alias' => 'Employee 2 Name',
                 'tag' => 'emp2-name',
                 'inlineLevel' => true,
-            ])
-            ->end()
-        ->addCell(3000)
+            ]);
+$dataRow2->addCell(3000)
             ->addText('Marketing')
             ->withContentControl([
                 'alias' => 'Employee 2 Department',
                 'tag' => 'emp2-dept',
                 'inlineLevel' => true,
-            ])
-            ->end()
-        ->end();
+            ]);
 
 // Table is automatically added to ContentControl during build
 // No manual injection needed for direct creation workflow

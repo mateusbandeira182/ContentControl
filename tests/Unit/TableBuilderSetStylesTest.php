@@ -115,14 +115,15 @@ describe('TableBuilder::setStyles()', function () {
     it('integrates with multiple rows', function () {
         $builder = new TableBuilder();
         
-        $builder->setStyles(['borderSize' => 6, 'borderColor' => '000000'])
-            ->addRow()
-                ->addCell(3000)->addText('Row 1 Cell 1')->end()
-                ->addCell(3000)->addText('Row 1 Cell 2');
+        $builder->setStyles(['borderSize' => 6, 'borderColor' => '000000']);
 
-        $builder->addRow()
-                ->addCell(3000)->addText('Row 2 Cell 1')->end()
-                ->addCell(3000)->addText('Row 2 Cell 2');
+        $row1 = $builder->addRow();
+        $row1->addCell(3000)->addText('Row 1 Cell 1');
+        $row1->addCell(3000)->addText('Row 1 Cell 2');
+
+        $row2 = $builder->addRow();
+        $row2->addCell(3000)->addText('Row 2 Cell 1');
+        $row2->addCell(3000)->addText('Row 2 Cell 2');
         
         $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
         $builder->getContentControl()->save($tempFile);

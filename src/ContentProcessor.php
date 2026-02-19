@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MkGrow\ContentControl;
 
 use PhpOffice\PhpWord\Element\AbstractElement;
+use MkGrow\ContentControl\Bridge\TableBuilder;
 use MkGrow\ContentControl\Exception\ZipArchiveException;
 use MkGrow\ContentControl\Exception\DocumentNotFoundException;
 
@@ -458,7 +459,7 @@ final class ContentProcessor
      * Preserves <w:sdtPr> (SDT properties).
      *
      * @param string $tag Value of <w:tag w:val="..."/> attribute
-     * @param string|AbstractElement $value New content
+     * @param string|AbstractElement|TableBuilder $value New content
      *
      * @return bool True if SDT found and modified, false otherwise
      *
@@ -470,9 +471,15 @@ final class ContentProcessor
      * // Replace with table
      * $table = $section->addTable();
      * $processor->replaceContent('invoice-items', $table);
+     *
+     * // Replace with TableBuilder (SDT-aware, v0.7.0)
+     * $builder = new TableBuilder();
+     * $row = $builder->addRow();
+     * $row->addCell(3000)->addText('Value');
+     * $processor->replaceContent('table-placeholder', $builder);
      * ```
      */
-    public function replaceContent(string $tag, string|AbstractElement $value): bool
+    public function replaceContent(string $tag, string|AbstractElement|TableBuilder $value): bool
     {
         // 1. Locate SDT
         $result = $this->findSdtByTag($tag);
@@ -508,7 +515,9 @@ final class ContentProcessor
         }
 
         // 4. Insert new content
-        if (is_string($value)) {
+        if ($value instanceof TableBuilder) {
+            $this->insertTableBuilderContent($dom, $sdtContent, $value);
+        } elseif (is_string($value)) {
             $this->insertTextContent($dom, $sdtContent, $value);
         } else {
             $this->insertElementContent($dom, $sdtContent, $value);
@@ -1123,6 +1132,30 @@ final class ContentProcessor
             $imported = $dom->importNode($child, true);
             $sdtContent->appendChild($imported);
         }
+    }
+
+    /**
+     * Insert TableBuilder content into SDT using SDT-aware serialization.
+     *
+     * Serializes the TableBuilder's table with all embedded SDTs preserved
+     * via serializeWithSdts(), then imports the XML fragment into the target DOM.
+     *
+     * @param \DOMDocument $dom Target document DOM
+     * @param \DOMElement $sdtContent Target <w:sdtContent> element
+     * @param TableBuilder $builder TableBuilder instance with table and SDT registrations
+     *
+     * @throws Exception\ContentControlException If serialization fails
+     *
+     * @since 0.7.0
+     */
+    private function insertTableBuilderContent(
+        \DOMDocument $dom,
+        \DOMElement $sdtContent,
+        TableBuilder $builder
+    ): void {
+        $tableXml = $builder->serializeWithSdts();
+        $fragment = $this->createDomFragment($dom, $tableXml);
+        $sdtContent->appendChild($fragment);
     }
 
     /**

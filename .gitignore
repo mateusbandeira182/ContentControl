@@ -4,7 +4,6 @@ composer.lock
 .vscode
 .antigravity
 .github/prompts
-.github/copilot-instructions.md
 .local
 # Cobertura de testes
 coverage/

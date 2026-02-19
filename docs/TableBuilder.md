@@ -49,19 +49,14 @@ TableBuilder
 └───────────────────────────────┘
 ```
 
-**Builder Pattern (Fluent API):**
+**Builder Pattern (Variable Assignment):**
 ```
 TableBuilder
-    ↓ addRow()
+    ↓ addRow()       → $row = RowBuilder
 RowBuilder
-    ↓ addCell()
+    ↓ addCell()      → CellBuilder
 CellBuilder
-    ↓ addText()
-CellBuilder
-    ↓ end()
-RowBuilder
-    ↓ end()
-TableBuilder
+    ↓ addText()      → CellBuilder (self)
 ```
 
 ### Two Distinct Workflows
@@ -81,10 +76,10 @@ TableBuilder
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
 
-$builder->setStyles(['borderSize' => 6])
-    ->addRow()
-        ->addCell(3000)->addText('Header')->end()
-        ->end();
+$builder->setStyles(['borderSize' => 6]);
+
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Header');
 
 $cc->save('output.docx');  // Table already integrated
 ```
@@ -171,15 +166,13 @@ $builder->setStyles([
 **Timing Example:**
 ```php
 // CORRECT
-$builder->setStyles(['borderSize' => 6])
-    ->addRow()  // Table created here with styles
-    ->addCell(3000)->addText('Data')->end()
-    ->end();
+$builder->setStyles(['borderSize' => 6]);
+$row = $builder->addRow();  // Table created here with styles
+$row->addCell(3000)->addText('Data');
 
 // INCORRECT - throws exception
-$builder->addRow()  // Table created here without styles
-    ->addCell(3000)->addText('Data')->end()
-    ->end();
+$row = $builder->addRow();  // Table created here without styles
+$row->addCell(3000)->addText('Data');
 $builder->setStyles(['borderSize' => 6]);  // Exception!
 ```
 
@@ -205,17 +198,15 @@ $builder->setStyles([
 ]);
 
 // Build table using fluent API
-$builder->addRow()
-    ->addCell(3000)->addText('Name')->end()
-    ->addCell(3000)->addText('Age')->end()
-    ->addCell(3000)->addText('City')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Name');
+$row->addCell(3000)->addText('Age');
+$row->addCell(3000)->addText('City');
 
-$builder->addRow()
-    ->addCell(3000)->addText('John Doe')->end()
-    ->addCell(3000)->addText('30')->end()
-    ->addCell(3000)->addText('New York')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('John Doe');
+$row->addCell(3000)->addText('30');
+$row->addCell(3000)->addText('New York');
 
 // Save - table auto-integrated
 $cc->save('simple_table.docx');
@@ -237,37 +228,32 @@ $builder->setStyles([
 ]);
 
 // Header row
-$builder->addRow()
-    ->addCell(4500)->addText('Product')->end()
-    ->addCell(4500)->addText('Price')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)->addText('Product');
+$row->addCell(4500)->addText('Price');
 
 // Data row with protected price cell
-$builder->addRow()
-    ->addCell(4500)->addText('Widget')->end()
-    ->addCell(4500)
-        ->addText('$99.99')
-        ->withContentControl([
-            'tag' => 'price_widget',
-            'alias' => 'Widget Price',
-            'inlineLevel' => true,  // REQUIRED for cell SDTs
-            'lockType' => ContentControl::LOCK_SDT_LOCKED
-        ])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)->addText('Widget');
+$row->addCell(4500)
+    ->addText('$99.99')
+    ->withContentControl([
+        'tag' => 'price_widget',
+        'alias' => 'Widget Price',
+        'inlineLevel' => true,  // REQUIRED for cell SDTs
+        'lockType' => ContentControl::LOCK_SDT_LOCKED
+    ]);
 
-$builder->addRow()
-    ->addCell(4500)->addText('Gadget')->end()
-    ->addCell(4500)
-        ->addText('$149.99')
-        ->withContentControl([
-            'tag' => 'price_gadget',
-            'alias' => 'Gadget Price',
-            'inlineLevel' => true,
-            'lockType' => ContentControl::LOCK_SDT_LOCKED
-        ])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)->addText('Gadget');
+$row->addCell(4500)
+    ->addText('$149.99')
+    ->withContentControl([
+        'tag' => 'price_gadget',
+        'alias' => 'Gadget Price',
+        'inlineLevel' => true,
+        'lockType' => ContentControl::LOCK_SDT_LOCKED
+    ]);
 
 $cc->save('table_with_cell_sdts.docx');
 ```
@@ -286,23 +272,17 @@ $builder = new TableBuilder($cc);
 
 $builder->setStyles(['borderSize' => 6]);
 
-$builder->addRow()
-    ->addCell(4500)
-        ->addText('Bold Header', ['bold' => true, 'size' => 14])
-        ->end()
-    ->addCell(4500)
-        ->addText('Italic Header', ['italic' => true, 'size' => 14])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)
+    ->addText('Bold Header', ['bold' => true, 'size' => 14]);
+$row->addCell(4500)
+    ->addText('Italic Header', ['italic' => true, 'size' => 14]);
 
-$builder->addRow()
-    ->addCell(4500)
-        ->addText('Regular text', ['size' => 11])
-        ->end()
-    ->addCell(4500)
-        ->addText('Colored text', ['color' => 'FF0000', 'size' => 11])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)
+    ->addText('Regular text', ['size' => 11]);
+$row->addCell(4500)
+    ->addText('Colored text', ['color' => 'FF0000', 'size' => 11]);
 
 $cc->save('formatted_table.docx');
 ```
@@ -319,22 +299,20 @@ $builder = new TableBuilder($cc);
 
 $builder->setStyles(['borderSize' => 6]);
 
-$builder->addRow()
-    ->addCell(9000)
-        // Use addTextRun for complex formatting within cell
-        ->addTextRun()
-            ->addText('This is ', ['size' => 11])
-            ->addText('bold', ['bold' => true, 'size' => 11])
-            ->addText(' and ', ['size' => 11])
-            ->addText('italic', ['italic' => true, 'size' => 11])
-            ->addText(' text.', ['size' => 11])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$cell = $row->addCell(9000);
+// Use addTextRun for complex formatting within cell
+$cell->addTextRun()
+    ->addText('This is ', ['size' => 11])
+    ->addText('bold', ['bold' => true, 'size' => 11])
+    ->addText(' and ', ['size' => 11])
+    ->addText('italic', ['italic' => true, 'size' => 11])
+    ->addText(' text.', ['size' => 11]);
 
 $cc->save('textrun_table.docx');
 ```
 
-**Note:** `addTextRun()` returns a PHPWord `TextRun` object (not `CellBuilder`), so you cannot chain `->end()` directly. The TextRun is automatically added to the cell.
+**Note:** `addTextRun()` returns a PHPWord `TextRun` object (not `CellBuilder`). The TextRun is automatically added to the cell.
 
 ### Example 5: Row-Level Styling
 
@@ -349,22 +327,20 @@ $builder = new TableBuilder($cc);
 $builder->setStyles(['borderSize' => 6]);
 
 // Header row with specific height and style
-$builder->addRow(500, [
-        'tblHeader' => true,      // Repeat as header on each page
-        'cantSplit' => true,      // Keep row together
-        'exactHeight' => true     // Use exact height (not minimum)
-    ])
-    ->addCell(3000)->addText('Column 1', ['bold' => true])->end()
-    ->addCell(3000)->addText('Column 2', ['bold' => true])->end()
-    ->addCell(3000)->addText('Column 3', ['bold' => true])->end()
-    ->end();
+$row = $builder->addRow(500, [
+    'tblHeader' => true,      // Repeat as header on each page
+    'cantSplit' => true,      // Keep row together
+    'exactHeight' => true     // Use exact height (not minimum)
+]);
+$row->addCell(3000)->addText('Column 1', ['bold' => true]);
+$row->addCell(3000)->addText('Column 2', ['bold' => true]);
+$row->addCell(3000)->addText('Column 3', ['bold' => true]);
 
 // Data rows with default height
-$builder->addRow()
-    ->addCell(3000)->addText('Data 1')->end()
-    ->addCell(3000)->addText('Data 2')->end()
-    ->addCell(3000)->addText('Data 3')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Data 1');
+$row->addCell(3000)->addText('Data 2');
+$row->addCell(3000)->addText('Data 3');
 
 $cc->save('styled_rows.docx');
 ```
@@ -381,19 +357,16 @@ $builder = new TableBuilder($cc);
 
 $builder->setStyles(['borderSize' => 6]);
 
-$builder->addRow()
-    ->addCell(3000, [
-            'bgColor' => 'CCCCCC',       // Background color
-            'valign' => 'center',        // Vertical alignment
-            'borderSize' => 10,          // Custom border size
-            'borderColor' => 'FF0000'    // Custom border color
-        ])
-        ->addText('Styled Cell')
-        ->end()
-    ->addCell(3000)
-        ->addText('Normal Cell')
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000, [
+        'bgColor' => 'CCCCCC',       // Background color
+        'valign' => 'center',        // Vertical alignment
+        'borderSize' => 10,          // Custom border size
+        'borderColor' => 'FF0000'    // Custom border color
+    ])
+    ->addText('Styled Cell');
+$row->addCell(3000)
+    ->addText('Normal Cell');
 
 $cc->save('styled_cells.docx');
 ```
@@ -415,15 +388,13 @@ $builder->setStyles([
     'borderColor' => '1F4788'
 ]);
 
-$builder->addRow()
-    ->addCell(4500)->addText('Product')->end()
-    ->addCell(4500)->addText('Price')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)->addText('Product');
+$row->addCell(4500)->addText('Price');
 
-$builder->addRow()
-    ->addCell(4500)->addText('Widget')->end()
-    ->addCell(4500)->addText('$99.99')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)->addText('Widget');
+$row->addCell(4500)->addText('$99.99');
 
 // 2. Open template with placeholder SDT
 $processor = new ContentProcessor('invoice_template.docx');
@@ -454,32 +425,28 @@ $builder = new TableBuilder($cc);
 
 $builder->setStyles(['borderSize' => 6]);
 
-$builder->addRow()
-    ->addCell(3000)->addText('Item')->end()
-    ->addCell(3000)->addText('Quantity')->end()
-    ->addCell(3000)->addText('Price')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Item');
+$row->addCell(3000)->addText('Quantity');
+$row->addCell(3000)->addText('Price');
 
 // Row with nested SDTs
-$builder->addRow()
-    ->addCell(3000)->addText('Product 1')->end()
-    ->addCell(3000)
-        ->addText('5')
-        ->withContentControl([
-            'tag' => 'qty_1',
-            'inlineLevel' => true,
-            'lockType' => ContentControl::LOCK_SDT_LOCKED
-        ])
-        ->end()
-    ->addCell(3000)
-        ->addText('$500')
-        ->withContentControl([
-            'tag' => 'price_1',
-            'inlineLevel' => true,
-            'lockType' => ContentControl::LOCK_SDT_LOCKED
-        ])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Product 1');
+$row->addCell(3000)
+    ->addText('5')
+    ->withContentControl([
+        'tag' => 'qty_1',
+        'inlineLevel' => true,
+        'lockType' => ContentControl::LOCK_SDT_LOCKED
+    ]);
+$row->addCell(3000)
+    ->addText('$500')
+    ->withContentControl([
+        'tag' => 'price_1',
+        'inlineLevel' => true,
+        'lockType' => ContentControl::LOCK_SDT_LOCKED
+    ]);
 
 // Inject into template
 $processor = new ContentProcessor('order_template.docx');
@@ -510,10 +477,9 @@ $builder = new TableBuilder($cc);
 $builder->setStyles(['borderSize' => 6]);
 
 // Build table
-$builder->addRow()
-    ->addCell(4500)->addText('Column 1')->end()
-    ->addCell(4500)->addText('Column 2')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(4500)->addText('Column 1');
+$row->addCell(4500)->addText('Column 2');
 
 // Add table-level GROUP SDT
 $builder->addContentControl([
@@ -556,19 +522,17 @@ $builder = new TableBuilder($cc);
 $builder->setStyles(['borderSize' => 6]);
 
 // Header row
-$builder->addRow()
-    ->addCell(3000)->addText('Name')->end()
-    ->addCell(3000)->addText('Age')->end()
-    ->addCell(3000)->addText('City')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Name');
+$row->addCell(3000)->addText('Age');
+$row->addCell(3000)->addText('City');
 
 // Data rows from array
-foreach ($data as $row) {
-    $builder->addRow()
-        ->addCell(3000)->addText($row['name'])->end()
-        ->addCell(3000)->addText((string)$row['age'])->end()
-        ->addCell(3000)->addText($row['city'])->end()
-        ->end();
+foreach ($data as $item) {
+    $row = $builder->addRow();
+    $row->addCell(3000)->addText($item['name']);
+    $row->addCell(3000)->addText((string)$item['age']);
+    $row->addCell(3000)->addText($item['city']);
 }
 
 $cc->save('dynamic_table.docx');
@@ -671,17 +635,15 @@ if ($this->table === null) {
 **Example:**
 ```php
 // Default height
-$builder->addRow()
-    ->addCell(3000)->addText('Data')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Data');
 
 // Custom height and style
-$builder->addRow(500, [
-        'tblHeader' => true,
-        'cantSplit' => true
-    ])
-    ->addCell(3000)->addText('Header')->end()
-    ->end();
+$row = $builder->addRow(500, [
+    'tblHeader' => true,
+    'cantSplit' => true
+]);
+$row->addCell(3000)->addText('Header');
 ```
 
 ---
@@ -809,31 +771,9 @@ public function addCell(int $width = 2000, array $style = []): CellBuilder
 
 **Example:**
 ```php
-$builder->addRow()
-    ->addCell(3000, ['bgColor' => 'CCCCCC', 'valign' => 'center'])
-        ->addText('Styled cell')
-        ->end()
-    ->end();
-```
-
----
-
-#### end
-
-```php
-public function end(): TableBuilder
-```
-
-**Purpose:** Return to parent `TableBuilder` for row chaining.
-
-**Returns:** `TableBuilder` instance
-
-**Example:**
-```php
-$builder->addRow()
-    ->addCell(3000)->addText('Cell 1')->end()
-    ->addCell(3000)->addText('Cell 2')->end()
-    ->end();  // Returns to TableBuilder
+$row = $builder->addRow();
+$row->addCell(3000, ['bgColor' => 'CCCCCC', 'valign' => 'center'])
+    ->addText('Styled cell');
 ```
 
 ---
@@ -864,11 +804,9 @@ public function addText(string $text, array $style = []): self
 
 **Example:**
 ```php
-$builder->addRow()
-    ->addCell(3000)
-        ->addText('Bold text', ['bold' => true, 'size' => 14])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)
+    ->addText('Bold text', ['bold' => true, 'size' => 14]);
 ```
 
 ---
@@ -888,16 +826,14 @@ public function addTextRun(array $style = []): TextRun
 
 **Example:**
 ```php
-$builder->addRow()
-    ->addCell(9000)
-        ->addTextRun()
-            ->addText('Regular ', ['size' => 11])
-            ->addText('bold', ['bold' => true, 'size' => 11])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$cell = $row->addCell(9000);
+$cell->addTextRun()
+    ->addText('Regular ', ['size' => 11])
+    ->addText('bold', ['bold' => true, 'size' => 11]);
 ```
 
-**Note:** `addTextRun()` returns `TextRun` (not `CellBuilder`), so you must call `end()` on `CellBuilder` after adding TextRun.
+**Note:** `addTextRun()` returns `TextRun` (not `CellBuilder`). The TextRun is automatically added to the cell.
 
 ---
 
@@ -923,37 +859,15 @@ public function withContentControl(array $config): self
 
 **Example:**
 ```php
-$builder->addRow()
-    ->addCell(3000)
-        ->addText('$99.99')
-        ->withContentControl([
-            'tag' => 'price_field',
-            'alias' => 'Product Price',
-            'inlineLevel' => true,  // REQUIRED
-            'lockType' => ContentControl::LOCK_SDT_LOCKED
-        ])
-        ->end()
-    ->end();
-```
-
----
-
-#### end
-
-```php
-public function end(): RowBuilder
-```
-
-**Purpose:** Return to parent `RowBuilder` for cell chaining.
-
-**Returns:** `RowBuilder` instance
-
-**Example:**
-```php
-$builder->addRow()
-    ->addCell(3000)->addText('Cell 1')->end()  // Returns to RowBuilder
-    ->addCell(3000)->addText('Cell 2')->end()
-    ->end();  // Returns to TableBuilder
+$row = $builder->addRow();
+$row->addCell(3000)
+    ->addText('$99.99')
+    ->withContentControl([
+        'tag' => 'price_field',
+        'alias' => 'Product Price',
+        'inlineLevel' => true,  // REQUIRED
+        'lockType' => ContentControl::LOCK_SDT_LOCKED
+    ]);
 ```
 
 ---
@@ -1006,10 +920,9 @@ $builder->setStyles(['borderSize' => 6]);  // Exception!
 
 **Solution:** Always call `setStyles()` before `addRow()`:
 ```php
-$builder->setStyles(['borderSize' => 6])
-    ->addRow()  // Styles applied here
-    ->addCell(3000)->addText('Data')->end()
-    ->end();
+$builder->setStyles(['borderSize' => 6]);
+$row = $builder->addRow();  // Styles applied here
+$row->addCell(3000)->addText('Data');
 ```
 
 ---
@@ -1021,7 +934,8 @@ $builder->setStyles(['borderSize' => 6])
 ```php
 $cc = new ContentControl();
 $builder = new TableBuilder($cc);
-$builder->addRow()->addCell()->end()->end();
+$row = $builder->addRow();
+$row->addCell();
 $builder->injectInto($cc, 'tag');  // Type error!
 ```
 
@@ -1051,15 +965,13 @@ $processor->save('output.docx');
 **Scenario:** Cell SDT without `inlineLevel: true`
 
 ```php
-$builder->addRow()
-    ->addCell(3000)
-        ->addText('Value')
-        ->withContentControl([
-            'tag' => 'cell_field'
-            // Missing: 'inlineLevel' => true
-        ])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)
+    ->addText('Value')
+    ->withContentControl([
+        'tag' => 'cell_field'
+        // Missing: 'inlineLevel' => true
+    ]);
 ```
 
 **Result:** SDT wrapping fails or wraps incorrect element
@@ -1088,9 +1000,8 @@ $builder->injectInto($processor, 'tag');  // No table built yet!
 **Solution:** Build table before injection:
 ```php
 $builder = new TableBuilder($cc);
-$builder->addRow()
-    ->addCell(3000)->addText('Data')->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)->addText('Data');
 $builder->injectInto($processor, 'tag');  // OK
 ```
 
@@ -1146,12 +1057,10 @@ $builder->injectInto($processor, 'placeholder_tag');
 
 ```php
 $builder = new TableBuilder($cc);
-$builder->addRow()
-    ->addCell(3000)
-        ->addText('Value')
-        ->withContentControl(['tag' => 'cell_1', 'inlineLevel' => true])
-        ->end()
-    ->end();
+$row = $builder->addRow();
+$row->addCell(3000)
+    ->addText('Value')
+    ->withContentControl(['tag' => 'cell_1', 'inlineLevel' => true]);
 
 $builder->addContentControl([
     'tag' => 'table_level',
@@ -1166,7 +1075,8 @@ $cc->save('output.docx');  // May have conflicts
 **Solution:** Use `injectInto()` for table-level SDTs:
 ```php
 // Build with both levels
-$builder->addRow()...->end();
+$row = $builder->addRow();
+// ... add cells to $row
 $builder->addContentControl([...]);
 
 // Inject (applies table-level SDT)
@@ -1229,7 +1139,6 @@ $processor->save('output.docx');
 │ - tableBuilder: TableBuilder                               │
 ├────────────────────────────────────────────────────────────┤
 │ + addCell(int, array): CellBuilder                         │
-│ + end(): TableBuilder                                      │
 └────────────────────────────────────────────────────────────┘
                   │
                   ├─────> creates
@@ -1244,7 +1153,6 @@ $processor->save('output.docx');
 │ + addText(string, array): self                             │
 │ + addTextRun(array): TextRun                               │
 │ + withContentControl(array): self                          │
-│ + end(): RowBuilder                                        │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -1281,14 +1189,7 @@ User      TableBuilder   RowBuilder   CellBuilder   ContentControl
  │   addText() │             │             │               │
  ├─────────────┼─────────────┼────────────>│               │
  │             │             │             │ cell.addText()│
- │   end()     │             │             │               │
- ├─────────────┼─────────────┼────────────>│               │
- │ <RowBuilder>│             │             │               │
- │<────────────┼─────────────┤             │               │
- │   end()     │             │             │               │
- ├─────────────┼────────────>│             │               │
- │ <TableBuilder>            │             │               │
- │<────────────┤             │             │               │
+ │             │             │             │               │
 ```
 
 ### Sequence Diagram: Template Injection Workflow
