@@ -224,30 +224,9 @@ describe('CellBuilder', function (): void {
         });
     });
 
-    describe('end()', function (): void {
-        it('returns parent RowBuilder', function (): void {
-            $tableBuilder = new TableBuilder();
-            $row = new Row(100, 'exactHeight');
-            $rowBuilder = new RowBuilder($row, $tableBuilder);
-            $cell = new Cell(2000);
-            $cellBuilder = new CellBuilder($cell, $rowBuilder, $tableBuilder);
-            
-            $returned = $cellBuilder->end();
-            
-            expect($returned)->toBe($rowBuilder);
-        });
-
-        it('returns same RowBuilder instance', function (): void {
-            $tableBuilder = new TableBuilder();
-            $row = new Row(100, 'exactHeight');
-            $rowBuilder = new RowBuilder($row, $tableBuilder);
-            $cell = new Cell(2000);
-            $cellBuilder = new CellBuilder($cell, $rowBuilder, $tableBuilder);
-            
-            $returned1 = $cellBuilder->end();
-            $returned2 = $cellBuilder->end();
-            
-            expect($returned1)->toBe($returned2);
+    describe('end() removal (v0.7.0)', function (): void {
+        it('does not have end() method (removed in v0.7.0)', function (): void {
+            expect(method_exists(CellBuilder::class, 'end'))->toBeFalse();
         });
     });
 
@@ -261,13 +240,12 @@ describe('CellBuilder', function (): void {
             $result = (new CellBuilder($cell, $rowBuilder, $tableBuilder))
                 ->withContentControl(['tag' => 'header'])
                 ->addText('Header', ['bold' => true])
-                ->addText('Subtitle', ['italic' => true])
-                ->end();
+                ->addText('Subtitle', ['italic' => true]);
             
-            expect($result)->toBe($rowBuilder);
+            expect($result)->toBeInstanceOf(CellBuilder::class);
         });
 
-        it('chains from withContentControl to addText to end', function (): void {
+        it('chains from withContentControl to addText', function (): void {
             $tableBuilder = new TableBuilder();
             $row = new Row(100, 'exactHeight');
             $rowBuilder = new RowBuilder($row, $tableBuilder);
@@ -276,10 +254,9 @@ describe('CellBuilder', function (): void {
             
             $result = $cellBuilder
                 ->withContentControl(['tag' => 'content'])
-                ->addText('Content')
-                ->end();
+                ->addText('Content');
             
-            expect($result)->toBe($rowBuilder);
+            expect($result)->toBeInstanceOf(CellBuilder::class);
             
             $registry = $tableBuilder->getContentControl()->getSDTRegistry();
             expect($registry->count())->toBe(1);

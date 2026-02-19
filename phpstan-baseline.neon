@@ -1,11 +1,26 @@
 parameters:
 	ignoreErrors:
+		# CellBuilder::$parent constructor parameter kept for backward compatibility
+		# until CellBuilder is removed in v0.8.0. The end() method that used it was removed in v0.7.0.
 		-
-			message: '#^Call to method MkGrow\\ContentControl\\Bridge\\RowBuilder\:\:end\(\) on a separate line has no effect\.$#'
-			identifier: method.resultUnused
-			count: 12
-			path: tests/Feature/FluentTableBuilderTest.php
-		
+			message: '#^Constructor of class MkGrow\\ContentControl\\Bridge\\CellBuilder has an unused parameter \$parent\.$#'
+			identifier: constructor.unusedParameter
+			count: 1
+			path: src/Bridge/CellBuilder.php
+
+		# Intentional: method_exists tests verify end() was removed in v0.7.0
+		# These tests are meant to always evaluate to false as a regression guard.
+		-
+			message: "#^Call to function method_exists\\(\\) with 'MkGrow\\\\\\\\ContentControl\\\\\\\\Bridge\\\\\\\\RowBuilder' and 'end' will always evaluate to false\\.$#"
+			identifier: function.impossibleType
+			count: 1
+			path: tests/Unit/Bridge/RowBuilderTest.php
+		-
+			message: "#^Call to function method_exists\\(\\) with 'MkGrow\\\\\\\\ContentControl\\\\\\\\Bridge\\\\\\\\CellBuilder' and 'end' will always evaluate to false\\.$#"
+			identifier: function.impossibleType
+			count: 1
+			path: tests/Unit/Bridge/CellBuilderTest.php
+
 		# Pest Framework Limitation: Dynamic group() method
 		# Pest generates test grouping methods at runtime via __call() magic method.
 		# PHPStan cannot statically analyze dynamic method calls.

@@ -343,14 +343,15 @@ describe('TableBuilder Integration', function (): void {
         $builder->setStyles([
                 'borderSize' => 6,
                 'borderColor' => '1F4788',
-            ])
-            ->addRow()
-                ->addCell(3000)->addText('Header 1')->end()
-                ->addCell(2000)->addText('Header 2');
+            ]);
 
-        $builder->addRow()
-                ->addCell(3000)->addText('Data 1')->end()
-                ->addCell(2000)->addText('Data 2');
+        $row1 = $builder->addRow();
+        $row1->addCell(3000)->addText('Header 1');
+        $row1->addCell(2000)->addText('Header 2');
+
+        $row2 = $builder->addRow();
+        $row2->addCell(3000)->addText('Data 1');
+        $row2->addCell(2000)->addText('Data 2');
         
         $tempFile = tempnam(sys_get_temp_dir(), 'test_borders_') . '.docx';
         

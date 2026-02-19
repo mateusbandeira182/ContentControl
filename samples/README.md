@@ -39,7 +39,7 @@ php samples/02-basic-table.php
 **Key Concepts:**
 - Using `TableBuilder` for table creation
 - Setting table-level styles BEFORE adding rows
-- Fluent API chaining: `addRow()->addCell()->end()`
+- Fluent API chaining: `$row = $builder->addRow(); $row->addCell()->addText()`
 - Border customization (size, color, margins)
 
 ---

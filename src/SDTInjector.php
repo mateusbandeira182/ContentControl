@@ -212,6 +212,17 @@ final class SDTInjector
             return; // Already wrapped in <w:sdt>, skip
         }
         
+        // v0.7.0: Validate runLevel compatibility before routing
+        if ($config->runLevel && !($element instanceof \PhpOffice\PhpWord\Element\Text)) {
+            $className = get_class($element);
+            $shortName = (new \ReflectionClass($element))->getShortName();
+            throw new \InvalidArgumentException(
+                "runLevel=true is only supported for Text elements, got {$className}. "
+                . "TextRun (w:p) is a paragraph container and cannot be wrapped as a run (w:r). "
+                . "Use runLevel=false (default) for {$shortName}."
+            );
+        }
+
         // NEW v0.6.0: Run-level routing (highest precedence)
         if ($config->runLevel) {
             $this->processRunLevelSDT($targetElement, $config);

@@ -32,22 +32,20 @@ $builder->setStyles([
 ]);
 
 // Build table using fluent API
-$builder
-    ->addRow()
-        ->addCell(3000)->addText('Product', ['bold' => true])->end()
-        ->addCell(2000)->addText('Quantity', ['bold' => true])->end()
-        ->addCell(2000)->addText('Price', ['bold' => true])->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Widget A')->end()
-        ->addCell(2000)->addText('10')->end()
-        ->addCell(2000)->addText('$50.00')->end()
-        ->end()
-    ->addRow()
-        ->addCell(3000)->addText('Widget B')->end()
-        ->addCell(2000)->addText('5')->end()
-        ->addCell(2000)->addText('$75.00')->end()
-        ->end();
+$row1 = $builder->addRow();
+$row1->addCell(3000)->addText('Product', ['bold' => true]);
+$row1->addCell(2000)->addText('Quantity', ['bold' => true]);
+$row1->addCell(2000)->addText('Price', ['bold' => true]);
+
+$row2 = $builder->addRow();
+$row2->addCell(3000)->addText('Widget A');
+$row2->addCell(2000)->addText('10');
+$row2->addCell(2000)->addText('$50.00');
+
+$row3 = $builder->addRow();
+$row3->addCell(3000)->addText('Widget B');
+$row3->addCell(2000)->addText('5');
+$row3->addCell(2000)->addText('$75.00');
 
 // Table is automatically added to the document during build
 // No need to inject - it's already part of contentControl

@@ -76,26 +76,9 @@ describe('RowBuilder', function (): void {
         });
     });
 
-    describe('end()', function (): void {
-        it('returns parent TableBuilder', function (): void {
-            $tableBuilder = new TableBuilder();
-            $row = new Row(100, 'exactHeight');
-            $rowBuilder = new RowBuilder($row, $tableBuilder);
-            
-            $returned = $rowBuilder->end();
-            
-            expect($returned)->toBe($tableBuilder);
-        });
-
-        it('returns same TableBuilder instance', function (): void {
-            $tableBuilder = new TableBuilder();
-            $row = new Row(100, 'exactHeight');
-            $rowBuilder = new RowBuilder($row, $tableBuilder);
-            
-            $returned1 = $rowBuilder->end();
-            $returned2 = $rowBuilder->end();
-            
-            expect($returned1)->toBe($returned2);
+    describe('end() removal (v0.7.0)', function (): void {
+        it('does not have end() method (removed in v0.7.0)', function (): void {
+            expect(method_exists(RowBuilder::class, 'end'))->toBeFalse();
         });
     });
 
@@ -105,31 +88,11 @@ describe('RowBuilder', function (): void {
             $row = new Row(100, 'exactHeight');
             $rowBuilder = new RowBuilder($row, $tableBuilder);
             
-            // addCell() returns CellBuilder, need to call end() to get back to RowBuilder
-            // Then end() on RowBuilder returns TableBuilder
-            $result = $rowBuilder
-                ->addCell(2000)
-                    ->addText('Cell 1')
-                    ->end()  // Returns RowBuilder
-                ->addCell(3000)
-                    ->addText('Cell 2')
-                    ->end()  // Returns RowBuilder
-                ->end();     // Returns TableBuilder
+            // addCell() returns CellBuilder, chain addText() on it
+            $rowBuilder->addCell(2000)->addText('Cell 1');
+            $rowBuilder->addCell(3000)->addText('Cell 2');
             
-            expect($result)->toBe($tableBuilder);
-        });
-
-        it('can chain cell creation and end() call', function (): void {
-            $tableBuilder = new TableBuilder();
-            $row = new Row(100, 'exactHeight');
-            $rowBuilder = new RowBuilder($row, $tableBuilder);
-            
-            $result = $rowBuilder
-                ->addCell(1000)
-                ->end()
-                ->end();
-            
-            expect($result)->toBe($tableBuilder);
+            expect($rowBuilder)->toBeInstanceOf(RowBuilder::class);
         });
     });
 

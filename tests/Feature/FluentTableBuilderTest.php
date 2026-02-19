@@ -12,15 +12,13 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             $builder = new TableBuilder();
 
             // Create table using fluent API
-            $builder->addRow()
-                ->addCell(3000)->addText('Product')->end()
-                ->addCell(2000)->addText('Price')->end()
-                ->end();
+            $row1 = $builder->addRow();
+            $row1->addCell(3000)->addText('Product');
+            $row1->addCell(2000)->addText('Price');
 
-            $builder->addRow()
-                ->addCell(3000)->addText('Widget A')->end()
-                ->addCell(2000)->addText('$9.99')->end()
-                ->end();
+            $row2 = $builder->addRow();
+            $row2->addCell(3000)->addText('Widget A');
+            $row2->addCell(2000)->addText('$9.99');
 
             // Save to temp file
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_test_') . '.docx';
@@ -49,10 +47,9 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
         it('creates table with row styling', function () {
             $builder = new TableBuilder();
 
-            $builder->addRow(720, ['tblHeader' => true])
-                ->addCell(3000)->addText('Column 1')->end()
-                ->addCell(3000)->addText('Column 2')->end()
-                ->end();
+            $row = $builder->addRow(720, ['tblHeader' => true]);
+            $row->addCell(3000)->addText('Column 1');
+            $row->addCell(3000)->addText('Column 2');
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_style_test_') . '.docx';
             $builder->getContentControl()->save($tempFile);
@@ -68,14 +65,11 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
         it('creates table with cell styling', function () {
             $builder = new TableBuilder();
 
-            $builder->addRow()
-                ->addCell(3000, ['bgColor' => 'CCCCCC'])
-                    ->addText('Header Cell', ['bold' => true])
-                    ->end()
-                ->addCell(3000, ['valign' => 'center'])
-                    ->addText('Regular Cell')
-                    ->end()
-                ->end();
+            $row = $builder->addRow();
+            $row->addCell(3000, ['bgColor' => 'CCCCCC'])
+                    ->addText('Header Cell', ['bold' => true]);
+            $row->addCell(3000, ['valign' => 'center'])
+                    ->addText('Regular Cell');
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_cell_style_test_') . '.docx';
             $builder->getContentControl()->save($tempFile);
@@ -93,16 +87,13 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
         it('preserves cell-level SDTs created via withContentControl', function () {
             $builder = new TableBuilder();
 
-            $builder->addRow()
-                ->addCell(3000)
+            $row = $builder->addRow();
+            $row->addCell(3000)
                     ->withContentControl(['tag' => 'product-name', 'alias' => 'Product Name'])
-                    ->addText('Sample Product')
-                    ->end()
-                ->addCell(2000)
+                    ->addText('Sample Product');
+            $row->addCell(2000)
                     ->withContentControl(['tag' => 'product-price', 'alias' => 'Product Price'])
-                    ->addText('$19.99')
-                    ->end()
-                ->end();
+                    ->addText('$19.99');
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_sdt_test_') . '.docx';
             $builder->getContentControl()->save($tempFile);
@@ -128,16 +119,13 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
         it('preserves multiple cell-level SDTs in same table', function () {
             $builder = new TableBuilder();
 
-            $builder->addRow()
-                ->addCell(3000)
+            $row = $builder->addRow();
+            $row->addCell(3000)
                     ->withContentControl(['tag' => 'cell-1'])
-                    ->addText('Data 1')
-                    ->end()
-                ->addCell(2000)
+                    ->addText('Data 1');
+            $row->addCell(2000)
                     ->withContentControl(['tag' => 'cell-2'])
-                    ->addText('Data 2')
-                    ->end()
-                ->end();
+                    ->addText('Data 2');
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_multi_cell_sdt_test_') . '.docx';
             $builder->getContentControl()->save($tempFile);
@@ -174,14 +162,13 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Create table with fluent API
             $builder = new TableBuilder();
-            $builder->addRow()
-                ->addCell(3000)->addText('Name')->end()
-                ->addCell(2000)->addText('Value')->end()
-                ->end();
-            $builder->addRow()
-                ->addCell(3000)->addText('Item A')->end()
-                ->addCell(2000)->addText('123')->end()
-                ->end();
+            $row1 = $builder->addRow();
+            $row1->addCell(3000)->addText('Name');
+            $row1->addCell(2000)->addText('Value');
+
+            $row2 = $builder->addRow();
+            $row2->addCell(3000)->addText('Item A');
+            $row2->addCell(2000)->addText('123');
 
             // Inject into template
             $processor = new ContentProcessor($templatePath);
@@ -256,24 +243,21 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
 
             // Create table with cell-level SDTs only (no table-level SDT)
             $builder = new TableBuilder();
-            $builder->addRow()
-                ->addCell(3000)
+            $row = $builder->addRow();
+            $row->addCell(3000)
                     ->withContentControl([
                         'tag' => 'product-1',
                         'alias' => 'Product',
                         'inlineLevel' => true,
                     ])
-                    ->addText('Widget A')
-                    ->end()
-                ->addCell(2000)
+                    ->addText('Widget A');
+            $row->addCell(2000)
                     ->withContentControl([
                         'tag' => 'price-1',
                         'alias' => 'Price',
                         'inlineLevel' => true,
                     ])
-                    ->addText('$99.99')
-                    ->end()
-                ->end();
+                    ->addText('$99.99');
 
             // Inject into template
             $processor = new ContentProcessor($templatePath);
@@ -327,28 +311,23 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             $builder = new TableBuilder();
 
             // Header row
-            $builder->addRow(360)
-                ->addCell(2000)->addText('Product', ['bold' => true])->end()
-                ->addCell(1500)->addText('Quantity', ['bold' => true])->end()
-                ->addCell(1500)->addText('Price', ['bold' => true])->end()
-                ->end();
+            $headerRow = $builder->addRow(360);
+            $headerRow->addCell(2000)->addText('Product', ['bold' => true]);
+            $headerRow->addCell(1500)->addText('Quantity', ['bold' => true]);
+            $headerRow->addCell(1500)->addText('Price', ['bold' => true]);
 
             // Data rows with SDTs
             for ($i = 1; $i <= 3; $i++) {
-                $builder->addRow()
-                    ->addCell(2000)
+                $dataRow = $builder->addRow();
+                $dataRow->addCell(2000)
                         ->withContentControl(['tag' => "product-{$i}"])
-                        ->addText("Product {$i}")
-                        ->end()
-                    ->addCell(1500)
+                        ->addText("Product {$i}");
+                $dataRow->addCell(1500)
                         ->withContentControl(['tag' => "qty-{$i}"])
-                        ->addText((string) ($i * 10))
-                        ->end()
-                    ->addCell(1500)
+                        ->addText((string) ($i * 10));
+                $dataRow->addCell(1500)
                         ->withContentControl(['tag' => "price-{$i}"])
-                        ->addText("\${$i}9.99")
-                        ->end()
-                    ->end();
+                        ->addText("\${$i}9.99");
             }
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_complex_') . '.docx';
@@ -380,28 +359,22 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
             $builder = new TableBuilder();
 
             // Complex chaining without table-level SDT
-            $result = $builder
-                ->addRow(720)
-                    ->addCell(3000, ['bgColor' => 'E0E0E0'])
-                        ->addText('Header 1', ['bold' => true, 'size' => 14])
-                        ->end()
-                    ->addCell(3000, ['bgColor' => 'E0E0E0'])
-                        ->addText('Header 2', ['bold' => true, 'size' => 14])
-                        ->end()
-                    ->end()
-                ->addRow()
-                    ->addCell(3000)
+            $row1 = $builder->addRow(720);
+            $row1->addCell(3000, ['bgColor' => 'E0E0E0'])
+                        ->addText('Header 1', ['bold' => true, 'size' => 14]);
+            $row1->addCell(3000, ['bgColor' => 'E0E0E0'])
+                        ->addText('Header 2', ['bold' => true, 'size' => 14]);
+
+            $row2 = $builder->addRow();
+            $row2->addCell(3000)
                         ->withContentControl(['tag' => 'data-1'])
-                        ->addText('Cell 1')
-                        ->end()
-                    ->addCell(3000)
+                        ->addText('Cell 1');
+            $row2->addCell(3000)
                         ->withContentControl(['tag' => 'data-2'])
-                        ->addText('Cell 2')
-                        ->end()
-                    ->end();
+                        ->addText('Cell 2');
 
             // Result should be TableBuilder instance
-            expect($result)->toBeInstanceOf(TableBuilder::class);
+            expect($builder)->toBeInstanceOf(TableBuilder::class);
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_chain_') . '.docx';
             $builder->getContentControl()->save($tempFile);
@@ -417,14 +390,12 @@ describe('FluentTableBuilderTest - Fluent API Integration', function () {
         it('handles multiple addText calls with separate SDTs', function () {
             $builder = new TableBuilder();
 
-            $builder->addRow()
-                ->addCell(5000)
+            $row = $builder->addRow();
+            $row->addCell(5000)
                     ->withContentControl(['tag' => 'text-1'])
                     ->addText('First text')
                     ->withContentControl(['tag' => 'text-2'])
-                    ->addText('Second text')
-                    ->end()
-                ->end();
+                    ->addText('Second text');
 
             $tempFile = tempnam(sys_get_temp_dir(), 'fluent_multi_text_') . '.docx';
             $builder->getContentControl()->save($tempFile);

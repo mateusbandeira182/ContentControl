@@ -15,14 +15,9 @@ use PhpOffice\PhpWord\Element\Row;
  * Usage Example:
  * ```php
  * $builder = new TableBuilder();
- * $builder->addRow()
- *     ->addCell(2000)
- *         ->addText('Header 1')
- *         ->end()
- *     ->addCell(2000)
- *         ->addText('Header 2')
- *         ->end()
- *     ->end();
+ * $row = $builder->addRow();
+ * $row->addCell(2000)->addText('Header 1');
+ * $row->addCell(2000)->addText('Header 2');
  * ```
  *
  * @package MkGrow\ContentControl\Bridge
@@ -40,14 +35,6 @@ final class RowBuilder
      * @internal
      */
     private static bool $addCellWarned = false;
-
-    /**
-     * Flag: whether end() deprecation was already emitted
-     *
-     * @var bool
-     * @internal
-     */
-    private static bool $endWarned = false;
 
     /**
      * The PhpWord Row element being built
@@ -84,9 +71,8 @@ final class RowBuilder
      *
      * Example:
      * ```php
-     * $rowBuilder->addCell(2000, ['bgColor' => 'CCCCCC'])
-     *     ->addText('Cell content')
-     *     ->end();
+     * $cell = $rowBuilder->addCell(2000, ['bgColor' => 'CCCCCC']);
+     * $cell->addText('Cell content');
      * ```
      *
      * @param int $width Cell width in twips (1/1440 inch)
@@ -115,41 +101,6 @@ final class RowBuilder
     }
 
     /**
-     * Ends row building and returns to parent TableBuilder
-     *
-     * @deprecated Since v0.5.1, will be removed in v0.7.0
-     *             The end() method pattern is foreign to PHPWord conventions.
-     *             Recommended: Use end() calls until v0.6.0 introduces optional auto-close.
-     *             Migration timeline: v0.7.0 (H1 2027) will remove this method entirely.
-     *
-     * Completes the current row and returns the parent TableBuilder,
-     * allowing you to add more rows or finalize the table.
-     *
-     * Example:
-     * ```php
-     * $tableBuilder = $rowBuilder->end();
-     * $tableBuilder->addRow(); // Add another row
-     * ```
-     *
-     * @return TableBuilder The parent TableBuilder instance
-     */
-    public function end(): TableBuilder
-    {
-        // Emit deprecation warning (only once per script execution to avoid log spam)
-        if (!self::$endWarned) {
-            trigger_error(
-                'RowBuilder::end() is deprecated since v0.5.1 and will be removed in v0.7.0. ' .
-                'Continue using end() for now. In v0.6.0, end() will become optional (auto-close pattern). ' .
-                'Full removal planned for v0.7.0 (18-month deprecation window).',
-                E_USER_DEPRECATED
-            );
-            self::$endWarned = true;
-        }
-        
-        return $this->parent;
-    }
-
-    /**
      * Reset deprecation warning flags (for testing only)
      *
      * @internal This method is intended for test cleanup only.
@@ -160,6 +111,5 @@ final class RowBuilder
     public static function resetDeprecationFlags(): void
     {
         self::$addCellWarned = false;
-        self::$endWarned = false;
     }
 }
