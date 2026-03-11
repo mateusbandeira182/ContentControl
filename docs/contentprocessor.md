@@ -25,7 +25,7 @@ ContentProcessor serves as the entry point for template-based document workflows
 1. **Form Filling** - Replace placeholder SDTs with user data
 2. **Template Processing** - Batch process documents from master template
 3. **Dynamic Content Injection** - Replace GROUP SDTs with complex structures
-4. **Document Finalization** - Clear all SDT content and lock document
+4. **Document Finalization** - Unwrap all SDTs (preserving content) and lock document
 
 ### Design Patterns
 
@@ -277,7 +277,7 @@ foreach ($customers as $customer) {
 
 **Important:** Must create new `ContentProcessor` instance for each iteration. ZIP is closed after `save()`, making instance unusable for further modifications.
 
-### Example 6: Clear All SDT Content and Lock Document
+### Example 6: Unwrap All SDTs and Lock Document
 
 ```php
 <?php
@@ -285,17 +285,17 @@ use MkGrow\ContentControl\ContentProcessor;
 
 $processor = new ContentProcessor('template.docx');
 
-// Clear all SDT content and lock document
-$clearedCount = $processor->removeAllControlContents(true);
+// Unwrap all SDTs (preserve content) and lock document
+$unwrappedCount = $processor->removeAllControlContents(true);
 
-echo "Cleared {$clearedCount} Content Controls\n";
+echo "Unwrapped {$unwrappedCount} Content Controls\n";
 
 $processor->save('locked_template.docx');
 ```
 
 **Parameters:**
-- `$block = false` - Only clear SDT content
-- `$block = true` - Clear content AND add document protection
+- `$block = false` - Only unwrap SDTs (content stays in document)
+- `$block = true` - Unwrap SDTs AND add document protection
 
 **Document Protection:**
 Adds to `word/settings.xml`:
@@ -303,7 +303,7 @@ Adds to `word/settings.xml`:
 <w:documentProtection w:edit="readOnly" w:enforcement="1"/>
 ```
 
-**Use Case:** Template finalization - clear all fields and prevent editing
+**Use Case:** Template finalization - remove SDT wrappers while keeping visible content, and optionally prevent editing.
 
 ### Example 7: In-Place File Update
 
@@ -662,16 +662,19 @@ $processor->removeContent('field_to_clear');
 public function removeAllControlContents(bool $block = false): int
 ```
 
-**Purpose:** Clear all SDT content across document, headers, footers. Optionally lock document.
+**Purpose:** Unwrap all SDTs across document, headers, and footers, preserving visible content. Optionally lock document.
 
 **Parameters:**
-- `$block` - If `true`, add read-only document protection
+- `$block` - If `true`, add read-only document protection after unwrapping
 
-**Returns:** Count of SDTs cleared
+**Returns:** Count of SDTs unwrapped
 
 **Behavior:**
 1. Process `word/document.xml`, all headers, all footers
-2. For each SDT: clear `<w:sdtContent>` children
+2. For each SDT (inner-first order for nested SDTs):
+   - Promote `<w:sdtContent>` children to the SDT's parent node
+   - Remove the `<w:sdt>` wrapper from the DOM
+   - SDTs without `<w:sdtContent>` are removed directly
 3. If `$block = true`:
    - Load or create `word/settings.xml`
    - Add `<w:documentProtection w:edit="readOnly" w:enforcement="1"/>`
@@ -679,16 +682,18 @@ public function removeAllControlContents(bool $block = false): int
 
 **Example:**
 ```php
-// Clear content only
+// Unwrap SDTs only (content preserved in document)
 $count = $processor->removeAllControlContents();
-echo "Cleared {$count} SDTs\n";
+echo "Unwrapped {$count} SDTs\n";
 
-// Clear and lock document
+// Unwrap SDTs and lock document
 $count = $processor->removeAllControlContents(true);
-echo "Cleared and locked {$count} SDTs\n";
+echo "Unwrapped and locked {$count} SDTs\n";
 ```
 
-**Use Case:** Finalize template for distribution - empty all fields and prevent editing.
+**Use Case:** Finalize template for distribution - remove SDT wrappers so content becomes plain document text, optionally prevent editing.
+
+**Note:** This differs from `removeContent()`, which empties a specific SDT's content while preserving the SDT structure.
 
 ---
 

@@ -873,21 +873,22 @@ final class ContentProcessor
     }
 
     /**
-     * Remove all Content Controls from document
+     * Unwrap all Structured Document Tags (SDTs) from document
      *
-     * Searches all XML files (document, headers, footers) and removes
-     * <w:sdtContent> content from all SDTs. Optionally blocks editing
-     * by adding document protection.
+     * Searches all XML files (document, headers, footers) and unwraps
+     * every SDT by promoting <w:sdtContent> children to the parent node
+     * and removing the <w:sdt> wrapper. Visible content is preserved in
+     * the document. Optionally adds document protection after unwrapping.
      *
      * @param bool $block If true, adds readOnly protection to document
      *
-     * @return int Count of SDTs removed
+     * @return int Count of SDTs unwrapped
      *
      * @example
      * ```php
-     * // Remove all SDT contents and block editing
+     * // Unwrap all SDTs and block editing
      * $count = $processor->removeAllControlContents(true);
-     * echo "Removed {$count} Content Controls";
+     * echo "Unwrapped {$count} Content Controls";
      * ```
      */
     public function removeAllControlContents(bool $block = false): int
@@ -916,11 +917,17 @@ final class ContentProcessor
     }
 
     /**
-     * Remove all SDTs in specific file
+     * Unwrap all SDTs in a specific XML file
      *
-     * @param string $xmlPath Relative path in ZIP
+     * Finds every <w:sdt> element via XPath, processes them inner-first
+     * (via array_reverse) to safely handle nested SDTs, and for each one:
+     * promotes <w:sdtContent> children to the SDT's parent node using
+     * insertBefore(), then removes the <w:sdt> wrapper. SDTs without
+     * <w:sdtContent> are removed directly as invalid artifacts.
      *
-     * @return int Count of SDTs removed
+     * @param string $xmlPath Relative path in ZIP (e.g. 'word/document.xml')
+     *
+     * @return int Count of SDTs unwrapped
      */
     private function removeAllSdtsInFile(string $xmlPath): int
     {
