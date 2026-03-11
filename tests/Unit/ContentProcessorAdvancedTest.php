@@ -228,11 +228,10 @@ XML;
     });
 
     describe('removeAllControlContents()', function () {
-        it('removes all SDT contents from document', function () {
+        it('unwraps all SDTs preserving content', function () {
             $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.docx';
-            $ids = [100, 101, 102];
             $tags = ['sdt1', 'sdt2', 'sdt3'];
-            
+
             createDocxWithMultipleSdts($tempFile, $tags);
 
             $processor = new ContentProcessor($tempFile);
@@ -242,17 +241,18 @@ XML;
 
             $processor->save();
 
-            // Verify all contents removed
             $zip = new ZipArchive();
             $zip->open($tempFile);
             $xml = $zip->getFromName('word/document.xml');
             $zip->close();
 
-            expect($xml)->not->toContain('Content for sdt1');
-            expect($xml)->not->toContain('Content for sdt2');
-            expect($xml)->not->toContain('Content for sdt3');
+            expect($xml)->toBeValidXml();
+            expect($xml)->not->toContain('<w:sdt');
+            expect($xml)->toContain('Content for sdt1');
+            expect($xml)->toContain('Content for sdt2');
+            expect($xml)->toContain('Content for sdt3');
 
-            if(file_exists($tempFile)) unlink($tempFile);
+            safeUnlink($tempFile);
         });
 
         it('adds document protection when block=true', function () {

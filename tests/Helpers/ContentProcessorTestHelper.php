@@ -120,6 +120,60 @@ XML;
 }
 
 /**
+ * Create DOCX with nested SDTs (outer wrapping inner)
+ *
+ * Builds a minimal DOCX with one outer SDT whose sdtContent contains one
+ * inner SDT with a paragraph. Used to verify inner-first unwrap ordering.
+ *
+ * @param string $path      File path
+ * @param string $outerTag  Tag value for the outer SDT
+ * @param string $innerTag  Tag value for the inner SDT
+ * @param string $innerText Text content inside the inner SDT
+ * @return void
+ */
+function createDocxWithNestedSdts(
+    string $path,
+    string $outerTag = 'outer-tag',
+    string $innerTag = 'inner-tag',
+    string $innerText = 'Inner text'
+): void {
+    $escapedOuterTag = htmlspecialchars($outerTag, ENT_XML1, 'UTF-8');
+    $escapedInnerTag = htmlspecialchars($innerTag, ENT_XML1, 'UTF-8');
+    $escapedInnerText = htmlspecialchars($innerText, ENT_XML1, 'UTF-8');
+
+    $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:sdt>
+            <w:sdtPr>
+                <w:id w:val="10000000"/>
+                <w:tag w:val="{$escapedOuterTag}"/>
+            </w:sdtPr>
+            <w:sdtContent>
+                <w:sdt>
+                    <w:sdtPr>
+                        <w:id w:val="10000001"/>
+                        <w:tag w:val="{$escapedInnerTag}"/>
+                    </w:sdtPr>
+                    <w:sdtContent>
+                        <w:p>
+                            <w:r>
+                                <w:t>{$escapedInnerText}</w:t>
+                            </w:r>
+                        </w:p>
+                    </w:sdtContent>
+                </w:sdt>
+            </w:sdtContent>
+        </w:sdt>
+    </w:body>
+</w:document>
+XML;
+
+    createDocxFromXml($path, $xml);
+}
+
+/**
  * Create DOCX from XML content
  *
  * @param string $path File path

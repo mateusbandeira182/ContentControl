@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.1] - 2026-03-11
+
+### Fixed
+
+- `ContentProcessor::removeAllControlContents()` now unwraps SDT structures instead of clearing `w:sdtContent`, preserving visible document content.
+- `ContentProcessor::removeAllSdtsInFile()` now removes orphan SDTs without `w:sdtContent` and keeps deterministic SDT removal count.
+
+### Changed
+
+- SDT unwrap processing now runs inner-first (`array_reverse`) to handle nested SDTs safely.
+- `ContentProcessor` PHPDoc and `docs/contentprocessor.md` now document unwrap semantics and finalization workflow accurately.
+
+### Testing
+
+- Rewrote tests that previously validated the buggy behavior and added edge-case coverage for nested SDTs, missing `w:sdtContent`, empty `w:sdtContent`, and XML validity after unwrap.
+- Current suite status: 559 passed, 3 skipped, 0 failures; PHPStan level 9: 0 errors.
+
+See [detailed changelog](docs/0.x/CHANGELOG-v0.7.1.md) for full information.
+
+---
+
 ## [0.6.0] - 2026-02-16
 
 ### Added

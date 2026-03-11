@@ -873,21 +873,22 @@ final class ContentProcessor
     }
 
     /**
-     * Remove all Content Controls from document
+     * Unwrap all Structured Document Tags (SDTs) from document
      *
-     * Searches all XML files (document, headers, footers) and removes
-     * <w:sdtContent> content from all SDTs. Optionally blocks editing
-     * by adding document protection.
+     * Searches all XML files (document, headers, footers) and unwraps
+     * every SDT by promoting <w:sdtContent> children to the parent node
+     * and removing the <w:sdt> wrapper. Visible content is preserved in
+     * the document. Optionally adds document protection after unwrapping.
      *
      * @param bool $block If true, adds readOnly protection to document
      *
-     * @return int Count of SDTs removed
+     * @return int Count of SDTs unwrapped
      *
      * @example
      * ```php
-     * // Remove all SDT contents and block editing
+     * // Unwrap all SDTs and block editing
      * $count = $processor->removeAllControlContents(true);
-     * echo "Removed {$count} Content Controls";
+     * echo "Unwrapped {$count} Content Controls";
      * ```
      */
     public function removeAllControlContents(bool $block = false): int
@@ -916,11 +917,17 @@ final class ContentProcessor
     }
 
     /**
-     * Remove all SDTs in specific file
+     * Unwrap all SDTs in a specific XML file
      *
-     * @param string $xmlPath Relative path in ZIP
+     * Finds every <w:sdt> element via XPath, processes them inner-first
+     * (via array_reverse) to safely handle nested SDTs, and for each one:
+     * promotes <w:sdtContent> children to the SDT's parent node using
+     * insertBefore(), then removes the <w:sdt> wrapper. SDTs without
+     * <w:sdtContent> are removed directly as invalid artifacts.
      *
-     * @return int Count of SDTs removed
+     * @param string $xmlPath Relative path in ZIP (e.g. 'word/document.xml')
+     *
+     * @return int Count of SDTs unwrapped
      */
     private function removeAllSdtsInFile(string $xmlPath): int
     {
@@ -944,6 +951,9 @@ final class ContentProcessor
             $sdtArray[] = $node;
         }
 
+        // Process inner-first to safely unwrap nested SDTs
+        $sdtArray = array_reverse($sdtArray);
+
         $count = 0;
         foreach ($sdtArray as $sdtNode) {
             if (!$sdtNode instanceof \DOMElement) {
@@ -952,34 +962,46 @@ final class ContentProcessor
 
             // PHP 8.2 compatibility: Skip if node was already removed (nested SDT case)
             // Accessing properties on a removed node throws Error in PHP 8.2
+            $sdtContent = null;
             try {
                 $owner = $sdtNode->ownerDocument;
                 $parent = $sdtNode->parentNode;
-                
+
                 if ($owner === null || $parent === null) {
                     continue;
                 }
-                
-                // Find <w:sdtContent> using getElementsByTagNameNS
+
+                // Scan direct children only — getElementsByTagNameNS() walks all descendants,
+                // so an orphan SDT (no direct sdtContent) would be mis-identified as valid
+                // whenever a nested SDT inside it owns a sdtContent node.
                 // @phpstan-ignore-next-line catch.neverThrown (Error is thrown in PHP 8.2 for removed nodes)
-                $sdtContentNodes = $sdtNode->getElementsByTagNameNS(self::WORDML_NAMESPACE, 'sdtContent');
+                foreach ($sdtNode->childNodes as $child) {
+                    if ($child instanceof \DOMElement
+                        && $child->namespaceURI === self::WORDML_NAMESPACE
+                        && $child->localName === 'sdtContent'
+                    ) {
+                        $sdtContent = $child;
+                        break;
+                    }
+                }
             } catch (\Error $e) {
                 // Node no longer exists in document (was removed as nested SDT)
                 continue;
             }
-            if ($sdtContentNodes->length === 0) {
+            if ($sdtContent === null) {
+                // SDT without a direct sdtContent child is an invalid artifact — remove it
+                $parent->removeChild($sdtNode);
+                $count++;
                 continue;
             }
 
-            $sdtContent = $sdtContentNodes->item(0);
-            if (!$sdtContent instanceof \DOMElement) {
-                continue;
-            }
-
-            // Remove all children
+            // Unwrap: promote sdtContent children to the sdt's parent node
             while ($sdtContent->firstChild) {
-                $sdtContent->removeChild($sdtContent->firstChild);
+                $parent->insertBefore($sdtContent->firstChild, $sdtNode);
             }
+
+            // Remove the now-empty <w:sdt> wrapper
+            $parent->removeChild($sdtNode);
 
             $count++;
         }
