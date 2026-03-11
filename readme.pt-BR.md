@@ -1,6 +1,6 @@
 # ContentControl
 
-> Leia em ingles: [README.md](README.md)
+> Leia em inglês: [README.md](README.md)
 
 [![Build Status](https://github.com/mateusbandeira182/ContentControl/workflows/CI/badge.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
 [![Code Coverage](https://img.shields.io/badge/coverage-82.2%25-green.svg)](coverage/html/index.html)
