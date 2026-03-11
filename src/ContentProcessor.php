@@ -962,30 +962,36 @@ final class ContentProcessor
 
             // PHP 8.2 compatibility: Skip if node was already removed (nested SDT case)
             // Accessing properties on a removed node throws Error in PHP 8.2
+            $sdtContent = null;
             try {
                 $owner = $sdtNode->ownerDocument;
                 $parent = $sdtNode->parentNode;
-                
+
                 if ($owner === null || $parent === null) {
                     continue;
                 }
-                
-                // Find <w:sdtContent> using getElementsByTagNameNS
+
+                // Scan direct children only — getElementsByTagNameNS() walks all descendants,
+                // so an orphan SDT (no direct sdtContent) would be mis-identified as valid
+                // whenever a nested SDT inside it owns a sdtContent node.
                 // @phpstan-ignore-next-line catch.neverThrown (Error is thrown in PHP 8.2 for removed nodes)
-                $sdtContentNodes = $sdtNode->getElementsByTagNameNS(self::WORDML_NAMESPACE, 'sdtContent');
+                foreach ($sdtNode->childNodes as $child) {
+                    if ($child instanceof \DOMElement
+                        && $child->namespaceURI === self::WORDML_NAMESPACE
+                        && $child->localName === 'sdtContent'
+                    ) {
+                        $sdtContent = $child;
+                        break;
+                    }
+                }
             } catch (\Error $e) {
                 // Node no longer exists in document (was removed as nested SDT)
                 continue;
             }
-            if ($sdtContentNodes->length === 0) {
-                // SDT without sdtContent is an invalid artifact — remove it
+            if ($sdtContent === null) {
+                // SDT without a direct sdtContent child is an invalid artifact — remove it
                 $parent->removeChild($sdtNode);
                 $count++;
-                continue;
-            }
-
-            $sdtContent = $sdtContentNodes->item(0);
-            if (!$sdtContent instanceof \DOMElement) {
                 continue;
             }
 

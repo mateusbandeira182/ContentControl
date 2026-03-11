@@ -227,6 +227,63 @@ XML
         expect($xml)->toContain('Normal text');
     });
 
+    test('removeAllSdtsInFile treats orphan outer SDT as invalid even when nested SDT has sdtContent', function () {
+        // Regression test for: getElementsByTagNameNS() returns descendants, not direct children.
+        // An outer SDT with NO direct w:sdtContent but with a nested inner SDT that HAS sdtContent
+        // must be treated as a true orphan and removed — not unwrapped using the inner node.
+        createDocxFromXml($this->tempFile, <<<XML
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:sdt>
+            <w:sdtPr>
+                <w:id w:val="10000000"/>
+                <w:tag w:val="outer-orphan"/>
+            </w:sdtPr>
+            <w:sdt>
+                <w:sdtPr>
+                    <w:id w:val="10000001"/>
+                    <w:tag w:val="inner"/>
+                </w:sdtPr>
+                <w:sdtContent>
+                    <w:p><w:r><w:t>Inner text</w:t></w:r></w:p>
+                </w:sdtContent>
+            </w:sdt>
+        </w:sdt>
+        <w:p><w:r><w:t>Normal text</w:t></w:r></w:p>
+    </w:body>
+</w:document>
+XML
+        );
+
+        $processor = new ContentProcessor($this->tempFile);
+
+        $reflection = new ReflectionClass($processor);
+        $method = $reflection->getMethod('removeAllSdtsInFile');
+        $method->setAccessible(true);
+
+        // Both SDTs should be removed: outer orphan (no direct sdtContent) and inner (valid unwrap)
+        $count = $method->invoke($processor, 'word/document.xml');
+
+        expect($count)->toBe(2);
+
+        $processor->save();
+
+        $zip = new ZipArchive();
+        $zip->open($this->tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toBeValidXml();
+        expect($xml)->not->toContain('<w:sdt');
+        // Outer orphan is correctly identified as invalid: no direct w:sdtContent child.
+        // With direct-child scan, the inner SDT's sdtContent does NOT fool the orphan check.
+        // Inner SDT is unwrapped first (inner-first order), its paragraph promoted into outer.
+        // Then outer is detected as orphan (no direct sdtContent) and removed along with its children.
+        expect($xml)->not->toContain('Inner text');
+        expect($xml)->toContain('Normal text');
+    });
+
     test('removeAllSdtsInFile removes SDT with empty sdtContent', function () {
         createDocxFromXml($this->tempFile, <<<XML
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
