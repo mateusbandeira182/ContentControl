@@ -2,11 +2,13 @@
 
 [![Build Status](https://github.com/mateusbandeira182/ContentControl/workflows/CI/badge.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
 [![Code Coverage](https://img.shields.io/badge/coverage-82.2%25-green.svg)](coverage/html/index.html)
-[![Tests](https://img.shields.io/badge/tests-535%20passed-brightgreen.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
+[![Tests](https://img.shields.io/badge/tests-559%20passed-brightgreen.svg)](https://github.com/mateusbandeira182/ContentControl/actions)
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](phpstan.neon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF.svg)](https://php.net)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.1-blue.svg)](CHANGELOG.md)
+
+Portuguese version: [readme.pt-BR.md](readme.pt-BR.md)
 
 **ContentControl** is a PHP library that extends [PHPOffice/PHPWord](https://github.com/PHPOffice/PHPWord) to add Word Content Controls (Structured Document Tags/SDTs) to .docx files. It enables document-level content protection and metadata tagging conforming to **ISO/IEC 29500-1:2016 §17.5.2**.
 
@@ -137,6 +139,7 @@ For more examples, see the [samples/](samples/) directory.
 - **Template Processing:** Modify existing DOCX files with XPath-based SDT location
 - **Run-Level SDT Wrapping:** Wrap individual `<w:r>` text runs with Content Controls (v0.6.0+)
 - **TableBuilder v2:** Direct PHPWord Table API with `addContentControl()` delegation (v0.6.0+)
+- **SDT Unwrap Finalization:** Remove SDT wrappers while preserving visible content via `removeAllControlContents()` (v0.7.1+)
 - **GROUP SDT Replacement:** Replace placeholder SDTs with complex multi-element structures
 - **Header/Footer Support:** Add Content Controls to headers and footers (v0.2.0+)
 - **UUID v5 Hashing:** Zero-collision element identification for template injection (v0.4.2+)
@@ -149,7 +152,7 @@ For more examples, see the [samples/](samples/) directory.
 
 **Quality Standards:**
 - PHPStan Level 9 static analysis with strict rules
-- 82%+ code coverage with 535+ tests (Pest framework)
+- 82%+ code coverage with 559+ tests (Pest framework)
 - Zero-collision UUID v5 hashing for element identification
 - Single Responsibility Principle across all components
 
@@ -199,6 +202,8 @@ ContentControl follows a **composition-based architecture** with no inheritance 
 - **v0.5.0:** TableBuilder::setStyles() method (must be called before first addRow)
 - **v0.5.2:** Fix content hash strategy for inline-level Text/TextRun hash collisions
 - **v0.6.0:** Run-level SDT wrapping (CT_SdtContentRun), TableBuilder v2 with direct PHPWord Table API
+- **v0.7.0:** `ContentProcessor::replaceContent()` supports `TableBuilder`, fluent `end()` removal completed
+- **v0.7.1:** `removeAllControlContents()` now unwraps SDTs preserving visible content
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -255,7 +260,7 @@ ContentControl follows a **composition-based architecture** with no inheritance 
 │                   TableBuilder                              │
 │  (Bridge for tables with SDTs)                              │
 │                                                             │
-│  - v0.6.0: Direct PHPWord Table API + addContentControl()   │
+│  - v0.7.x: Direct PHPWord Table API + addContentControl()   │
 │  - Constructor accepts Table|ContentControl|null            │
 │  - Run-level SDT wrapping (runLevel: true)                  │
 │  - Template injection: injectInto(ContentProcessor, tag)    │
@@ -319,7 +324,7 @@ For detailed documentation, see [docs/contentcontrol.md](docs/contentcontrol.md)
 - `appendContent(string $tag, AbstractElement $element): bool` - Add content to existing SDT
 - `replaceGroupContent(string $tag, ContentControl $structure): bool` - Replace GROUP SDT with complex structure
 - `removeContent(string $tag): bool` - Clear SDT content
-- `removeAllControlContents(bool $block = false): int` - Clear all SDTs, optionally lock document
+- `removeAllControlContents(bool $block = false): int` - Unwrap all SDTs preserving content, optionally lock document
 - `save(string $outputPath = ''): void` - Save changes (in-place if no path provided)
 
 **Workflow:**
@@ -411,7 +416,7 @@ $processor->save('output.docx');
 
 See [Migration Guide](docs/migration/v0.5.2-to-v0.6.0.md) for fluent-to-direct API migration examples.
 
-For detailed documentation, see [docs/tablebuilder.md](docs/tablebuilder.md).
+For detailed documentation, see [docs/TableBuilder.md](docs/TableBuilder.md).
 
 ### Configuration
 
@@ -722,7 +727,7 @@ ElementIdentifier::clearCache();
 
 ### Running Tests
 
-The project uses [Pest](https://pestphp.com/) for testing with 535+ tests and 82%+ code coverage.
+The project uses [Pest](https://pestphp.com/) for testing with 559+ tests and 82%+ code coverage.
 
 **All Tests:**
 ```bash
@@ -773,6 +778,8 @@ composer test:coverage-html
 - `RunLevelSDTTest.php` - Run-level `<w:r>` SDT wrapping (v0.6.0)
 - `TableBuilderV2Test.php` - Direct Table API + addContentControl (v0.6.0)
 - `DeprecationTest.php` - Deprecation notice validation (v0.6.0)
+- `ContentProcessorProtectionTest.php` - SDT unwrap behavior and edge cases (v0.7.1)
+- `ContentProcessorAdvancedTest.php` - Public API unwrap behavior validation (v0.7.1)
 
 ### Custom Pest Expectations
 
@@ -818,6 +825,8 @@ For comprehensive Word testing checklist, see [docs/MANUAL_TESTING_GUIDE.md](doc
 ## Changelog and Contributing
 
 **Changelog:** See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+
+**Detailed v0.7.1 release notes:** [docs/0.x/CHANGELOG-v0.7.1.md](docs/0.x/CHANGELOG-v0.7.1.md)
 
 **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, coding standards, and pull request process.
 

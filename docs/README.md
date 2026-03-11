@@ -2,7 +2,7 @@
 
 Welcome to the comprehensive documentation for the **ContentControl** library - a PHP extension for PHPOffice/PHPWord that adds Word Content Controls (Structured Document Tags) to .docx files.
 
-**Version:** 0.5.0  
+**Version:** 0.7.1  
 **PHP:** >= 8.2  
 **PHPWord:** ^1.4  
 **Standard:** ISO/IEC 29500-1:2016 §17.5.2
@@ -136,6 +136,10 @@ ContentControl follows a **composition-based architecture** with three core prin
 | **v0.4.0** | Inline-level SDT support with `inlineLevel` flag |
 | **v0.4.2** | Fluent API for TableBuilder, UUID v5 hashing, GROUP SDT replacement |
 | **v0.5.0** | TableBuilder::setStyles() method (must be called before first addRow) |
+| **v0.5.2** | Inline-level hash-collision fix for `Text`/`TextRun` element location |
+| **v0.6.0** | Run-level SDT support (`runLevel`) |
+| **v0.7.0** | TableBuilder injection support in `ContentProcessor::replaceContent()` and fluent `end()` removal |
+| **v0.7.1** | `ContentProcessor::removeAllControlContents()` unwrap fix preserving visible content |
 
 ## Component Documentation
 
@@ -186,6 +190,7 @@ $cc->save('output.docx');
 - Multiple modification methods (replaceContent, setValue, appendContent)
 - GROUP SDT replacement with complex structures
 - Header/footer SDT support
+- Full-document SDT unwrap preserving visible content (`removeAllControlContents`)
 
 **Documentation:** [contentprocessor.md](contentprocessor.md)
 
@@ -226,7 +231,7 @@ $processor->save('invoice_2024_001.docx');
 - UUID v5 hashing for zero-collision template matching
 - Table-level GROUP SDTs
 
-**Documentation:** [tablebuilder.md](tablebuilder.md)
+**Documentation:** [TableBuilder.md](TableBuilder.md)
 
 **When to Use:**
 - Creating tables with per-cell Content Controls
@@ -520,7 +525,7 @@ composer analyse
 
 **Test Suite (Pest):**
 ```bash
-composer test              # All tests (464+ tests)
+composer test              # All tests (559 tests)
 composer test:unit         # Unit tests only
 composer test:feature      # Feature tests only
 composer test:coverage     # Enforce 80% coverage
@@ -550,7 +555,17 @@ Run any sample: `php samples/01-quick-start.php`
 
 ### Migration Guides
 
-- **[MIGRATION-v042.md](MIGRATION-v042.md)** - Legacy array API to fluent API conversion
+- **[v0.5.0 to v0.5.1](migration/v0.5.0-to-v0.5.1.md)**
+- **[v0.5.2 to v0.6.0](migration/v0.5.2-to-v0.6.0.md)**
+- **[v0.6.0 to v0.7.0](migration/v0.6.0-to-v0.7.0.md)**
+
+### Version Changelogs
+
+- **[v0.7.1](0.x/CHANGELOG-v0.7.1.md)** - ContentProcessor SDT unwrap fix
+- **[v0.7.0](0.x/CHANGELOG-v0.7.0.md)** - TableBuilder integration + fluent API removal
+- **[v0.6.0](0.x/CHANGELOG-v0.6.0.md)** - Run-level SDT support
+- **[v0.5.2](0.x/CHANGELOG-v0.5.2.md)** - Inline-level collision fix
+- **[v0.4.2](0.x/CHANGELOG-v0.4.2.md)** - Fluent API + GROUP SDT replacement
 
 ### Testing Guides
 
@@ -713,6 +728,6 @@ src/
 
 ---
 
-**Last Updated:** February 6, 2026  
-**Version:** 0.5.0  
+**Last Updated:** March 11, 2026  
+**Version:** 0.7.1  
 **License:** MIT
