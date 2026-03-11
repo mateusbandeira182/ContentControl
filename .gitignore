@@ -4,6 +4,8 @@ composer.lock
 .vscode
 .antigravity
 .github/prompts
+.github/agents
+.github/skills
 .local
 # Cobertura de testes
 coverage/
