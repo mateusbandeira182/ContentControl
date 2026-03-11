@@ -12,7 +12,7 @@
 
 **ContentControl** e uma biblioteca PHP que estende [PHPOffice/PHPWord](https://github.com/PHPOffice/PHPWord) para adicionar Word Content Controls (Structured Document Tags/SDTs) a arquivos .docx. A biblioteca permite protecao de conteudo e marcacao por metadados em conformidade com **ISO/IEC 29500-1:2016 secao 17.5.2**.
 
-## Sumario
+## Sumário
 
 - [Instalacao](#instalacao)
 - [Inicio Rapido](#inicio-rapido)
