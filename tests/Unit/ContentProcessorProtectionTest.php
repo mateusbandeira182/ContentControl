@@ -133,58 +133,137 @@ describe('ContentProcessor removeAllSdtsInFile', function () {
         expect($count)->toBe(0);
     });
 
-    test('removeAllSdtsInFile clears sdtContent children', function () {
+    test('removeAllSdtsInFile unwraps SDT preserving content in DOM', function () {
         $cc = new ContentControl();
         $section = $cc->addSection();
         $text = $section->addText('Important content');
         $cc->addContentControl($text, ['tag' => 'test-tag']);
         $cc->save($this->tempFile);
-        
+
         $processor = new ContentProcessor($this->tempFile);
-        
+
         $reflection = new ReflectionClass($processor);
         $method = $reflection->getMethod('removeAllSdtsInFile');
         $method->setAccessible(true);
-        
-        $method->invoke($processor, 'word/document.xml');
+
+        $count = $method->invoke($processor, 'word/document.xml');
+
+        expect($count)->toBe(1);
+
         $processor->save();
-        
-        // Verify SDT structure is still there but content is removed
+
         $zip = new ZipArchive();
         $zip->open($this->tempFile);
         $xml = $zip->getFromName('word/document.xml');
         $zip->close();
-        
-        // SDT should still exist
-        expect($xml)->toContain('<w:sdt>');
-        // But sdtContent should be empty
-        expect($xml)->toContain('<w:sdtContent/>');
+
+        expect($xml)->toBeValidXml();
+        expect($xml)->not->toContain('<w:sdt');
+        expect($xml)->not->toContain('w:sdtContent');
+        expect($xml)->not->toContain('w:sdtPr');
+        expect($xml)->toContain('Important content');
     });
 
-    test('removeAllSdtsInFile handles nested SDTs', function () {
-        $cc = new ContentControl();
-        $section = $cc->addSection();
-        
-        $table = $section->addTable();
-        $row = $table->addRow();
-        $cell = $row->addCell();
-        $text = $cell->addText('Cell content');
-        
-        $cc->addContentControl($table, ['tag' => 'table-tag']);
-        $cc->addContentControl($cell, ['tag' => 'cell-tag']);
-        $cc->save($this->tempFile);
-        
+    test('removeAllSdtsInFile unwraps nested SDTs with inner-first processing', function () {
+        createDocxWithNestedSdts($this->tempFile);
+
         $processor = new ContentProcessor($this->tempFile);
-        
+
         $reflection = new ReflectionClass($processor);
         $method = $reflection->getMethod('removeAllSdtsInFile');
         $method->setAccessible(true);
-        
+
         $count = $method->invoke($processor, 'word/document.xml');
-        
-        // Should remove at least 1 SDT (outer table SDT removes nested cell SDT automatically)
-        // In PHP 8.2+, nested SDT nodes become invalid after parent content is cleared
-        expect($count)->toBeGreaterThanOrEqual(1);
+
+        expect($count)->toBe(2);
+
+        $processor->save();
+
+        $zip = new ZipArchive();
+        $zip->open($this->tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toBeValidXml();
+        expect($xml)->not->toContain('<w:sdt');
+        expect($xml)->toContain('Inner text');
+    });
+
+    test('removeAllSdtsInFile removes SDT without sdtContent', function () {
+        createDocxFromXml($this->tempFile, <<<XML
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:sdt>
+            <w:sdtPr>
+                <w:id w:val="10000000"/>
+                <w:tag w:val="orphan"/>
+            </w:sdtPr>
+        </w:sdt>
+        <w:p><w:r><w:t>Normal text</w:t></w:r></w:p>
+    </w:body>
+</w:document>
+XML
+        );
+
+        $processor = new ContentProcessor($this->tempFile);
+
+        $reflection = new ReflectionClass($processor);
+        $method = $reflection->getMethod('removeAllSdtsInFile');
+        $method->setAccessible(true);
+
+        $count = $method->invoke($processor, 'word/document.xml');
+
+        expect($count)->toBe(1);
+
+        $processor->save();
+
+        $zip = new ZipArchive();
+        $zip->open($this->tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->not->toContain('<w:sdt');
+        expect($xml)->toContain('Normal text');
+    });
+
+    test('removeAllSdtsInFile removes SDT with empty sdtContent', function () {
+        createDocxFromXml($this->tempFile, <<<XML
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:sdt>
+            <w:sdtPr>
+                <w:id w:val="10000000"/>
+                <w:tag w:val="empty"/>
+            </w:sdtPr>
+            <w:sdtContent/>
+        </w:sdt>
+        <w:p><w:r><w:t>Other content</w:t></w:r></w:p>
+    </w:body>
+</w:document>
+XML
+        );
+
+        $processor = new ContentProcessor($this->tempFile);
+
+        $reflection = new ReflectionClass($processor);
+        $method = $reflection->getMethod('removeAllSdtsInFile');
+        $method->setAccessible(true);
+
+        $count = $method->invoke($processor, 'word/document.xml');
+
+        expect($count)->toBe(1);
+
+        $processor->save();
+
+        $zip = new ZipArchive();
+        $zip->open($this->tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->not->toContain('<w:sdt');
+        expect($xml)->toContain('Other content');
     });
 });
 
@@ -267,6 +346,35 @@ describe('ContentProcessor removeAllControlContents', function () {
         
         $modifiedFiles = $property->getValue($processor);
         expect($modifiedFiles)->not->toBeEmpty();
+    });
+
+    test('removeAllControlContents produces valid XML after unwrapping multiple SDTs', function () {
+        $cc = new ContentControl();
+        $section = $cc->addSection();
+
+        for ($i = 0; $i < 5; $i++) {
+            $text = $section->addText("Content {$i}");
+            $cc->addContentControl($text, ['tag' => "tag-{$i}"]);
+        }
+
+        $cc->save($this->tempFile);
+
+        $processor = new ContentProcessor($this->tempFile);
+        $count = $processor->removeAllControlContents();
+
+        expect($count)->toBe(5);
+
+        $processor->save();
+
+        $zip = new ZipArchive();
+        $zip->open($this->tempFile);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        expect($xml)->toBeValidXml();
+        expect($xml)->not->toContain('<w:sdt');
+        expect($xml)->not->toContain('w:sdtPr');
+        expect($xml)->not->toContain('w:sdtContent');
     });
 });
 

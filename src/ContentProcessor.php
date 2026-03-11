@@ -944,6 +944,9 @@ final class ContentProcessor
             $sdtArray[] = $node;
         }
 
+        // Process inner-first to safely unwrap nested SDTs
+        $sdtArray = array_reverse($sdtArray);
+
         $count = 0;
         foreach ($sdtArray as $sdtNode) {
             if (!$sdtNode instanceof \DOMElement) {
@@ -968,6 +971,9 @@ final class ContentProcessor
                 continue;
             }
             if ($sdtContentNodes->length === 0) {
+                // SDT without sdtContent is an invalid artifact — remove it
+                $parent->removeChild($sdtNode);
+                $count++;
                 continue;
             }
 
@@ -976,10 +982,13 @@ final class ContentProcessor
                 continue;
             }
 
-            // Remove all children
+            // Unwrap: promote sdtContent children to the sdt's parent node
             while ($sdtContent->firstChild) {
-                $sdtContent->removeChild($sdtContent->firstChild);
+                $parent->insertBefore($sdtContent->firstChild, $sdtNode);
             }
+
+            // Remove the now-empty <w:sdt> wrapper
+            $parent->removeChild($sdtNode);
 
             $count++;
         }
