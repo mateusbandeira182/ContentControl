@@ -1,0 +1,41 @@
+services:
+  php84:
+    build:
+      context: .
+      args:
+        PHP_VERSION: "8.4"
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sleep infinity
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  php83:
+    build:
+      context: .
+      args:
+        PHP_VERSION: "8.3"
+    volumes:
+      - .:/app
+    working_dir: /app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  php82:
+    build:
+      context: .
+      args:
+        PHP_VERSION: "8.2"
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  php81:
+    build:
+      context: .
+      args:
+        PHP_VERSION: "8.1"
+    volumes:
+      - .:/app
+    working_dir: /app
