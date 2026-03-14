@@ -1,0 +1,20 @@
+{
+  "name": "PHP Package",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "php84",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug",
+        "ryanluker.vscode-coverage-gutters"
+      ],
+      "settings": {
+        "php.debug.ideKey": "VSCODE",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "composer install"
+}

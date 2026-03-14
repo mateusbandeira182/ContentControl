@@ -1,0 +1,6 @@
+.git
+.vscode
+.devcontainer
+vendor
+coverage
+*.md
